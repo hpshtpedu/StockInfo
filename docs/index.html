@@ -65,6 +65,8 @@
   .cal { grid-column: 1 / -1; font-size: 13px; gap: 3px; }
   .cal .today { font-weight: 600; }
   .cal .today b { color: var(--warn); }
+  .cal .next { color: var(--muted); font-size: 12px; padding-left: 1.6em; }
+  .cal .next b { color: var(--text); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -127,8 +129,8 @@
     const [y, m, d, dow] = [t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(), t.getUTCDay()];
     const out = [];
     if (d === nthWeekday(y, m, 3, 3)) out.push('台指月結算');
-    else if (dow === 3) out.push('台指週選(三)');
-    if (dow === 5) out.push('台指週選(五)');
+    else if (dow === 3) out.push('台指週選');
+    if (dow === 5) out.push('台指週選');
     return out;
   }
 
@@ -150,15 +152,24 @@
     return [...new Set(out)];
   }
 
+  function dayLine(label, t) {
+    const events = settlements(t);
+    const weekday = t.getUTCDay() !== 0 && t.getUTCDay() !== 6;
+    if (weekday && holidays.has(key(t))) events.unshift('台股休市');
+    const text = events.length ? `　<b>${events.join('、')}</b>` : '';
+    return `${label} ${t.getUTCMonth() + 1}/${t.getUTCDate()}(${WEEKDAYS[t.getUTCDay()]})${text}`;
+  }
+
   function calendarHtml() {
     const tw = new Date(Date.now() + 8 * 3600 * 1000);
     const today = utcDate(tw.getUTCFullYear(), tw.getUTCMonth() + 1, tw.getUTCDate());
-    const events = settlements(today);
-    const weekday = today.getUTCDay() !== 0 && today.getUTCDay() !== 6;
-    if (weekday && holidays.has(key(today))) events.unshift('台股休市');
-    const text = events.length ? `　<b>${events.join('、')}</b>` : '';
-    const date = `${today.getUTCMonth() + 1}/${today.getUTCDate()}(${WEEKDAYS[today.getUTCDay()]})`;
-    return `<div class="card cal"><div class="today">📅 今日 ${date}${text}</div></div>`;
+    const next = nextBusinessDay(addDays(today, 1));
+    const nextLabel = key(next) === key(addDays(today, 1)) ? '明日' : '下個交易日';
+    return `
+      <div class="card cal">
+        <div class="today">📅 ${dayLine('今日', today)}</div>
+        <div class="next">${dayLine(nextLabel, next)}</div>
+      </div>`;
   }
 
   function dailyHtml(q) {
