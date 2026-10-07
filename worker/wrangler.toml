@@ -1,0 +1,7 @@
+name = "stockinfo-quotes"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# 部署好 GitHub Pages 後可改成 "https://<你的帳號>.github.io" 限制來源
+ALLOWED_ORIGIN = "*"
