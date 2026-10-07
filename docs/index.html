@@ -297,7 +297,7 @@
     const dir = c > 0 ? 'up' : c < 0 ? 'down' : '';
     return `
       <div class="card">
-        <div class="name">融資餘額增減</div>
+        <div class="name">上市櫃融資增減</div>
         <div class="price ${dir}">${c > 0 ? '+' : ''}${fmt(c, 1)}<small> 億</small></div>
         <div class="chg">${segments(`餘額${fmt(m.balance, 0)}億`)}</div>
         <div class="meta">${mm}/${dd} 盤後</div>
