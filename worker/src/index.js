@@ -96,6 +96,8 @@ function isOpen(meta, breaksUtc = []) {
   if (!period) return undefined;
   const now = Date.now() / 1000;
   if (now < period.start || now >= period.end) return false;
+  // No trade since the session started means a holiday (or delayed data not yet past the open).
+  if (meta.regularMarketTime < period.start) return false;
   const d = new Date();
   const mins = d.getUTCHours() * 60 + d.getUTCMinutes();
   return !breaksUtc.some(([s, e]) => mins >= s && mins < e);
