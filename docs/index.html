@@ -47,20 +47,25 @@
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 12px;
-    padding: 10px 12px;
+    padding: 8px 12px;
     display: flex;
     flex-direction: column;
     gap: 2px;
     min-width: 0;
   }
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .price { font-size: clamp(18px, 5.6vw, 26px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .price { font-size: clamp(17px, 5.2vw, 24px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .chg { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .price small { font-size: 13px; font-weight: 600; }
   .up { color: var(--up); }
   .down { color: var(--down); }
   .meta { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lag { color: var(--warn); }
   .error { color: var(--warn); font-size: 12px; }
+  .cal { grid-column: 1 / -1; font-size: 13px; gap: 3px; }
+  .cal .today { font-weight: 600; }
+  .cal .today b { color: var(--warn); }
+  .cal .next { color: var(--muted); font-size: 12px; }
 </style>
 </head>
 <body>
@@ -85,11 +90,83 @@
   const hhmm = (t) => new Date(t).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' });
   const mdhm = (t) => new Date(t).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' });
 
+  // ---- 結算行事曆：依規則推算，未扣除國定假日順延 ----
+  const WEEKDAYS = '日一二三四五六';
+  const QUARTER = [3, 6, 9, 12];
+
+  // 該月第 n 個星期 dow 是幾號
+  function nthWeekday(y, m, dow, n) {
+    const first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+    return 1 + ((dow - first + 7) % 7) + (n - 1) * 7;
+  }
+
+  // 該月倒數第 2 個營業日（只排除週末）
+  function secondLastBusinessDay(y, m) {
+    let d = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    for (let count = 0; ; d--) {
+      const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+      if (dow !== 0 && dow !== 6 && ++count === 2) return d;
+    }
+  }
+
+  // weekly: 每週固定的週選結算，近期清單會略過
+  function settlements(y, m, d) {
+    const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+    const q = QUARTER.includes(m);
+    const out = [];
+    if (d === nthWeekday(y, m, 3, 3)) out.push({ label: '台指月結算' });
+    else if (dow === 3) out.push({ label: '台指週選(三)', weekly: true });
+    if (dow === 5) out.push({ label: '台指週選(五)', weekly: true });
+    if (d === secondLastBusinessDay(y, m)) out.push({ label: '富台結算' });
+    if (d === nthWeekday(y, m, 4, 2)) out.push({ label: q ? '韓國四巫日' : '韓選到期' });
+    if (d === nthWeekday(y, m, 5, 2)) out.push({ label: q ? '日經大SQ' : '日經SQ' });
+    if (d === nthWeekday(y, m, 5, 3)) out.push({ label: q ? '美股四巫日' : '美股月結算' });
+    return out;
+  }
+
+  function calendarHtml() {
+    const tw = new Date(Date.now() + 8 * 3600 * 1000);
+    const day = (offset) => {
+      const t = new Date(Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate() + offset));
+      const [y, m, d] = [t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate()];
+      return { text: `${m}/${d}(${WEEKDAYS[t.getUTCDay()]})`, events: settlements(y, m, d) };
+    };
+
+    const today = day(0);
+    const upcoming = [];
+    for (let i = 1; i <= 31 && upcoming.length < 3; i++) {
+      const next = day(i);
+      const major = next.events.filter((e) => !e.weekly);
+      if (major.length) upcoming.push(`${next.text} ${major.map((e) => e.label).join('、')}`);
+    }
+
+    const todayText = today.events.length ? `<b>${today.events.map((e) => e.label).join('、')}</b>` : '無結算';
+    return `
+      <div class="card cal">
+        <div class="today">📅 今日 ${today.text}　${todayText}</div>
+        <div class="next">近期：${upcoming.join(' · ')}</div>
+      </div>`;
+  }
+
+  function dailyHtml(q) {
+    const dir = q.price > 0 ? 'up' : q.price < 0 ? 'down' : '';
+    const sign = q.price > 0 ? '+' : '';
+    const value = q.unit === 'ratio' ? `${sign}${fmt(q.price, q.digits)}%` : `${sign}${fmt(q.price, q.digits)}<small> 口</small>`;
+    return `
+      <div class="card">
+        <div class="name">${q.name}</div>
+        <div class="price ${dir}">${value}</div>
+        <div class="chg">${q.detail}</div>
+        <div class="meta">${q.dataDate} 盤後${q.stale ? ' · <span class="lag">舊資料</span>' : ''}</div>
+      </div>`;
+  }
+
   function render(data) {
-    $list.innerHTML = data.quotes.map((q) => {
+    $list.innerHTML = calendarHtml() + data.quotes.map((q) => {
       if (q.error) {
         return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`;
       }
+      if (q.kind === 'daily') return dailyHtml(q);
       const dir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
       const sign = q.change > 0 ? '+' : '';
       const ageMin = Math.round((Date.now() - q.time) / 60000);
@@ -137,7 +214,9 @@
   }
 
   // 手機切到背景就停止輪詢，回來時立刻更新
-  document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());  start();
+  document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
+  $list.innerHTML = calendarHtml();
+  start();
 </script>
 </body>
 </html>

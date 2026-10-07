@@ -15,7 +15,26 @@ const YAHOO = {
   us10y: { name: '美債 10Y', symbol: '^TNX', digits: 3, unit: 'yield' },
 };
 
-const ORDER = ['txf', 'kospi', 'nikkei', 'tsm', 'usdtwd', 'brent', 'nq', 'us10y'];
+// Yahoo Taiwan: real-time TW indices and 台指期近一 (WTX&), fetched in one request.
+const YAHOO_TW = {
+  twii: { name: '加權指數', symbol: '^TWII', digits: 2 },
+  otc: { name: '櫃買指數', symbol: '^TWOII', digits: 2 },
+  txf: { name: '台指期 近一', symbol: 'WTX&', digits: 0 },
+};
+
+const CHIPS = {
+  foreignOi: { name: '外資台指淨OI' },
+  retailRatio: { name: '小台散戶多空比' },
+};
+
+const ORDER = ['twii', 'otc', 'txf', 'kospi', 'nikkei', 'tsm', 'usdtwd', 'brent', 'nq', 'us10y', 'foreignOi', 'retailRatio'];
+
+const NAMES = Object.fromEntries(
+  Object.entries({ ...YAHOO, ...YAHOO_TW, ...CHIPS }).map(([id, cfg]) => [id, cfg.name]),
+);
+
+// TAIFEX publishes institutional positions once a day after the close.
+const CHIPS_CACHE_SECONDS = 1800;
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
@@ -33,7 +52,7 @@ export default {
     const cached = await cache.match(cacheKey);
     if (cached) return withCors(cached, env);
 
-    const body = JSON.stringify(await buildQuotes());
+    const body = JSON.stringify(await buildQuotes(url.origin, ctx));
     const response = new Response(body, {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -45,10 +64,17 @@ export default {
   },
 };
 
-async function buildQuotes() {
+async function buildQuotes(origin, ctx) {
+  const tw = fetchYahooTw();
+  const chips = fetchChips(origin, ctx);
+  const pick = (promise, id) => promise.then((m) => m[id] ?? Promise.reject(new Error(`${id} no data`)));
   const jobs = {
     ...Object.fromEntries(Object.entries(YAHOO).map(([id, cfg]) => [id, fetchYahoo(cfg)])),
-    txf: fetchYahooTw().catch(() => fetchTaifex()),
+    twii: pick(tw, 'twii'),
+    otc: pick(tw, 'otc'),
+    txf: pick(tw, 'txf').catch(() => fetchTaifex()),
+    foreignOi: pick(chips, 'foreignOi'),
+    retailRatio: pick(chips, 'retailRatio'),
   };
 
   const quotes = await Promise.all(
@@ -59,7 +85,7 @@ async function buildQuotes() {
         return q;
       } catch (err) {
         if (lastGood[id]) return { ...lastGood[id], stale: true };
-        return { id, name: YAHOO[id]?.name ?? '台指期', error: String(err.message || err) };
+        return { id, name: NAMES[id], error: String(err.message || err) };
       }
     }),
   );
@@ -112,29 +138,100 @@ function marketState(meta, breaksUtc = []) {
   return 'open';
 }
 
-// Yahoo Taiwan: WTX& = 台指期近一. Works from Cloudflare egress, unlike TAIFEX.
+// Yahoo Taiwan works from Cloudflare egress, unlike TAIFEX MIS. Returns { id: quote }.
 async function fetchYahooTw() {
-  const url = 'https://tw.stock.yahoo.com/_td-stock/api/resource/FinanceChartService.ApacLibraCharts;symbols=%5B%22WTX%26%22%5D;type=tick';
+  const symbols = encodeURIComponent(JSON.stringify(Object.values(YAHOO_TW).map((c) => c.symbol)));
+  const url = `https://tw.stock.yahoo.com/_td-stock/api/resource/FinanceChartService.ApacLibraCharts;symbols=${symbols};type=tick`;
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(`Yahoo TW HTTP ${res.status}`);
-  const meta = (await res.json())?.[0]?.chart?.meta;
-  if (!meta || meta.regularMarketPrice == null) throw new Error('Yahoo TW no data');
+  const bySymbol = Object.fromEntries((await res.json()).map((x) => [x.symbol, x.chart?.meta]));
 
-  const price = meta.regularMarketPrice;
-  const prev = meta.previousClose ?? meta.chartPreviousClose;
-  return {
-    name: '台指期 近一',
-    symbol: 'WTX&',
-    source: 'Yahoo TW',
-    digits: 0,
-    price,
-    prev,
-    change: prev != null ? price - prev : null,
-    changePct: prev ? ((price - prev) / prev) * 100 : null,
-    // Yahoo TW stamps the end of the current minute bar, which can be ahead of now.
-    time: Math.min(meta.regularMarketTime * 1000, Date.now()),
-    state: marketState(meta),
+  const out = {};
+  for (const [id, { name, symbol, digits }] of Object.entries(YAHOO_TW)) {
+    const meta = bySymbol[symbol];
+    if (!meta || meta.regularMarketPrice == null) continue;
+    const price = meta.regularMarketPrice;
+    const prev = meta.previousClose ?? meta.chartPreviousClose;
+    out[id] = {
+      name,
+      symbol,
+      source: 'Yahoo TW',
+      digits,
+      price,
+      prev,
+      change: prev != null ? price - prev : null,
+      changePct: prev ? ((price - prev) / prev) * 100 : null,
+      // Yahoo TW stamps the end of the current minute bar, which can be ahead of now.
+      time: Math.min(meta.regularMarketTime * 1000, Date.now()),
+      state: marketState(meta),
+    };
+  }
+  return out;
+}
+
+// TAIFEX OpenAPI daily data: foreign net OI in TX, and the MTX retail long/short ratio
+// = -(institutional MTX net OI) / (MTX total OI). Cached separately since it changes daily.
+async function fetchChips(origin, ctx) {
+  const cache = caches.default;
+  const key = new Request(origin + '/_chips');
+  const cached = await cache.match(key);
+  if (cached) return cached.json();
+
+  const base = 'https://openapi.taifex.com.tw/v1/';
+  const [instRes, dailyRes] = await Promise.all([
+    fetch(base + 'MarketDataOfMajorInstitutionalTradersDetailsOfFuturesContractsBytheDate', { headers: { 'User-Agent': UA } }),
+    fetch(base + 'DailyMarketReportFut', { headers: { 'User-Agent': UA } }),
+  ]);
+  if (!instRes.ok || !dailyRes.ok) throw new Error(`TAIFEX OpenAPI HTTP ${instRes.status}/${dailyRes.status}`);
+
+  const inst = JSON.parse((await instRes.text()).replace(/^﻿/, ''));
+  const foreign = inst.find((r) => r.ContractCode === '臺股期貨' && r.Item === '外資及陸資');
+  const mtxInstNet = inst
+    .filter((r) => r.ContractCode === '小型臺指期貨')
+    .reduce((sum, r) => sum + Number(r['OpenInterest(Net)']), 0);
+
+  // CSV: 日期,契約代號,到期月份(週別),...,未沖銷契約數(11),...,交易時段(17)
+  const rows = (await dailyRes.text()).replace(/^﻿/, '').trim().split(/\r?\n/).slice(1).map((l) => l.split(','));
+  const mtxOi = rows
+    .filter((r) => r[1] === 'MTX' && r[17] === '一般' && !r[2].includes('/') && /^\d+$/.test(r[11]))
+    .reduce((sum, r) => sum + Number(r[11]), 0);
+  if (!foreign || !mtxOi) throw new Error('TAIFEX OpenAPI no data');
+
+  const date = foreign.Date; // YYYYMMDD
+  const dataDate = `${+date.slice(4, 6)}/${+date.slice(6, 8)}`;
+  const time = Date.UTC(+date.slice(0, 4), +date.slice(4, 6) - 1, +date.slice(6, 8), 15 - 8);
+  const ratio = (-mtxInstNet / mtxOi) * 100;
+  const out = {
+    foreignOi: {
+      name: CHIPS.foreignOi.name,
+      symbol: 'TX',
+      source: 'TAIFEX',
+      kind: 'daily',
+      unit: 'lots',
+      digits: 0,
+      price: Number(foreign['OpenInterest(Net)']),
+      detail: `多${Number(foreign['OpenInterest(Long)']).toLocaleString('en-US')} 空${Number(foreign['OpenInterest(Short)']).toLocaleString('en-US')}`,
+      dataDate,
+      time,
+    },
+    retailRatio: {
+      name: CHIPS.retailRatio.name,
+      symbol: 'MTX',
+      source: 'TAIFEX',
+      kind: 'daily',
+      unit: 'ratio',
+      digits: 2,
+      price: ratio,
+      detail: ratio >= 0 ? '散戶偏多' : '散戶偏空',
+      dataDate,
+      time,
+    },
   };
+
+  ctx.waitUntil(cache.put(key, new Response(JSON.stringify(out), {
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CHIPS_CACHE_SECONDS}` },
+  })));
+  return out;
 }
 
 // TAIFEX MIS (fallback): MarketType 0 = day session (08:45-13:45 TW), 1 = night session.
