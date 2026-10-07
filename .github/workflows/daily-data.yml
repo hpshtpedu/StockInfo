@@ -1,4 +1,4 @@
-name: Update margin maintenance ratio
+name: Update daily data
 
 on:
   schedule:
@@ -19,14 +19,15 @@ jobs:
         with:
           python-version: '3.12'
       - run: python scripts/margin.py
+      - run: python scripts/volume_profile.py
       - name: Commit if changed
         run: |
-          if git diff --quiet docs/margin.json; then
+          if git diff --quiet docs/margin.json docs/volume_profile.json; then
             echo "no change"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/margin.json
-          git commit -m "Update margin maintenance ratio"
+          git add docs/margin.json docs/volume_profile.json
+          git commit -m "Update daily data"
           git push

@@ -20,7 +20,7 @@ const YAHOO = {
 const YAHOO_TW = {
   twii: { name: '加權指數', symbol: '^TWII', digits: 2 },
   otc: { name: '櫃買指數', symbol: '^TWOII', digits: 2 },
-  txf: { name: '台指期 近一', symbol: 'WTX&', digits: 0 },
+  txf: { name: '台指期', symbol: 'WTX&', digits: 0 },
 };
 
 const CHIPS = {
@@ -167,11 +167,12 @@ async function fetchYahooTw() {
   const url = `https://tw.stock.yahoo.com/_td-stock/api/resource/FinanceChartService.ApacLibraCharts;symbols=${symbols};type=tick`;
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(`Yahoo TW HTTP ${res.status}`);
-  const bySymbol = Object.fromEntries((await res.json()).map((x) => [x.symbol, x.chart?.meta]));
+  const bySymbol = Object.fromEntries((await res.json()).map((x) => [x.symbol, x.chart]));
 
   const out = {};
   for (const [id, { name, symbol, digits }] of Object.entries(YAHOO_TW)) {
-    const meta = bySymbol[symbol];
+    const chart = bySymbol[symbol];
+    const meta = chart?.meta;
     if (!meta || meta.regularMarketPrice == null) continue;
     const price = meta.regularMarketPrice;
     const prev = meta.previousClose ?? meta.chartPreviousClose;
@@ -188,6 +189,10 @@ async function fetchYahooTw() {
       time: Math.min(meta.regularMarketTime * 1000, Date.now()),
       state: marketState(meta),
     };
+    // TAIEX per-minute volume is turnover in NT$ millions; the sum is today's cumulative turnover.
+    if (id === 'twii') {
+      out[id].turnover = (chart.indicators?.quote?.[0]?.volume ?? []).reduce((sum, v) => sum + (v || 0), 0);
+    }
   }
   return out;
 }
