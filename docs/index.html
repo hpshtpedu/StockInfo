@@ -99,34 +99,66 @@
     return 1 + ((dow - first + 7) % 7) + (n - 1) * 7;
   }
 
-  // 該月倒數第 2 個營業日（只排除週末）
+  // 台股休市日（證交所公告，由 Worker 提供）
+  let holidays = new Set();
+
+  // 日期一律用 UTC 午夜的 Date 表示台北日曆日
+  const utcDate = (y, m, d) => new Date(Date.UTC(y, m - 1, d));
+  const addDays = (t, n) => new Date(t.getTime() + n * 86400000);
+  const key = (t) => t.toISOString().slice(0, 10);
+  const isBusinessDay = (t) => t.getUTCDay() !== 0 && t.getUTCDay() !== 6 && !holidays.has(key(t));
+
+  // 期交所：最後交易日遇假日，順延至次一營業日
+  function nextBusinessDay(t) {
+    while (!isBusinessDay(t)) t = addDays(t, 1);
+    return t;
+  }
+
+  // 該月倒數第 2 個台股營業日（MSCI/FTSE 遇台灣假日會再往前找）
   function secondLastBusinessDay(y, m) {
-    let d = new Date(Date.UTC(y, m, 0)).getUTCDate();
-    for (let count = 0; ; d--) {
-      const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-      if (dow !== 0 && dow !== 6 && ++count === 2) return d;
+    let t = utcDate(y, m + 1, 0);
+    for (let count = 0; ; t = addDays(t, -1)) {
+      if (isBusinessDay(t) && ++count === 2) return t;
     }
   }
 
-  // 台灣與美國的結算
-  function settlements(y, m, d) {
-    const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  // 原定到期日 t 的台指結算項目（尚未順延）
+  function taifexExpiries(t) {
+    const [y, m, d, dow] = [t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(), t.getUTCDay()];
     const out = [];
     if (d === nthWeekday(y, m, 3, 3)) out.push('台指月結算');
     else if (dow === 3) out.push('台指週選(三)');
     if (dow === 5) out.push('台指週選(五)');
-    // HKEX MSCI 台指 (摩台/MDFK) 與 SGX FTSE 台指 (富台) 同為倒數第 2 個營業日
-    if (d === secondLastBusinessDay(y, m)) out.push('MSCI/FTSE結算');
-    if (d === nthWeekday(y, m, 5, 3)) out.push(QUARTER.includes(m) ? '美股四巫日' : '美股月結算');
     return out;
+  }
+
+  // 台灣與美國的結算
+  function settlements(today) {
+    const [y, m, d] = [today.getUTCFullYear(), today.getUTCMonth() + 1, today.getUTCDate()];
+    const out = [];
+    // 回頭看兩週內的原定到期日，順延後落在今天的都算
+    for (let back = 0; back <= 14; back++) {
+      const base = addDays(today, -back);
+      const labels = taifexExpiries(base);
+      if (labels.length && key(nextBusinessDay(base)) === key(today)) {
+        out.push(...labels.map((l) => (back ? `${l}順延` : l)));
+      }
+    }
+    // HKEX MSCI 台指 (摩台/MDFK) 與 SGX FTSE 台指 (富台) 同為倒數第 2 個營業日
+    if (key(secondLastBusinessDay(y, m)) === key(today)) out.push('MSCI/FTSE結算');
+    if (d === nthWeekday(y, m, 5, 3)) out.push(QUARTER.includes(m) ? '美股四巫日' : '美股月結算');
+    return [...new Set(out)];
   }
 
   function calendarHtml() {
     const tw = new Date(Date.now() + 8 * 3600 * 1000);
-    const [y, m, d] = [tw.getUTCFullYear(), tw.getUTCMonth() + 1, tw.getUTCDate()];
-    const events = settlements(y, m, d);
+    const today = utcDate(tw.getUTCFullYear(), tw.getUTCMonth() + 1, tw.getUTCDate());
+    const events = settlements(today);
+    const weekday = today.getUTCDay() !== 0 && today.getUTCDay() !== 6;
+    if (weekday && holidays.has(key(today))) events.unshift('台股休市');
     const text = events.length ? `<b>${events.join('、')}</b>` : '無結算';
-    return `<div class="card cal"><div class="today">📅 今日 ${m}/${d}(${WEEKDAYS[tw.getUTCDay()]})　${text}</div></div>`;
+    const date = `${today.getUTCMonth() + 1}/${today.getUTCDate()}(${WEEKDAYS[today.getUTCDay()]})`;
+    return `<div class="card cal"><div class="today">📅 今日 ${date}　${text}</div></div>`;
   }
 
   function dailyHtml(q) {
@@ -143,6 +175,7 @@
   }
 
   function render(data) {
+    if (data.holidays?.length) holidays = new Set(data.holidays);
     $list.innerHTML = calendarHtml() + data.quotes.map((q) => {
       if (q.error) {
         return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`;

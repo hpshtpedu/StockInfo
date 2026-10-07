@@ -35,6 +35,7 @@ const NAMES = Object.fromEntries(
 
 // TAIFEX publishes institutional positions once a day after the close.
 const CHIPS_CACHE_SECONDS = 1800;
+const HOLIDAYS_CACHE_SECONDS = 86400;
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
@@ -90,7 +91,28 @@ async function buildQuotes(origin, ctx) {
     }),
   );
 
-  return { updated: Date.now(), quotes };
+  const holidays = await fetchHolidays(origin, ctx).catch(() => []);
+  return { updated: Date.now(), quotes, holidays };
+}
+
+// TWSE market holidays as ["YYYY-MM-DD"], used by the settlement calendar.
+async function fetchHolidays(origin, ctx) {
+  const cache = caches.default;
+  const key = new Request(origin + '/_holidays');
+  const cached = await cache.match(key);
+  if (cached) return cached.json();
+
+  const res = await fetch('https://openapi.twse.com.tw/v1/holidaySchedule/holidaySchedule', { headers: { 'User-Agent': UA } });
+  if (!res.ok) throw new Error(`TWSE HTTP ${res.status}`);
+  // Rows like 國曆新年開始交易日 / 農曆春節前最後交易日 are trading days; Date is ROC "1151009".
+  const out = (await res.json())
+    .filter((r) => !r.Name.includes('交易日'))
+    .map((r) => `${1911 + Number(r.Date.slice(0, 3))}-${r.Date.slice(3, 5)}-${r.Date.slice(5, 7)}`);
+
+  ctx.waitUntil(cache.put(key, new Response(JSON.stringify(out), {
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${HOLIDAYS_CACHE_SECONDS}` },
+  })));
+  return out;
 }
 
 async function fetchYahoo({ name, symbol, digits, unit, delayMin, breaksUtc }) {
