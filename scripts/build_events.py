@@ -4,7 +4,6 @@ All sources are fetched automatically (run nightly by GitHub Actions):
   CPI / NFP / PCE / retail sales: FRED release calendar API (needs FRED_API_KEY)
   FOMC decisions: federalreserve.gov meeting calendar page
   ISM PMI: computed (1st / 3rd US business day; 2nd / 4th in January)
-  TSMC / NVIDIA earnings: Nasdaq earnings-date API (marked 預估 until the company confirms)
 If a source fails, its events from the previous run are kept.
 """
 import datetime as dt
@@ -115,32 +114,12 @@ def ism(today, until):
     return out
 
 
-def earnings(today, until):
-    out = []
-    for symbol, label, tz_rule in (('TSM', '台積電法說會', 'tsmc'), ('NVDA', '輝達財報', 'after_close')):
-        text = get(f'https://api.nasdaq.com/api/analyst/{symbol}/earnings-date')['data']['reportText'] or ''
-        found = re.search(r'(\d{1,2})/(\d{1,2})/(\d{4})', text)
-        if not found:
-            continue
-        mo, d, y = map(int, found.groups())
-        day = dt.date(y, mo, d)
-        if not today <= day <= until:
-            continue
-        if 'estimated' in text.lower():
-            label += '(預估)'
-        # TSMC holds its call at 14:00 Taipei on the US report date; NVIDIA reports after the US close.
-        out.append(event('earnings', label, day, '14:00', TW) if tz_rule == 'tsmc'
-                   else event('earnings', label, day, '16:20', ET))
-        time.sleep(1)
-    return out
-
-
 def main():
     today = dt.datetime.now(TW).date() - dt.timedelta(days=1)
     until = today + dt.timedelta(days=HORIZON_DAYS)
     old = json.loads(OUT.read_text(encoding='utf-8')) if OUT.exists() else []
     events, failed = [], []
-    for name, fn in (('fred', fred), ('fomc', fomc), ('ism', ism), ('earnings', earnings)):
+    for name, fn in (('fred', fred), ('fomc', fomc), ('ism', ism)):
         try:
             got = fn(today, until)
             print(f'{name}: {len(got)} events')
@@ -154,7 +133,7 @@ def main():
     OUT.write_text(json.dumps(events, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
     for e in events[:15]:
         print(e)
-    return 1 if len(failed) == 4 else 0
+    return 1 if len(failed) == 3 else 0
 
 
 if __name__ == '__main__':
