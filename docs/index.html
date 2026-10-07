@@ -57,6 +57,8 @@
   .price { font-size: clamp(17px, 5.2vw, 24px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .chg { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price small { font-size: 13px; font-weight: 600; }
+  .seg + .seg { margin-left: 10px; }
+  .seg .k { color: var(--muted); font-weight: 400; margin-right: 2px; }
   .up { color: var(--up); }
   .down { color: var(--down); }
   .meta { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -177,6 +179,11 @@
       </div>`;
   }
 
+  // "多1.3萬 空9.2萬" -> 各段拉開間距，標籤字轉灰色
+  const segments = (text) => /\d/.test(text)
+    ? text.split(' ').map((s) => `<span class="seg">${s.replace(/^([^\d+-]+)/, '<span class="k">$1</span>')}</span>`).join('')
+    : text;
+
   function dailyHtml(q) {
     const dir = q.price > 0 ? 'up' : q.price < 0 ? 'down' : '';
     const sign = q.price > 0 ? '+' : '';
@@ -185,7 +192,7 @@
       <div class="card">
         <div class="name">${q.name}</div>
         <div class="price ${dir}">${value}</div>
-        <div class="chg">${q.detail}</div>
+        <div class="chg">${segments(q.detail)}</div>
         <div class="meta">${q.dataDate} 盤後${q.stale ? ' · <span class="lag">舊資料</span>' : ''}</div>
       </div>`;
   }
@@ -193,7 +200,7 @@
   // 全市場融資維持率：GitHub Actions 每晚計算後寫入 margin.json
   function marginHtml(m) {
     const [, mm, dd] = m.date.split('-').map(Number);
-    let chg = `市${fmt(m.twse, 1)} 櫃${fmt(m.tpex, 1)}`;
+    let chg = segments(`市${fmt(m.twse, 1)} 櫃${fmt(m.tpex, 1)}`);
     let dir = '';
     if (m.prev != null) {
       const diff = m.ratio - m.prev;
