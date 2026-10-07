@@ -3,14 +3,15 @@
 const CACHE_SECONDS = 110;
 const DELAY_GRACE_MIN = 20;
 
+// delayMin: typical Yahoo feed delay, measured; shown when the market is not open.
 const YAHOO = {
-  kospi: { name: 'KOSPI', symbol: '^KS11', digits: 2 },
+  kospi: { name: 'KOSPI', symbol: '^KS11', digits: 2, delayMin: 20 },
   // Yahoo's trading period ignores the TSE lunch break (11:30-12:30 JST = 02:30-03:30 UTC).
-  nikkei: { name: 'Nikkei 225', symbol: '^N225', digits: 2, breaksUtc: [[150, 210]] },
+  nikkei: { name: 'Nikkei 225', symbol: '^N225', digits: 2, delayMin: 15, breaksUtc: [[150, 210]] },
   tsm: { name: 'TSM', symbol: 'TSM', digits: 2 },
-  brent: { name: 'Brent 原油', symbol: 'BZ=F', digits: 2 },
+  brent: { name: 'Brent 原油', symbol: 'BZ=F', digits: 2, delayMin: 10 },
   usdtwd: { name: 'USD/TWD', symbol: 'TWD=X', digits: 3 },
-  nq: { name: '小納 NQ', symbol: 'NQ=F', digits: 2 },
+  nq: { name: '小納 NQ', symbol: 'NQ=F', digits: 2, delayMin: 10 },
   us10y: { name: '美債 10Y', symbol: '^TNX', digits: 3, unit: 'yield' },
 };
 
@@ -66,7 +67,7 @@ async function buildQuotes() {
   return { updated: Date.now(), quotes };
 }
 
-async function fetchYahoo({ name, symbol, digits, unit, breaksUtc }) {
+async function fetchYahoo({ name, symbol, digits, unit, delayMin, breaksUtc }) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=1d`;
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(`Yahoo ${symbol} HTTP ${res.status}`);
@@ -81,6 +82,7 @@ async function fetchYahoo({ name, symbol, digits, unit, breaksUtc }) {
     source: 'Yahoo',
     digits,
     unit,
+    delayMin,
     price,
     prev,
     change: prev != null ? price - prev : null,
