@@ -19,19 +19,21 @@ const YAHOO = {
 // Yahoo Taiwan: real-time TW indices and 台指期近一 (WTX&), fetched in one request.
 const YAHOO_TW = {
   twii: { name: '加權指數', symbol: '^TWII', digits: 2 },
-  otc: { name: '櫃買指數', symbol: '^TWOII', digits: 2 },
+  otc: { name: '櫃買指數(OTC)', symbol: '^TWOII', digits: 2 },
   txf: { name: '台指期', symbol: 'WTX&', digits: 0 },
 };
+
+const BREADTH = { breadth: { name: '漲跌家數(上市)' } };
 
 const CHIPS = {
   foreignOi: { name: '外資台指淨OI' },
   retailRatio: { name: '小台散戶多空比' },
 };
 
-const ORDER = ['twii', 'otc', 'txf', 'sox', 'tsm', 'nq', 'kospi', 'nikkei', 'usdtwd', 'brent', 'us10y', 'foreignOi', 'retailRatio'];
+const ORDER = ['twii', 'breadth', 'otc', 'txf', 'sox', 'tsm', 'nq', 'kospi', 'nikkei', 'usdtwd', 'brent', 'us10y', 'foreignOi', 'retailRatio'];
 
 const NAMES = Object.fromEntries(
-  Object.entries({ ...YAHOO, ...YAHOO_TW, ...CHIPS }).map(([id, cfg]) => [id, cfg.name]),
+  Object.entries({ ...YAHOO, ...YAHOO_TW, ...BREADTH, ...CHIPS }).map(([id, cfg]) => [id, cfg.name]),
 );
 
 // TAIFEX publishes institutional positions once a day after the close (~15:00 Taipei).
@@ -75,6 +77,7 @@ async function buildQuotes(origin, ctx) {
     twii: pick(tw, 'twii'),
     otc: pick(tw, 'otc'),
     txf: pick(tw, 'txf').catch(() => fetchTaifex()),
+    breadth: fetchBreadth(),
     foreignOi: pick(chips, 'foreignOi'),
     retailRatio: pick(chips, 'retailRatio'),
   };
@@ -238,6 +241,29 @@ async function fetchYahooTw() {
     }
   }
   return out;
+}
+
+// Listed (TWSE) advancers/decliners from Yahoo TW's index metadata, intraday.
+async function fetchBreadth() {
+  const url = 'https://tw.stock.yahoo.com/_td-stock/api/resource/StockServices.stockList;fields=indexMeta;symbols=%5ETWII';
+  const res = await fetch(url, { headers: { 'User-Agent': UA } });
+  if (!res.ok) throw new Error(`Yahoo TW breadth HTTP ${res.status}`);
+  const [row] = await res.json();
+  const im = row?.indexMeta;
+  if (!im?.upCount) throw new Error('Yahoo TW breadth no data');
+  const n = (k) => Number(im[k]?.raw ?? 0);
+  return {
+    name: BREADTH.breadth.name,
+    symbol: '^TWII',
+    source: 'Yahoo TW',
+    kind: 'breadth',
+    up: n('upCount'),
+    down: n('downCount'),
+    flat: n('unchangeCount'),
+    limitUp: n('limitUpCount'),
+    limitDown: n('limitDownCount'),
+    time: Math.min(Date.parse(row.regularMarketTime), Date.now()),
+  };
 }
 
 // TAIFEX OpenAPI daily data: foreign net OI in TX, and the MTX retail long/short ratio

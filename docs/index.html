@@ -59,9 +59,11 @@
   /* 名稱優先完整顯示，空間不夠時截斷 badge */
   .head { display: flex; align-items: center; justify-content: space-between; gap: 3px; min-width: 0; }
   .head .name { flex-shrink: 0; }
+  .badge.warn { background: var(--warn); color: var(--bg); }
   .badge { min-width: 0; font-size: 10px; font-weight: 600; line-height: 1.5; padding: 0 4px; border-radius: 999px; background: var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .chg { font-size: clamp(11.5px, 3.4vw, 13px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price small { font-size: 13px; font-weight: 600; }
+  .price.tight { font-size: clamp(16px, 4.6vw, 22px); }
   .seg + .seg { margin-left: 10px; }
   .seg .k { color: var(--muted); font-weight: 400; margin-right: 2px; }
   .up { color: var(--up); }
@@ -274,6 +276,34 @@
     return `<span class="badge">估${money(twii.turnover / share)}</span>`;
   }
 
+  // 漲跌家數：指數漲、下跌家數卻較多時標「拉雞盤」
+  function breadthHtml(q, twii) {
+    const pulled = twii?.change > 0 && q.down > q.up;
+    const badge = pulled ? '<span class="badge warn">拉雞盤</span>' : '';
+    return `
+      <div class="card">
+        <div class="head"><div class="name">${q.name}</div>${badge}</div>
+        <div class="price tight"><span class="up">▲${q.up}</span> <span class="down">▼${q.down}</span></div>
+        <div class="chg">${segments(`漲停${q.limitUp} 跌停${q.limitDown} 平${q.flat}`)}</div>
+        <div class="meta">${hhmm(q.time)}</div>
+      </div>`;
+  }
+
+  // 融資餘額日增減（億元），GitHub Actions 每晚計算
+  function marginBalanceHtml(m) {
+    if (m?.balanceChange == null) return '';
+    const [, mm, dd] = m.date.split('-').map(Number);
+    const c = m.balanceChange;
+    const dir = c > 0 ? 'up' : c < 0 ? 'down' : '';
+    return `
+      <div class="card">
+        <div class="name">融資餘額增減</div>
+        <div class="price ${dir}">${c > 0 ? '+' : ''}${fmt(c, 1)}<small> 億</small></div>
+        <div class="chg">${segments(`餘額${fmt(m.balance, 0)}億`)}</div>
+        <div class="meta">${mm}/${dd} 盤後</div>
+      </div>`;
+  }
+
   function render(data, margin, profile) {
     if (data.holidays?.length) holidays = new Set(data.holidays);
     const byId = Object.fromEntries(data.quotes.map((q) => [q.id, q]));
@@ -286,6 +316,7 @@
         return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`;
       }
       if (q.kind === 'daily') return dailyHtml(q);
+      if (q.kind === 'breadth') return breadthHtml(q, byId.twii);
       const dir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
       const sign = q.change > 0 ? '+' : '';
       const ageMin = Math.round((Date.now() - q.time) / 60000);
@@ -305,7 +336,7 @@
             : `${sign}${fmt(q.change, q.digits)} (${sign}${fmt(q.changePct, 2)}%)`}</div>
           <div class="meta">${sameDay ? hhmm(q.time) : mdhm(q.time)}${lag}${stale}</div>
         </div>`;
-    }).join('') + (margin ? marginHtml(margin) : '');
+    }).join('') + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
   }
 
   async function load() {

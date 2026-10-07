@@ -43,7 +43,8 @@ def main():
                for r in get_json('https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN')}
     summary = get_json('https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?selectType=MS&response=json')
     amount_row = next(r for r in summary['tables'][0]['data'] if r[0].startswith('融資金額'))
-    tw_amount = num(amount_row[5]) * 1000
+    tw_amount = num(amount_row[5]) * 1000       # 今日餘額 (仟元 -> 元)
+    tw_amount_prev = num(amount_row[4]) * 1000  # 前日餘額
     summary_date = summary['date']  # "20261006"
 
     # TPEx (上櫃)
@@ -52,7 +53,9 @@ def main():
     balance = get_json(f'https://www.tpex.org.tw/www/zh-tw/margin/balance?date={date.replace("-", "%2F")}&response=json')
     table = balance['tables'][0]
     otc_lots = {r[0]: num(r[6]) or 0 for r in table['data']}
-    otc_amount = num(next(r for r in table['summary'] if '融資金' in r[1])[6]) * 1000
+    otc_amount_row = next(r for r in table['summary'] if '融資金' in r[1])
+    otc_amount = num(otc_amount_row[6]) * 1000       # 資餘額
+    otc_amount_prev = num(otc_amount_row[2]) * 1000  # 前資餘額
 
     # Margin data lags prices until the evening; skip until both refer to the same day.
     if summary_date != date.replace('-', '') or balance['date'] != date.replace('-', ''):
@@ -66,6 +69,9 @@ def main():
         'ratio': round((tw_mv + otc_mv) / (tw_amount + otc_amount) * 100, 2),
         'twse': round(tw_mv / tw_amount * 100, 2),
         'tpex': round(otc_mv / otc_amount * 100, 2),
+        # 融資餘額與日增減 (億元)
+        'balance': round((tw_amount + otc_amount) / 1e8, 2),
+        'balanceChange': round((tw_amount - tw_amount_prev + otc_amount - otc_amount_prev) / 1e8, 2),
     }
 
     # Keep the previous trading day's ratio for the day-over-day change.
