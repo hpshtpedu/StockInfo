@@ -285,7 +285,7 @@
         <div class="head"><div class="name">${q.name}</div>${badge}</div>
         <div class="price tight"><span class="up">▲${q.up}</span> <span class="down">▼${q.down}</span></div>
         <div class="chg">${segments(`漲停${q.limitUp} 跌停${q.limitDown} 平${q.flat}`)}</div>
-        <div class="meta">${hhmm(q.time)}</div>
+        <div class="meta">${hhmm(twii?.time ?? q.time)}</div>
       </div>`;
   }
 
