@@ -45,16 +45,6 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders(env) });
-    if (url.pathname === '/_debug') {
-      const base = 'https://openapi.taifex.com.tw/v1/';
-      const out = {};
-      for (const p of ['MarketDataOfMajorInstitutionalTradersDetailsOfFuturesContractsBytheDate', 'DailyMarketReportFut']) {
-        const r = await fetch(base + p, { headers: { 'User-Agent': UA } });
-        const t = await r.text();
-        out[p] = { status: r.status, type: r.headers.get('content-type'), len: t.length, head: t.slice(0, 300) };
-      }
-      return new Response(JSON.stringify(out, null, 1), { headers: { 'Content-Type': 'application/json; charset=utf-8' } });
-    }
     if (url.pathname !== '/quotes') return new Response('Not found', { status: 404 });
 
     const cache = caches.default;
@@ -200,11 +190,15 @@ async function fetchChips(origin, ctx) {
     .filter((r) => r.ContractCode === '小型臺指期貨')
     .reduce((sum, r) => sum + Number(r['OpenInterest(Net)']), 0);
 
-  // CSV: 日期,契約代號,到期月份(週別),...,未沖銷契約數(11),...,交易時段(17)
-  const rows = (await dailyRes.text()).replace(/^﻿/, '').trim().split(/\r?\n/).slice(1).map((l) => l.split(','));
+  // Served as JSON or CSV depending on the edge. Normalize to [contract, month, openInterest].
+  // After-hours rows carry "-" as OI and spreads have "/" in the month, so both drop out.
+  const dailyText = (await dailyRes.text()).replace(/^﻿/, '').trim();
+  const rows = dailyText.startsWith('[')
+    ? JSON.parse(dailyText).map((r) => [r.Contract, r['ContractMonth(Week)'], r.OpenInterest])
+    : dailyText.split(/\r?\n/).slice(1).map((l) => l.split(',')).map((r) => [r[1], r[2], r[11]]);
   const mtxOi = rows
-    .filter((r) => r[1] === 'MTX' && r[17] === '一般' && !r[2].includes('/') && /^\d+$/.test(r[11]))
-    .reduce((sum, r) => sum + Number(r[11]), 0);
+    .filter(([contract, month, oi]) => contract === 'MTX' && !month.includes('/') && /^\d+$/.test(oi))
+    .reduce((sum, [, , oi]) => sum + Number(oi), 0);
   if (!foreign || !mtxOi) throw new Error('TAIFEX OpenAPI no data');
 
   const date = foreign.Date; // YYYYMMDD
