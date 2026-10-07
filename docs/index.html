@@ -41,6 +41,7 @@
   #source { color: var(--muted); font-size: 11px; font-weight: 400; margin-left: 6px; }
   #status { color: var(--muted); font-size: 12px; text-align: right; }
   #status.err { color: var(--warn); }
+  footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 12px; }
   main { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-width: 560px; margin: 0 auto; }
   .card {
     background: var(--card);
@@ -68,6 +69,7 @@
   <div id="status">載入中…</div>
 </header>
 <main id="list"></main>
+<footer>每 2 分鐘自動更新</footer>
 
 <script>
   const API = 'https://stockinfo-quotes.hpshtpedu.workers.dev/quotes';
