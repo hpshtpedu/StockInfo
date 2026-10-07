@@ -130,9 +130,9 @@
   function taifexExpiries(t) {
     const [y, m, d, dow] = [t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(), t.getUTCDay()];
     const out = [];
-    if (d === nthWeekday(y, m, 3, 3)) out.push('台指月結算');
-    else if (dow === 3) out.push('台指週選');
-    if (dow === 5) out.push('台指週選');
+    if (d === nthWeekday(y, m, 3, 3)) out.push('台指期貨＋選擇權月結算');
+    else if (dow === 3) out.push('台指選擇權週結算');
+    if (dow === 5) out.push('台指選擇權週結算');
     return out;
   }
 
@@ -145,12 +145,12 @@
       const base = addDays(today, -back);
       const labels = taifexExpiries(base);
       if (labels.length && key(nextBusinessDay(base)) === key(today)) {
-        out.push(...labels.map((l) => (back ? `${l}順延` : l)));
+        out.push(...labels.map((l) => (back ? `${l}（假日順延）` : l)));
       }
     }
     // HKEX MSCI 台指 (摩台/MDFK) 與 SGX FTSE 台指 (富台) 同為倒數第 2 個營業日
-    if (key(secondLastBusinessDay(y, m)) === key(today)) out.push('MSCI/FTSE結算');
-    if (d === nthWeekday(y, m, 5, 3)) out.push(QUARTER.includes(m) ? '美股四巫日' : '美股月結算');
+    if (key(secondLastBusinessDay(y, m)) === key(today)) out.push('MSCI/富時台股期貨結算');
+    if (d === nthWeekday(y, m, 5, 3)) out.push(QUARTER.includes(m) ? '美股四巫日（季結算）' : '美股選擇權月結算');
     return [...new Set(out)];
   }
 
