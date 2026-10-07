@@ -200,7 +200,7 @@
   // 全市場融資維持率：GitHub Actions 每晚計算後寫入 margin.json
   function marginHtml(m) {
     const [, mm, dd] = m.date.split('-').map(Number);
-    let chg = segments(`市${fmt(m.twse, 1)} 櫃${fmt(m.tpex, 1)}`);
+    let chg = '&nbsp;';
     let dir = '';
     if (m.prev != null) {
       const diff = m.ratio - m.prev;
@@ -209,7 +209,7 @@
     }
     return `
       <div class="card">
-        <div class="name">融資維持率</div>
+        <div class="name">上市櫃融資維持率</div>
         <div class="price">${fmt(m.ratio, 2)}%</div>
         <div class="chg ${dir}">${chg}</div>
         <div class="meta">${mm}/${dd} 盤後</div>
