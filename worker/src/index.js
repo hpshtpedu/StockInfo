@@ -85,22 +85,23 @@ async function fetchYahoo({ name, symbol, digits, unit, breaksUtc }) {
     change: prev != null ? price - prev : null,
     changePct: prev ? ((price - prev) / prev) * 100 : null,
     time: meta.regularMarketTime * 1000,
-    open: isOpen(meta, breaksUtc),
+    state: marketState(meta, breaksUtc),
   };
 }
 
-// True while inside Yahoo's current regular session and outside any lunch break.
+// 'open' | 'lunch' | 'closed' (outside the session) | 'holiday' (in session, no trades yet).
 // Breaks are [startMin, endMin] in minutes after 00:00 UTC.
-function isOpen(meta, breaksUtc = []) {
+function marketState(meta, breaksUtc = []) {
   const period = meta.currentTradingPeriod?.regular;
   if (!period) return undefined;
   const now = Date.now() / 1000;
-  if (now < period.start || now >= period.end) return false;
-  // No trade since the session started means a holiday (or delayed data not yet past the open).
-  if (meta.regularMarketTime < period.start) return false;
+  if (now < period.start || now >= period.end) return 'closed';
   const d = new Date();
   const mins = d.getUTCHours() * 60 + d.getUTCMinutes();
-  return !breaksUtc.some(([s, e]) => mins >= s && mins < e);
+  if (breaksUtc.some(([s, e]) => mins >= s && mins < e)) return 'lunch';
+  // No trade since the session started means a holiday (or delayed data not yet past the open).
+  if (meta.regularMarketTime < period.start) return 'holiday';
+  return 'open';
 }
 
 // Yahoo Taiwan: WTX& = 台指期近一. Works from Cloudflare egress, unlike TAIFEX.
@@ -124,7 +125,7 @@ async function fetchYahooTw() {
     changePct: prev ? ((price - prev) / prev) * 100 : null,
     // Yahoo TW stamps the end of the current minute bar, which can be ahead of now.
     time: Math.min(meta.regularMarketTime * 1000, Date.now()),
-    open: isOpen(meta),
+    state: marketState(meta),
   };
 }
 
