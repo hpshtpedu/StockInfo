@@ -65,7 +65,6 @@
   .cal { grid-column: 1 / -1; font-size: 13px; gap: 3px; }
   .cal .today { font-weight: 600; }
   .cal .today b { color: var(--warn); }
-  .cal .next { color: var(--muted); font-size: 12px; }
 </style>
 </head>
 <body>
@@ -109,44 +108,25 @@
     }
   }
 
-  // weekly: 每週固定的週選結算，近期清單會略過
+  // 台灣與美國的結算
   function settlements(y, m, d) {
     const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-    const q = QUARTER.includes(m);
     const out = [];
-    if (d === nthWeekday(y, m, 3, 3)) out.push({ label: '台指月結算' });
-    else if (dow === 3) out.push({ label: '台指週選(三)', weekly: true });
-    if (dow === 5) out.push({ label: '台指週選(五)', weekly: true });
+    if (d === nthWeekday(y, m, 3, 3)) out.push('台指月結算');
+    else if (dow === 3) out.push('台指週選(三)');
+    if (dow === 5) out.push('台指週選(五)');
     // HKEX MSCI 台指 (摩台/MDFK) 與 SGX FTSE 台指 (富台) 同為倒數第 2 個營業日
-    if (d === secondLastBusinessDay(y, m)) out.push({ label: 'MSCI/FTSE結算' });
-    if (d === nthWeekday(y, m, 4, 2)) out.push({ label: q ? '韓國四巫日' : '韓選到期' });
-    if (d === nthWeekday(y, m, 5, 2)) out.push({ label: q ? '日經大SQ' : '日經SQ' });
-    if (d === nthWeekday(y, m, 5, 3)) out.push({ label: q ? '美股四巫日' : '美股月結算' });
+    if (d === secondLastBusinessDay(y, m)) out.push('MSCI/FTSE結算');
+    if (d === nthWeekday(y, m, 5, 3)) out.push(QUARTER.includes(m) ? '美股四巫日' : '美股月結算');
     return out;
   }
 
   function calendarHtml() {
     const tw = new Date(Date.now() + 8 * 3600 * 1000);
-    const day = (offset) => {
-      const t = new Date(Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate() + offset));
-      const [y, m, d] = [t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate()];
-      return { text: `${m}/${d}(${WEEKDAYS[t.getUTCDay()]})`, events: settlements(y, m, d) };
-    };
-
-    const today = day(0);
-    const upcoming = [];
-    for (let i = 1; i <= 31 && upcoming.length < 3; i++) {
-      const next = day(i);
-      const major = next.events.filter((e) => !e.weekly);
-      if (major.length) upcoming.push(`${next.text} ${major.map((e) => e.label).join('、')}`);
-    }
-
-    const todayText = today.events.length ? `<b>${today.events.map((e) => e.label).join('、')}</b>` : '無結算';
-    return `
-      <div class="card cal">
-        <div class="today">📅 今日 ${today.text}　${todayText}</div>
-        <div class="next">近期：${upcoming.join(' · ')}</div>
-      </div>`;
+    const [y, m, d] = [tw.getUTCFullYear(), tw.getUTCMonth() + 1, tw.getUTCDate()];
+    const events = settlements(y, m, d);
+    const text = events.length ? `<b>${events.join('、')}</b>` : '無結算';
+    return `<div class="card cal"><div class="today">📅 今日 ${m}/${d}(${WEEKDAYS[tw.getUTCDay()]})　${text}</div></div>`;
   }
 
   function dailyHtml(q) {
