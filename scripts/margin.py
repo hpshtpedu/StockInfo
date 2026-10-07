@@ -6,6 +6,7 @@ Run daily after TWSE publishes margin data (~21:00 Taipei). Stdlib only.
 import json
 import pathlib
 import sys
+import time
 import urllib.request
 
 OUT = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'margin.json'
@@ -26,24 +27,28 @@ def num(s):
         return None
 
 
-def roc_to_iso(roc):  # "1151006" -> "2026-10-06"
-    return f'{1911 + int(roc[:3])}-{roc[3:5]}-{roc[5:7]}'
+def table(report, title_part):
+    return next(t for t in report['tables'] if title_part in t.get('title', ''))
 
 
+# TWSE website reports (not the OpenAPI, which lags by up to a day).
 def main():
-    day_all = get_json('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL')
-    date = roc_to_iso(day_all[0]['Date'])
-    price = {r['Code']: num(r['ClosingPrice']) for r in day_all}
-    lots = {r['股票代號']: num(r['融資今日餘額']) or 0
-            for r in get_json('https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN')}
-    summary = get_json('https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?selectType=MS&response=json')
-    amount_row = next(r for r in summary['tables'][0]['data'] if r[0].startswith('融資金額'))
+    latest = get_json('https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?selectType=MS&response=json')
+    ymd = latest['date']  # "20261007": the latest day with margin data (published ~21:00)
+    date = f'{ymd[:4]}-{ymd[4:6]}-{ymd[6:]}'
+
+    time.sleep(3)  # TWSE asks clients to keep request rates low
+    margin = get_json(f'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date={ymd}&selectType=ALL&response=json')
+    amount_row = next(r for r in table(margin, '信用交易統計')['data'] if r[0].startswith('融資金額'))
     amount = num(amount_row[5]) * 1000       # 今日餘額 (仟元 -> 元)
     amount_prev = num(amount_row[4]) * 1000  # 前日餘額
+    lots = {r[0]: num(r[6]) or 0 for r in table(margin, '融資融券彙總')['data']}  # 融資今日餘額 (張)
 
-    # Margin data lags prices until the evening; skip until both refer to the same day.
-    if summary['date'] != date.replace('-', ''):
-        print(f'margin data not ready: prices {date}, margin {summary["date"]}')
+    time.sleep(3)
+    quotes = get_json(f'https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date={ymd}&type=ALLBUT0999&response=json')
+    price = {r[0]: num(r[8]) for r in table(quotes, '每日收盤行情')['data']}  # 收盤價
+    if quotes.get('date') != ymd or not price:
+        print(f'closing prices for {ymd} not available')
         return 0
 
     market_value = sum(n * 1000 * price[code] for code, n in lots.items() if price.get(code))
