@@ -93,7 +93,8 @@
       const sign = q.change > 0 ? '+' : '';
       const ageMin = Math.round((Date.now() - q.time) / 60000);
       const sameDay = new Date(q.time).toDateString() === new Date().toDateString();
-      const lag = ageMin >= 5 && ageMin < 60 ? ` · <span class="lag">慢${ageMin}分</span>` : '';
+      const lag = q.open === false ? ' · 休市'
+        : ageMin >= 5 && ageMin < 60 ? ` · <span class="lag">慢${ageMin}分</span>` : '';
       const stale = q.stale ? ' · <span class="lag">舊資料</span>' : '';
       return `
         <div class="card">

@@ -4,7 +4,8 @@ const CACHE_SECONDS = 110;
 
 const YAHOO = {
   kospi: { name: 'KOSPI', symbol: '^KS11', digits: 2 },
-  nikkei: { name: 'Nikkei 225', symbol: '^N225', digits: 2 },
+  // Yahoo's trading period ignores the TSE lunch break (11:30-12:30 JST = 02:30-03:30 UTC).
+  nikkei: { name: 'Nikkei 225', symbol: '^N225', digits: 2, breaksUtc: [[150, 210]] },
   tsm: { name: 'TSM', symbol: 'TSM', digits: 2 },
   brent: { name: 'Brent 原油', symbol: 'BZ=F', digits: 2 },
   usdtwd: { name: 'USD/TWD', symbol: 'TWD=X', digits: 3 },
@@ -64,7 +65,7 @@ async function buildQuotes() {
   return { updated: Date.now(), quotes };
 }
 
-async function fetchYahoo({ name, symbol, digits, unit }) {
+async function fetchYahoo({ name, symbol, digits, unit, breaksUtc }) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=1d`;
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(`Yahoo ${symbol} HTTP ${res.status}`);
@@ -84,7 +85,20 @@ async function fetchYahoo({ name, symbol, digits, unit }) {
     change: prev != null ? price - prev : null,
     changePct: prev ? ((price - prev) / prev) * 100 : null,
     time: meta.regularMarketTime * 1000,
+    open: isOpen(meta, breaksUtc),
   };
+}
+
+// True while inside Yahoo's current regular session and outside any lunch break.
+// Breaks are [startMin, endMin] in minutes after 00:00 UTC.
+function isOpen(meta, breaksUtc = []) {
+  const period = meta.currentTradingPeriod?.regular;
+  if (!period) return undefined;
+  const now = Date.now() / 1000;
+  if (now < period.start || now >= period.end) return false;
+  const d = new Date();
+  const mins = d.getUTCHours() * 60 + d.getUTCMinutes();
+  return !breaksUtc.some(([s, e]) => mins >= s && mins < e);
 }
 
 // Yahoo Taiwan: WTX& = 台指期近一. Works from Cloudflare egress, unlike TAIFEX.
@@ -108,6 +122,7 @@ async function fetchYahooTw() {
     changePct: prev ? ((price - prev) / prev) * 100 : null,
     // Yahoo TW stamps the end of the current minute bar, which can be ahead of now.
     time: Math.min(meta.regularMarketTime * 1000, Date.now()),
+    open: isOpen(meta),
   };
 }
 
