@@ -45,6 +45,16 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders(env) });
+    if (url.pathname === '/_debug') {
+      const base = 'https://openapi.taifex.com.tw/v1/';
+      const out = {};
+      for (const p of ['MarketDataOfMajorInstitutionalTradersDetailsOfFuturesContractsBytheDate', 'DailyMarketReportFut']) {
+        const r = await fetch(base + p, { headers: { 'User-Agent': UA } });
+        const t = await r.text();
+        out[p] = { status: r.status, type: r.headers.get('content-type'), len: t.length, head: t.slice(0, 300) };
+      }
+      return new Response(JSON.stringify(out, null, 1), { headers: { 'Content-Type': 'application/json; charset=utf-8' } });
+    }
     if (url.pathname !== '/quotes') return new Response('Not found', { status: 404 });
 
     const cache = caches.default;
