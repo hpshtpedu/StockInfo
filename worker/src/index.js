@@ -1,6 +1,7 @@
 // Quote relay: aggregates Yahoo Finance + TAIFEX into one JSON for the dashboard.
 
 const CACHE_SECONDS = 110;
+const DELAY_GRACE_MIN = 20;
 
 const YAHOO = {
   kospi: { name: 'KOSPI', symbol: '^KS11', digits: 2 },
@@ -98,7 +99,12 @@ function marketState(meta, breaksUtc = []) {
   if (now < period.start || now >= period.end) return 'closed';
   const d = new Date();
   const mins = d.getUTCHours() * 60 + d.getUTCMinutes();
-  if (breaksUtc.some(([s, e]) => mins >= s && mins < e)) return 'lunch';
+  const midnight = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 1000;
+  // Delayed feeds keep showing pre-break trades for a while, so stretch the break
+  // until a post-break trade shows up (at most DELAY_GRACE_MIN).
+  const inBreak = breaksUtc.some(([s, e]) =>
+    mins >= s && (mins < e || (mins < e + DELAY_GRACE_MIN && meta.regularMarketTime < midnight + e * 60)));
+  if (inBreak) return 'lunch';
   // No trade since the session started means a holiday (or delayed data not yet past the open).
   if (meta.regularMarketTime < period.start) return 'holiday';
   return 'open';
