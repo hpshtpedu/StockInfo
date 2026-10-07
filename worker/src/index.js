@@ -245,9 +245,45 @@ async function fetchYahooTw() {
 async function fetchChips(origin, ctx) {
   const cache = caches.default;
   const key = new Request(origin + '/_chips');
+  const lastKey = new Request(origin + '/_chips_last');
   const cached = await cache.match(key);
   if (cached) return cached.json();
 
+  try {
+    const { out, date } = await computeChips();
+    const store = (k, ttl) => cache.put(k, new Response(JSON.stringify(out), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
+    }));
+    // The daily report is ~800KB, so avoid refetching it once today's data is in hand.
+    ctx.waitUntil(store(key, dailyTtl(date, 14, CHIPS_RETRY_SECONDS)));
+    ctx.waitUntil(store(lastKey, 7 * 86400));
+    return out;
+  } catch (err) {
+    // Fall back to the last good result so a bad upstream response does not blank the cards.
+    const last = await cache.match(lastKey);
+    if (!last) throw err;
+    const out = await last.json();
+    for (const q of Object.values(out)) q.stale = true;
+    return out;
+  }
+}
+
+// TAIFEX OpenAPI serves JSON or CSV (Chinese headers) depending on the edge.
+// fields: { name: [jsonKey, csvHeaderRegex] } -> rows of { name: string }.
+function parseTaifex(text, fields) {
+  text = text.replace(/^﻿/, '').trim();
+  const entries = Object.entries(fields);
+  if (text.startsWith('[')) {
+    return JSON.parse(text).map((r) => Object.fromEntries(entries.map(([k, [jsonKey]]) => [k, String(r[jsonKey] ?? '')])));
+  }
+  const [header, ...rows] = text.split(/\r?\n/).map((l) => l.split(',').map((c) => c.trim().replace(/^"|"$/g, '')));
+  const idx = entries.map(([k, [, re]]) => [k, header.findIndex((h) => re.test(h))]);
+  const missing = idx.filter(([, i]) => i < 0).map(([k]) => k);
+  if (missing.length) throw new Error(`TAIFEX CSV missing ${missing.join(',')}`);
+  return rows.map((r) => Object.fromEntries(idx.map(([k, i]) => [k, r[i] ?? ''])));
+}
+
+async function computeChips() {
   const base = 'https://openapi.taifex.com.tw/v1/';
   const [instRes, dailyRes] = await Promise.all([
     fetch(base + 'MarketDataOfMajorInstitutionalTradersDetailsOfFuturesContractsBytheDate', { headers: { 'User-Agent': UA } }),
@@ -255,24 +291,31 @@ async function fetchChips(origin, ctx) {
   ]);
   if (!instRes.ok || !dailyRes.ok) throw new Error(`TAIFEX OpenAPI HTTP ${instRes.status}/${dailyRes.status}`);
 
-  const inst = JSON.parse((await instRes.text()).replace(/^﻿/, ''));
-  const foreign = inst.find((r) => r.ContractCode === '臺股期貨' && r.Item === '外資及陸資');
+  const inst = parseTaifex(await instRes.text(), {
+    date: ['Date', /^日期$/],
+    contract: ['ContractCode', /^商品名稱$/],
+    item: ['Item', /^身份/],
+    oiLong: ['OpenInterest(Long)', /^多方未平倉口數$/],
+    oiShort: ['OpenInterest(Short)', /^空方未平倉口數$/],
+    oiNet: ['OpenInterest(Net)', /^多空未平倉口數淨額$/],
+  });
+  const foreign = inst.find((r) => r.contract === '臺股期貨' && r.item.startsWith('外資'));
   const mtxInstNet = inst
-    .filter((r) => r.ContractCode === '小型臺指期貨')
-    .reduce((sum, r) => sum + Number(r['OpenInterest(Net)']), 0);
+    .filter((r) => r.contract.startsWith('小型臺指'))
+    .reduce((sum, r) => sum + Number(r.oiNet), 0);
 
-  // Served as JSON or CSV depending on the edge. Normalize to [contract, month, openInterest].
   // After-hours rows carry "-" as OI and spreads have "/" in the month, so both drop out.
-  const dailyText = (await dailyRes.text()).replace(/^﻿/, '').trim();
-  const rows = dailyText.startsWith('[')
-    ? JSON.parse(dailyText).map((r) => [r.Contract, r['ContractMonth(Week)'], r.OpenInterest])
-    : dailyText.split(/\r?\n/).slice(1).map((l) => l.split(',')).map((r) => [r[1], r[2], r[11]]);
-  const mtxOi = rows
-    .filter(([contract, month, oi]) => contract === 'MTX' && !month.includes('/') && /^\d+$/.test(oi))
-    .reduce((sum, [, , oi]) => sum + Number(oi), 0);
-  if (!foreign || !mtxOi) throw new Error('TAIFEX OpenAPI no data');
+  const daily = parseTaifex(await dailyRes.text(), {
+    contract: ['Contract', /^契約/],
+    month: ['ContractMonth(Week)', /^到期月份/],
+    oi: ['OpenInterest', /^未沖銷契約數$/],
+  });
+  const mtxOi = daily
+    .filter((r) => r.contract === 'MTX' && !r.month.includes('/') && /^\d+$/.test(r.oi))
+    .reduce((sum, r) => sum + Number(r.oi), 0);
+  if (!foreign || !mtxOi || Number.isNaN(mtxInstNet)) throw new Error('TAIFEX OpenAPI no data');
 
-  const date = foreign.Date; // YYYYMMDD
+  const date = foreign.date.replace(/\D/g, ''); // YYYYMMDD
   const dataDate = `${+date.slice(4, 6)}/${+date.slice(6, 8)}`;
   const time = Date.UTC(+date.slice(0, 4), +date.slice(4, 6) - 1, +date.slice(6, 8), 15 - 8);
   const ratio = (-mtxInstNet / mtxOi) * 100;
@@ -284,8 +327,8 @@ async function fetchChips(origin, ctx) {
       kind: 'daily',
       unit: 'lots',
       digits: 0,
-      price: Number(foreign['OpenInterest(Net)']),
-      detail: `多${wan(foreign['OpenInterest(Long)'])} 空${wan(foreign['OpenInterest(Short)'])}`,
+      price: Number(foreign.oiNet),
+      detail: `多${wan(foreign.oiLong)} 空${wan(foreign.oiShort)}`,
       dataDate,
       time,
     },
@@ -302,12 +345,7 @@ async function fetchChips(origin, ctx) {
       time,
     },
   };
-
-  ctx.waitUntil(cache.put(key, new Response(JSON.stringify(out), {
-    // The daily report is ~800KB, so avoid refetching it once today's data is in hand.
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${dailyTtl(date, 14, CHIPS_RETRY_SECONDS)}` },
-  })));
-  return out;
+  return { out, date };
 }
 
 // TAIFEX MIS (fallback): MarketType 0 = day session (08:45-13:45 TW), 1 = night session.
