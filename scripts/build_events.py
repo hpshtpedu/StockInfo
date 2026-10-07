@@ -4,6 +4,7 @@ All sources are fetched automatically (run nightly by GitHub Actions):
   CPI / NFP / PCE / retail sales: FRED release calendar API (needs FRED_API_KEY)
   FOMC decisions: federalreserve.gov meeting calendar page; minutes = decision + 21 days
   ISM PMI: computed (1st / 3rd US business day; 2nd / 4th in January)
+  TSMC earnings call: Yahoo TW company calendar page (tw.stock.yahoo.com/quote/2330.TW/calendar)
 If a source fails, its events from the previous run are kept.
 """
 import datetime as dt
@@ -118,12 +119,29 @@ def ism(today, until):
     return out
 
 
+def tsmc(today, until):
+    # Yahoo TW embeds the company calendar as JSON in the page. Investor meetings include
+    # brokers' conferences; keep only TSMC's own quarterly calls ("本公司…法人說明會").
+    html = get('https://tw.stock.yahoo.com/quote/2330.TW/calendar', as_json=False)
+    out = []
+    for detail in re.findall(r'"eventType":"earningsCall".*?"detail":(\{[^}]*\})', html):
+        d = json.loads(detail)
+        info = d.get('information', '')
+        if not (info.startswith('本公司') and '法人說明會' in info):
+            continue
+        when = dt.datetime.fromisoformat(d['date']).astimezone(TW)
+        if today <= when.date() <= until:
+            out.append(event('tsmc', '台積電法說會', when.date(), when.strftime('%H:%M'), TW))
+    return out
+
+
 def main():
     today = dt.datetime.now(TW).date() - dt.timedelta(days=1)
     until = today + dt.timedelta(days=HORIZON_DAYS)
     old = json.loads(OUT.read_text(encoding='utf-8')) if OUT.exists() else []
     events, failed = [], []
-    for name, fn in (('fred', fred), ('fomc', fomc), ('ism', ism)):
+    sources = (('fred', fred), ('fomc', fomc), ('ism', ism), ('tsmc', tsmc))
+    for name, fn in sources:
         try:
             got = fn(today, until)
             print(f'{name}: {len(got)} events')
@@ -137,7 +155,7 @@ def main():
     OUT.write_text(json.dumps(events, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
     for e in events[:15]:
         print(e)
-    return 1 if len(failed) == 3 else 0
+    return 1 if len(failed) == len(sources) else 0
 
 
 if __name__ == '__main__':
