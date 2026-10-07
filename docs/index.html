@@ -117,7 +117,8 @@
     if (d === nthWeekday(y, m, 3, 3)) out.push({ label: '台指月結算' });
     else if (dow === 3) out.push({ label: '台指週選(三)', weekly: true });
     if (dow === 5) out.push({ label: '台指週選(五)', weekly: true });
-    if (d === secondLastBusinessDay(y, m)) out.push({ label: '富台結算' });
+    // HKEX MSCI 台指 (摩台/MDFK) 與 SGX FTSE 台指 (富台) 同為倒數第 2 個營業日
+    if (d === secondLastBusinessDay(y, m)) out.push({ label: 'MSCI/FTSE結算' });
     if (d === nthWeekday(y, m, 4, 2)) out.push({ label: q ? '韓國四巫日' : '韓選到期' });
     if (d === nthWeekday(y, m, 5, 2)) out.push({ label: q ? '日經大SQ' : '日經SQ' });
     if (d === nthWeekday(y, m, 5, 3)) out.push({ label: q ? '美股四巫日' : '美股月結算' });
