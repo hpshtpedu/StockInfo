@@ -244,7 +244,7 @@ async function fetchYahooTw() {
 // = -(institutional MTX net OI) / (MTX total OI). Cached separately since it changes daily.
 async function fetchChips(origin, ctx) {
   const cache = caches.default;
-  const key = new Request(origin + '/_chips');
+  const key = new Request(origin + '/_chips_v2');
   const lastKey = new Request(origin + '/_chips_last');
   const cached = await cache.match(key);
   if (cached) return cached.json();
@@ -283,15 +283,43 @@ function parseTaifex(text, fields) {
   return rows.map((r) => Object.fromEntries(idx.map(([k, i]) => [k, r[i] ?? ''])));
 }
 
-async function computeChips() {
-  const base = 'https://openapi.taifex.com.tw/v1/';
-  const [instRes, dailyRes] = await Promise.all([
-    fetch(base + 'MarketDataOfMajorInstitutionalTradersDetailsOfFuturesContractsBytheDate', { headers: { 'User-Agent': UA } }),
-    fetch(base + 'DailyMarketReportFut', { headers: { 'User-Agent': UA } }),
-  ]);
-  if (!instRes.ok || !dailyRes.ok) throw new Error(`TAIFEX OpenAPI HTTP ${instRes.status}/${dailyRes.status}`);
+// TAIFEX website CSV downloads (Big5). They publish ~15:00, hours before the OpenAPI catches up.
+async function taifexWebCsv(path, form) {
+  const res = await fetch(`https://www.taifex.com.tw/cht/3/${path}`, {
+    method: 'POST',
+    headers: { 'User-Agent': UA, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(form),
+  });
+  if (!res.ok) throw new Error(`TAIFEX web HTTP ${res.status}`);
+  const text = new TextDecoder('big5').decode(await res.arrayBuffer());
+  if (text.trim().split(/\r?\n/).length < 2) throw new Error('TAIFEX web: not published yet');
+  return text;
+}
 
-  const inst = parseTaifex(await instRes.text(), {
+// Today's data from the website when available, else the OpenAPI (usually the previous day).
+async function fetchChipsSources() {
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);
+  const day = tw.toISOString().slice(0, 10).replace(/-/g, '/');
+  try {
+    const [inst, daily] = await Promise.all([
+      taifexWebCsv('futContractsDateDown', { queryStartDate: day, queryEndDate: day, commodityId: '' }),
+      taifexWebCsv('futDataDown', { down_type: '1', commodity_id: 'MTX', commodity_id2: '', queryStartDate: day, queryEndDate: day }),
+    ]);
+    return { inst, daily, source: 'TAIFEX web' };
+  } catch {
+    const base = 'https://openapi.taifex.com.tw/v1/';
+    const [instRes, dailyRes] = await Promise.all([
+      fetch(base + 'MarketDataOfMajorInstitutionalTradersDetailsOfFuturesContractsBytheDate', { headers: { 'User-Agent': UA } }),
+      fetch(base + 'DailyMarketReportFut', { headers: { 'User-Agent': UA } }),
+    ]);
+    if (!instRes.ok || !dailyRes.ok) throw new Error(`TAIFEX OpenAPI HTTP ${instRes.status}/${dailyRes.status}`);
+    return { inst: await instRes.text(), daily: await dailyRes.text(), source: 'TAIFEX' };
+  }
+}
+
+async function computeChips() {
+  const src = await fetchChipsSources();
+  const inst = parseTaifex(src.inst, {
     date: ['Date', /^日期$/],
     contract: ['ContractCode', /^商品名稱$/],
     item: ['Item', /^身份/],
@@ -305,7 +333,7 @@ async function computeChips() {
     .reduce((sum, r) => sum + Number(r.oiNet), 0);
 
   // After-hours rows carry "-" as OI and spreads have "/" in the month, so both drop out.
-  const daily = parseTaifex(await dailyRes.text(), {
+  const daily = parseTaifex(src.daily, {
     contract: ['Contract', /^契約/],
     month: ['ContractMonth(Week)', /^到期月份/],
     oi: ['OpenInterest', /^未沖銷契約數$/],
@@ -323,7 +351,7 @@ async function computeChips() {
     foreignOi: {
       name: CHIPS.foreignOi.name,
       symbol: 'TX',
-      source: 'TAIFEX',
+      source: src.source,
       kind: 'daily',
       unit: 'lots',
       digits: 0,
@@ -335,7 +363,7 @@ async function computeChips() {
     retailRatio: {
       name: CHIPS.retailRatio.name,
       symbol: 'MTX',
-      source: 'TAIFEX',
+      source: src.source,
       kind: 'daily',
       unit: 'ratio',
       digits: 2,
