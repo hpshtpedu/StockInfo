@@ -106,7 +106,8 @@ async function fetchYahooTw() {
     prev,
     change: prev != null ? price - prev : null,
     changePct: prev ? ((price - prev) / prev) * 100 : null,
-    time: meta.regularMarketTime * 1000,
+    // Yahoo TW stamps the end of the current minute bar, which can be ahead of now.
+    time: Math.min(meta.regularMarketTime * 1000, Date.now()),
   };
 }
 
