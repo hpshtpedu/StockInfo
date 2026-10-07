@@ -8,9 +8,10 @@ const YAHOO = {
   tsm: { name: 'TSM', symbol: 'TSM', digits: 2 },
   brent: { name: 'Brent 原油', symbol: 'BZ=F', digits: 2 },
   usdtwd: { name: 'USD/TWD', symbol: 'TWD=X', digits: 3 },
+  nq: { name: '小納 NQ', symbol: 'NQ=F', digits: 2 },
 };
 
-const ORDER = ['txf', 'kospi', 'nikkei', 'tsm', 'usdtwd', 'brent'];
+const ORDER = ['txf', 'kospi', 'nikkei', 'tsm', 'usdtwd', 'brent', 'nq'];
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
