@@ -92,8 +92,51 @@ async function buildQuotes(origin, ctx) {
     }),
   );
 
-  const holidays = await fetchHolidays(origin, ctx).catch(() => []);
-  return { updated: Date.now(), quotes, holidays };
+  const [holidays, institutional] = await Promise.all([
+    fetchHolidays(origin, ctx).catch(() => []),
+    fetchInstitutional(origin, ctx).catch(() => null),
+  ]);
+  return { updated: Date.now(), quotes, holidays, institutional };
+}
+
+// TWSE 三大法人買賣金額 (BFI82U), latest trading day, in NT$ 億. Published ~15:00 Taipei.
+async function fetchInstitutional(origin, ctx) {
+  const cache = caches.default;
+  const key = new Request(origin + '/_institutional');
+  const cached = await cache.match(key);
+  if (cached) return cached.json();
+
+  const res = await fetch('https://www.twse.com.tw/rwd/zh/fund/BFI82U?type=day&response=json', { headers: { 'User-Agent': UA } });
+  if (!res.ok) throw new Error(`TWSE BFI82U HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.stat !== 'OK') throw new Error('TWSE BFI82U no data');
+
+  const net = Object.fromEntries(data.data.map((r) => [r[0], Number(r[3].replace(/,/g, '')) / 1e8]));
+  const sum = (prefix) => Object.entries(net).filter(([k]) => k.startsWith(prefix)).reduce((s, [, v]) => s + v, 0);
+  const out = {
+    date: `${data.date.slice(0, 4)}-${data.date.slice(4, 6)}-${data.date.slice(6, 8)}`,
+    foreign: sum('外資'),   // 外資及陸資 + 外資自營商
+    trust: sum('投信'),
+    dealer: sum('自營商'),  // 自行買賣 + 避險
+    total: net['合計'],
+  };
+
+  ctx.waitUntil(cache.put(key, new Response(JSON.stringify(out), {
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${dailyTtl(data.date, 15)}` },
+  })));
+  return out;
+}
+
+// Cache TTL for data published once per trading day at publishHour (Taipei).
+function dailyTtl(dataDate, publishHour, retrySeconds = 300) {
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);
+  const today = tw.toISOString().slice(0, 10).replace(/-/g, '');
+  const secondsUntil = (dayOffset, hour) =>
+    Math.round(Math.max(60, (Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate() + dayOffset, hour) - tw.getTime()) / 1000));
+  const weekend = tw.getUTCDay() === 0 || tw.getUTCDay() === 6;
+  if (dataDate === today || weekend) return secondsUntil(1, publishHour);
+  if (tw.getUTCHours() < publishHour) return secondsUntil(0, publishHour);
+  return retrySeconds;
 }
 
 // TWSE market holidays as ["YYYY-MM-DD"], used by the settlement calendar.
@@ -261,21 +304,10 @@ async function fetchChips(origin, ctx) {
   };
 
   ctx.waitUntil(cache.put(key, new Response(JSON.stringify(out), {
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${chipsTtl(date)}` },
+    // The daily report is ~800KB, so avoid refetching it once today's data is in hand.
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${dailyTtl(date, 14, CHIPS_RETRY_SECONDS)}` },
   })));
   return out;
-}
-
-// The daily report is ~800KB, so avoid refetching it once today's data is in hand.
-function chipsTtl(dataDate) {
-  const tw = new Date(Date.now() + 8 * 3600 * 1000);
-  const today = tw.toISOString().slice(0, 10).replace(/-/g, '');
-  const secondsUntil = (dayOffset, hour) =>
-    Math.max(60, (Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate() + dayOffset, hour) - tw.getTime()) / 1000);
-  const weekend = tw.getUTCDay() === 0 || tw.getUTCDay() === 6;
-  if (dataDate === today || weekend) return Math.round(secondsUntil(1, 14)); // next check: tomorrow 14:00
-  if (tw.getUTCHours() < 14) return Math.round(secondsUntil(0, 14)); // not published before the close
-  return CHIPS_RETRY_SECONDS;
 }
 
 // TAIFEX MIS (fallback): MarketType 0 = day session (08:45-13:45 TW), 1 = night session.
