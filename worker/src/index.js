@@ -10,7 +10,7 @@ const YAHOO = {
   usdtwd: { name: 'USD/TWD', symbol: 'TWD=X', digits: 3 },
 };
 
-const ORDER = ['kospi', 'txf', 'nikkei', 'tsm', 'brent', 'usdtwd'];
+const ORDER = ['txf', 'kospi', 'nikkei', 'tsm', 'usdtwd', 'brent'];
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
