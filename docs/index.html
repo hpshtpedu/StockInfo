@@ -55,7 +55,7 @@
   }
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price { font-size: clamp(17px, 5.2vw, 24px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .chg { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .chg { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price small { font-size: 13px; font-weight: 600; }
   .up { color: var(--up); }
   .down { color: var(--down); }
@@ -193,7 +193,7 @@
   // 全市場融資維持率：GitHub Actions 每晚計算後寫入 margin.json
   function marginHtml(m) {
     const [, mm, dd] = m.date.split('-').map(Number);
-    let chg = `上市${fmt(m.twse, 1)} 上櫃${fmt(m.tpex, 1)}`;
+    let chg = `市${fmt(m.twse, 1)} 櫃${fmt(m.tpex, 1)}`;
     let dir = '';
     if (m.prev != null) {
       const diff = m.ratio - m.prev;
