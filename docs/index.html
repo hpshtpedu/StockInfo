@@ -290,8 +290,9 @@
       const sign = q.change > 0 ? '+' : '';
       const ageMin = Math.round((Date.now() - q.time) / 60000);
       const sameDay = new Date(q.time).toDateString() === new Date().toDateString();
-      // Open: measured lag. Lunch/closed/holiday: the feed's typical delay.
-      const lagMin = STATE_LABELS[q.state] ? q.delayMin : ageMin >= 5 && ageMin < 60 ? ageMin : 0;
+      // Open: measured lag. Lunch/holiday: the feed's typical delay. Closed: none.
+      const lagMin = q.state === 'closed' ? 0
+        : STATE_LABELS[q.state] ? q.delayMin : ageMin >= 5 && ageMin < 60 ? ageMin : 0;
       const lag = (STATE_LABELS[q.state] ? ` · ${STATE_LABELS[q.state]}` : '')
         + (lagMin ? ` · <span class="lag">慢${lagMin}分</span>` : '');
       const stale = q.stale ? ' · <span class="lag">舊資料</span>' : '';
