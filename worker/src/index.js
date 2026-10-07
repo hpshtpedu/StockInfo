@@ -9,9 +9,10 @@ const YAHOO = {
   brent: { name: 'Brent 原油', symbol: 'BZ=F', digits: 2 },
   usdtwd: { name: 'USD/TWD', symbol: 'TWD=X', digits: 3 },
   nq: { name: '小納 NQ', symbol: 'NQ=F', digits: 2 },
+  us10y: { name: '美債 10Y', symbol: '^TNX', digits: 3, unit: 'yield' },
 };
 
-const ORDER = ['txf', 'kospi', 'nikkei', 'tsm', 'usdtwd', 'brent', 'nq'];
+const ORDER = ['txf', 'kospi', 'nikkei', 'tsm', 'usdtwd', 'brent', 'nq', 'us10y'];
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
@@ -63,7 +64,7 @@ async function buildQuotes() {
   return { updated: Date.now(), quotes };
 }
 
-async function fetchYahoo({ name, symbol, digits }) {
+async function fetchYahoo({ name, symbol, digits, unit }) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=1d`;
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(`Yahoo ${symbol} HTTP ${res.status}`);
@@ -77,6 +78,7 @@ async function fetchYahoo({ name, symbol, digits }) {
     symbol,
     source: 'Yahoo',
     digits,
+    unit,
     price,
     prev,
     change: prev != null ? price - prev : null,
