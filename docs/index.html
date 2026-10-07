@@ -32,16 +32,16 @@
   }
   header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
+    gap: 8px;
     max-width: 560px;
     margin: 0 auto 12px;
   }
   h1 { font-size: 20px; margin: 0; white-space: nowrap; }
   #source { color: var(--muted); font-size: 11px; font-weight: 400; margin-left: 6px; }
-  #status { color: var(--muted); font-size: 12px; text-align: right; }
+  .right { color: var(--muted); font-size: 11px; line-height: 1.35; text-align: right; white-space: nowrap; }
   #status.err { color: var(--warn); }
-  footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 12px; }
   main { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-width: 560px; margin: 0 auto; }
   .card {
     background: var(--card);
@@ -66,17 +66,19 @@
 <body>
 <header>
   <h1>行情看板<span id="source">來源：Yahoo Finance</span></h1>
-  <div id="status">載入中…</div>
+  <div class="right">
+    <div id="status">載入中…</div>
+    <div>每 2 分鐘自動更新</div>
+  </div>
 </header>
 <main id="list"></main>
-<footer>每 2 分鐘自動更新</footer>
-
 <script>
   const API = 'https://stockinfo-quotes.hpshtpedu.workers.dev/quotes';
   const POLL_MS = 120 * 1000;
 
   const $list = document.getElementById('list');
-  const $status = document.getElementById('status');  let timer = null;
+  const $status = document.getElementById('status');
+  let timer = null;
 
   const fmt = (n, d) => n == null ? '—' : n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
   const hhmm = (t) => new Date(t).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' });
@@ -112,7 +114,8 @@
       const data = await res.json();
       render(data);
       $status.className = '';
-      $status.textContent = `更新 ${hhmm(data.updated)}`;    } catch (err) {
+      $status.textContent = `更新 ${hhmm(data.updated)}`;
+    } catch (err) {
       $status.className = 'err';
       $status.textContent = `更新失敗：${err.message}`;
     }
