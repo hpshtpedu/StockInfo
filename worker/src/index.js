@@ -28,14 +28,14 @@ const CHIPS = {
   retailRatio: { name: '小台散戶多空比' },
 };
 
-const ORDER = ['twii', 'otc', 'txf', 'sox', 'kospi', 'nikkei', 'tsm', 'usdtwd', 'brent', 'nq', 'us10y', 'foreignOi', 'retailRatio'];
+const ORDER = ['twii', 'otc', 'txf', 'sox', 'tsm', 'nq', 'kospi', 'nikkei', 'usdtwd', 'brent', 'us10y', 'foreignOi', 'retailRatio'];
 
 const NAMES = Object.fromEntries(
   Object.entries({ ...YAHOO, ...YAHOO_TW, ...CHIPS }).map(([id, cfg]) => [id, cfg.name]),
 );
 
-// TAIFEX publishes institutional positions once a day after the close.
-const CHIPS_CACHE_SECONDS = 1800;
+// TAIFEX publishes institutional positions once a day after the close (~15:00 Taipei).
+const CHIPS_RETRY_SECONDS = 1800;
 const HOLIDAYS_CACHE_SECONDS = 86400;
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
@@ -256,9 +256,21 @@ async function fetchChips(origin, ctx) {
   };
 
   ctx.waitUntil(cache.put(key, new Response(JSON.stringify(out), {
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CHIPS_CACHE_SECONDS}` },
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${chipsTtl(date)}` },
   })));
   return out;
+}
+
+// The daily report is ~800KB, so avoid refetching it once today's data is in hand.
+function chipsTtl(dataDate) {
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);
+  const today = tw.toISOString().slice(0, 10).replace(/-/g, '');
+  const secondsUntil = (dayOffset, hour) =>
+    Math.max(60, (Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate() + dayOffset, hour) - tw.getTime()) / 1000);
+  const weekend = tw.getUTCDay() === 0 || tw.getUTCDay() === 6;
+  if (dataDate === today || weekend) return Math.round(secondsUntil(1, 14)); // next check: tomorrow 14:00
+  if (tw.getUTCHours() < 14) return Math.round(secondsUntil(0, 14)); // not published before the close
+  return CHIPS_RETRY_SECONDS;
 }
 
 // TAIFEX MIS (fallback): MarketType 0 = day session (08:45-13:45 TW), 1 = night session.
