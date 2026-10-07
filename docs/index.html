@@ -252,10 +252,10 @@
       </div>`;
   }
 
-  // 百萬元 -> "9,760億" / "1.05兆"
+  // 百萬元 -> "9760億" / "1.05兆"（不加千分位，badge 才放得下）
   function money(millions) {
     const yi = millions / 100;
-    return yi >= 10000 ? `${fmt(yi / 10000, 2)}兆` : `${fmt(yi, 0)}億`;
+    return yi >= 10000 ? `${(yi / 10000).toFixed(2)}兆` : `${Math.round(yi)}億`;
   }
 
   // 價差 = 台指期 - 加權指數
