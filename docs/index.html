@@ -101,7 +101,7 @@
           <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}</div>
           <div class="chg ${dir}">${q.unit === 'yield'
             ? `${sign}${fmt(q.change * 100, 1)}bp`
-            : `${sign}${fmt(q.change, q.digits)} ${sign}${fmt(q.changePct, 2)}%`}</div>
+            : `${sign}${fmt(q.change, q.digits)} (${sign}${fmt(q.changePct, 2)}%)`}</div>
           <div class="meta">${sameDay ? hhmm(q.time) : mdhm(q.time)}${lag}${stale}</div>
         </div>`;
     }).join('');
