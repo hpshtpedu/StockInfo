@@ -64,7 +64,7 @@
 </head>
 <body>
 <header>
-  <h1>行情看板<span id="source"></span></h1>
+  <h1>行情看板<span id="source">來源：Yahoo Finance</span></h1>
   <div id="status">載入中…</div>
 </header>
 <main id="list"></main>
@@ -74,10 +74,7 @@
   const POLL_MS = 120 * 1000;
 
   const $list = document.getElementById('list');
-  const $status = document.getElementById('status');
-  const $source = document.getElementById('source');
-  const SOURCE_NAMES = { 'Yahoo': 'Yahoo Finance', 'Yahoo TW': 'Yahoo 股市', 'TAIFEX': '期交所' };
-  let timer = null;
+  const $status = document.getElementById('status');  let timer = null;
 
   const fmt = (n, d) => n == null ? '—' : n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
   const hhmm = (t) => new Date(t).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' });
@@ -113,10 +110,7 @@
       const data = await res.json();
       render(data);
       $status.className = '';
-      $status.textContent = `更新 ${hhmm(data.updated)}`;
-      const sources = [...new Set(data.quotes.map((q) => SOURCE_NAMES[q.source]).filter(Boolean))];
-      $source.textContent = sources.length ? `來源：${sources.join(' · ')}` : '';
-    } catch (err) {
+      $status.textContent = `更新 ${hhmm(data.updated)}`;    } catch (err) {
       $status.className = 'err';
       $status.textContent = `更新失敗：${err.message}`;
     }
