@@ -55,7 +55,7 @@
   }
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price { font-size: clamp(17px, 5.2vw, 24px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .head { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
   .badge { flex-shrink: 0; font-size: 10.5px; font-weight: 600; line-height: 1.5; padding: 0 6px; border-radius: 999px; background: var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .chg { font-size: clamp(11.5px, 3.4vw, 13px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price small { font-size: 13px; font-weight: 600; }
@@ -265,12 +265,12 @@
       const stale = q.stale ? ' · <span class="lag">舊資料</span>' : '';
       return `
         <div class="card">
-          <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
+          <div class="name">${q.name}</div>
           <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}</div>
           <div class="chg ${dir}">${q.unit === 'yield'
             ? `${sign}${fmt(q.change * 100, 1)}bp`
             : `${sign}${fmt(q.change, q.digits)} (${sign}${fmt(q.changePct, 2)}%)`}</div>
-          <div class="meta">${sameDay ? hhmm(q.time) : mdhm(q.time)}${lag}${stale}</div>
+          <div class="foot"><div class="meta">${sameDay ? hhmm(q.time) : mdhm(q.time)}${lag}${stale}</div>${badges[q.id] ?? ''}</div>
         </div>`;
     }).join('') + (margin ? marginHtml(margin) : '');
   }
