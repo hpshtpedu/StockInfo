@@ -2,7 +2,7 @@
 
 All sources are fetched automatically (run nightly by GitHub Actions):
   CPI / NFP / PCE / retail sales: FRED release calendar API (needs FRED_API_KEY)
-  FOMC decisions: federalreserve.gov meeting calendar page
+  FOMC decisions: federalreserve.gov meeting calendar page; minutes = decision + 21 days
   ISM PMI: computed (1st / 3rd US business day; 2nd / 4th in January)
 If a source fails, its events from the previous run are kept.
 """
@@ -68,6 +68,10 @@ def fomc(today, until):
             day = dt.datetime.strptime(f'{year} {last_month[:3]} {last_day}', '%Y %b %d').date()
             if today <= day <= until:
                 out.append(event('fomc', 'FOMC利率決議', day, '14:00', ET))  # decision on the last day
+            # Minutes come out three weeks after the decision, also at 14:00 ET.
+            minutes = day + dt.timedelta(days=21)
+            if today <= minutes <= until:
+                out.append(event('fomc', 'FOMC會議紀要', minutes, '14:00', ET))
     if not out:
         raise ValueError('no FOMC meetings parsed')
     return out
