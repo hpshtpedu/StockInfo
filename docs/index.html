@@ -76,6 +76,8 @@
   .cal .today b { color: var(--warn); }
   .cal .next { color: var(--muted); font-size: 12px; padding-left: 1.6em; }
   .cal .next b { color: var(--text); font-weight: 600; }
+  .cal .ev { color: var(--text); font-weight: 600; }
+  .cal .next .ev { font-weight: 400; }
   .cal .inst-title { color: var(--muted); font-size: 11px; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
   .cal .inst { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; }
   .cal .inst .k { color: var(--muted); font-size: 11px; }
@@ -168,15 +170,24 @@
     return [...new Set(out)];
   }
 
+  // 經濟數據、財報等事件（台灣時間），由 scripts/build_events.py 產生 events.json
+  let econEvents = {};
+
   function dayEvents(t) {
-    const events = settlements(t);
+    const settle = settlements(t);
     const weekday = t.getUTCDay() !== 0 && t.getUTCDay() !== 6;
-    if (weekday && holidays.has(key(t))) events.unshift('台股休市');
-    return events;
+    if (weekday && holidays.has(key(t))) settle.unshift('台股休市');
+    const econ = (econEvents[key(t)] ?? []).map((e) => `${e.label} ${e.time}`);
+    return { settle, econ, any: settle.length + econ.length > 0 };
   }
 
-  const dayLine = (label, t, events) =>
-    `${label} ${t.getUTCMonth() + 1}/${t.getUTCDate()}(${WEEKDAYS[t.getUTCDay()]})${events.length ? `　<b>${events.join('、')}</b>` : ''}`;
+  function dayLine(label, t, ev) {
+    const parts = [
+      ev.settle.length ? `<b>${ev.settle.join('、')}</b>` : '',
+      ev.econ.length ? `<span class="ev">${ev.econ.join('、')}</span>` : '',
+    ].filter(Boolean).join('、');
+    return `${label} ${t.getUTCMonth() + 1}/${t.getUTCDate()}(${WEEKDAYS[t.getUTCDay()]})${parts ? `　${parts}` : ''}`;
+  }
 
   // 三大法人買賣超：當日 15:10 起顯示，到下個交易日 08:00 清掉
   function institutionalHtml(inst) {
@@ -206,7 +217,7 @@
     const nextLabel = key(next) === key(addDays(today, 1)) ? '明日' : '下個交易日';
     const nextEvents = dayEvents(next);
     // 下一天沒有結算就不顯示
-    const nextHtml = nextEvents.length ? `<div class="next">${dayLine(nextLabel, next, nextEvents)}</div>` : '';
+    const nextHtml = nextEvents.any ? `<div class="next">${dayLine(nextLabel, next, nextEvents)}</div>` : '';
     return `
       <div class="card cal">
         <div class="today">📅 ${dayLine('今日', today, dayEvents(today))}</div>
@@ -344,9 +355,15 @@
       const getJson = (url) => fetch(url, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       const marginReq = getJson('margin.json');
       const profileReq = getJson('volume_profile.json');
+      const eventsReq = getJson('events.json');
       const res = await fetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
+      const events = await eventsReq;
+      if (events) {
+        econEvents = {};
+        for (const e of events) (econEvents[e.date] ??= []).push(e);
+      }
       render(data, await marginReq, await profileReq);
       $status.className = '';
       $status.textContent = `更新 ${hhmm(data.updated)} (GMT+8)`;
