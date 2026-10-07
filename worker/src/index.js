@@ -43,7 +43,7 @@ export default {
 async function buildQuotes() {
   const jobs = {
     ...Object.fromEntries(Object.entries(YAHOO).map(([id, cfg]) => [id, fetchYahoo(cfg)])),
-    txf: fetchTaifex(),
+    txf: fetchYahooTw().catch(() => fetchTaifex()),
   };
 
   const quotes = await Promise.all(
@@ -84,7 +84,30 @@ async function fetchYahoo({ name, symbol, digits }) {
   };
 }
 
-// TAIFEX MIS: MarketType 0 = day session (08:45-13:45 TW), 1 = night session.
+// Yahoo Taiwan: WTX& = 台指期近一. Works from Cloudflare egress, unlike TAIFEX.
+async function fetchYahooTw() {
+  const url = 'https://tw.stock.yahoo.com/_td-stock/api/resource/FinanceChartService.ApacLibraCharts;symbols=%5B%22WTX%26%22%5D;type=tick';
+  const res = await fetch(url, { headers: { 'User-Agent': UA } });
+  if (!res.ok) throw new Error(`Yahoo TW HTTP ${res.status}`);
+  const meta = (await res.json())?.[0]?.chart?.meta;
+  if (!meta || meta.regularMarketPrice == null) throw new Error('Yahoo TW no data');
+
+  const price = meta.regularMarketPrice;
+  const prev = meta.previousClose ?? meta.chartPreviousClose;
+  return {
+    name: '台指期 近一',
+    symbol: 'WTX&',
+    source: 'Yahoo TW',
+    digits: 0,
+    price,
+    prev,
+    change: prev != null ? price - prev : null,
+    changePct: prev ? ((price - prev) / prev) * 100 : null,
+    time: meta.regularMarketTime * 1000,
+  };
+}
+
+// TAIFEX MIS (fallback): MarketType 0 = day session (08:45-13:45 TW), 1 = night session.
 async function fetchTaifex() {
   const first = isDaySession() ? '0' : '1';
   const second = first === '0' ? '1' : '0';
