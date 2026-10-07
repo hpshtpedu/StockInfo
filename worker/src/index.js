@@ -5,7 +5,6 @@ const DELAY_GRACE_MIN = 20;
 
 // delayMin: typical Yahoo feed delay, measured; shown when the market is not open.
 const YAHOO = {
-  ftse: { name: '富台期 近月', symbol: () => ftseNearMonthSymbol(), digits: 2, delayMin: 10 },
   sox: { name: '費半 SOX', symbol: '^SOX', digits: 2 },
   kospi: { name: 'KOSPI', symbol: '^KS11', digits: 2, delayMin: 20 },
   // Yahoo's trading period ignores the TSE lunch break (11:30-12:30 JST = 02:30-03:30 UTC).
@@ -29,7 +28,7 @@ const CHIPS = {
   retailRatio: { name: '小台散戶多空比' },
 };
 
-const ORDER = ['twii', 'otc', 'txf', 'ftse', 'sox', 'kospi', 'nikkei', 'tsm', 'usdtwd', 'brent', 'nq', 'us10y', 'foreignOi', 'retailRatio'];
+const ORDER = ['twii', 'otc', 'txf', 'sox', 'kospi', 'nikkei', 'tsm', 'usdtwd', 'brent', 'nq', 'us10y', 'foreignOi', 'retailRatio'];
 
 const NAMES = Object.fromEntries(
   Object.entries({ ...YAHOO, ...YAHOO_TW, ...CHIPS }).map(([id, cfg]) => [id, cfg.name]),
@@ -117,8 +116,7 @@ async function fetchHolidays(origin, ctx) {
   return out;
 }
 
-async function fetchYahoo({ name, symbol: symbolOrFn, digits, unit, delayMin, breaksUtc }) {
-  const symbol = typeof symbolOrFn === 'function' ? symbolOrFn() : symbolOrFn;
+async function fetchYahoo({ name, symbol, digits, unit, delayMin, breaksUtc }) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=1d`;
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(`Yahoo ${symbol} HTTP ${res.status}`);
@@ -141,20 +139,6 @@ async function fetchYahoo({ name, symbol: symbolOrFn, digits, unit, delayMin, br
     time: meta.regularMarketTime * 1000,
     state: marketState(meta, breaksUtc),
   };
-}
-
-// SGX FTSE Taiwan futures, e.g. TWN-V26.SI for Oct 2026. Rolls to the next month after the
-// last trading day (second-last weekday of the month; holidays ignored).
-function ftseNearMonthSymbol() {
-  const tw = new Date(Date.now() + 8 * 3600 * 1000);
-  let [y, m] = [tw.getUTCFullYear(), tw.getUTCMonth() + 1];
-  let d = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  for (let count = 0; ; d--) {
-    const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-    if (dow !== 0 && dow !== 6 && ++count === 2) break;
-  }
-  if (tw.getUTCDate() > d) [y, m] = m === 12 ? [y + 1, 1] : [y, m + 1];
-  return `TWN-${'FGHJKMNQUVXZ'[m - 1]}${String(y).slice(2)}.SI`;
 }
 
 // 'open' | 'lunch' | 'closed' (outside the session) | 'holiday' (in session, no trades yet).
@@ -253,7 +237,7 @@ async function fetchChips(origin, ctx) {
       unit: 'lots',
       digits: 0,
       price: Number(foreign['OpenInterest(Net)']),
-      detail: `多${Number(foreign['OpenInterest(Long)']).toLocaleString('en-US')} 空${Number(foreign['OpenInterest(Short)']).toLocaleString('en-US')}`,
+      detail: `多${wan(foreign['OpenInterest(Long)'])} 空${wan(foreign['OpenInterest(Short)'])}`,
       dataDate,
       time,
     },
@@ -337,6 +321,12 @@ function taipeiTime(cdate, ctime) {
     : [today.getUTCFullYear(), today.getUTCMonth() + 1, today.getUTCDate()];
   const t = (ctime ?? '000000').padStart(6, '0');
   return Date.UTC(d[0], d[1] - 1, d[2], +t.slice(0, 2) - 8, +t.slice(2, 4), +t.slice(4, 6));
+}
+
+// 12968 -> "1.3萬", 8500 -> "8,500"
+function wan(n) {
+  n = Number(n);
+  return n >= 10000 ? `${(n / 10000).toFixed(1)}萬` : n.toLocaleString('en-US');
 }
 
 function corsHeaders(env) {

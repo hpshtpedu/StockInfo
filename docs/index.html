@@ -185,7 +185,26 @@
       </div>`;
   }
 
-  function render(data) {
+  // 全市場融資維持率：GitHub Actions 每晚計算後寫入 margin.json
+  function marginHtml(m) {
+    const [, mm, dd] = m.date.split('-').map(Number);
+    let chg = `上市${fmt(m.twse, 1)} 上櫃${fmt(m.tpex, 1)}`;
+    let dir = '';
+    if (m.prev != null) {
+      const diff = m.ratio - m.prev;
+      dir = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
+      chg = `${diff > 0 ? '+' : ''}${fmt(diff, 2)}`;
+    }
+    return `
+      <div class="card">
+        <div class="name">融資維持率</div>
+        <div class="price">${fmt(m.ratio, 2)}%</div>
+        <div class="chg ${dir}">${chg}</div>
+        <div class="meta">${mm}/${dd} 盤後</div>
+      </div>`;
+  }
+
+  function render(data, margin) {
     if (data.holidays?.length) holidays = new Set(data.holidays);
     $list.innerHTML = calendarHtml() + data.quotes.map((q) => {
       if (q.error) {
@@ -210,15 +229,16 @@
             : `${sign}${fmt(q.change, q.digits)} (${sign}${fmt(q.changePct, 2)}%)`}</div>
           <div class="meta">${sameDay ? hhmm(q.time) : mdhm(q.time)}${lag}${stale}</div>
         </div>`;
-    }).join('');
+    }).join('') + (margin ? marginHtml(margin) : '');
   }
 
   async function load() {
     try {
+      const marginReq = fetch('margin.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       const res = await fetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      render(data);
+      render(data, await marginReq);
       $status.className = '';
       $status.textContent = `更新 ${hhmm(data.updated)}`;
     } catch (err) {
