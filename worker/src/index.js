@@ -603,13 +603,29 @@ async function fetchBreadth() {
 // = -(institutional MTX net OI) / (MTX total OI). Cached separately since it changes daily.
 async function fetchChips(origin, ctx) {
   const cache = caches.default;
-  const key = new Request(origin + '/_chips_v3');
-  const lastKey = new Request(origin + '/_chips_last');
+  const key = new Request(origin + '/_chips_v4');
+  const lastKey = new Request(origin + '/_chips_last_v2');
   const cached = await cache.match(key);
   if (cached) return cached.json();
 
+  const last = await cache.match(lastKey).then((r) => (r ? r.json() : null));
+  const lastDate = last?.foreignOi?.time ? new Date(last.foreignOi.time + 8 * 3600 * 1000).toISOString().slice(0, 10) : null;
+  const days = await recentTradingDays(origin, ctx, 3);
+  // The newest trading day whose data should already be out (published ~15:00).
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);
+  const expected = days[0] === tw.toISOString().slice(0, 10) && tw.getUTCHours() < 15 ? days[1] : days[0];
+
+  // Already holding the newest published day (e.g. on a market holiday): don't refetch.
+  if (last && lastDate >= expected) {
+    delete last.foreignOi.stale; delete last.retailRatio.stale;
+    ctx.waitUntil(cache.put(key, new Response(JSON.stringify(last), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CHIPS_RETRY_SECONDS * 3}` },
+    })));
+    return last;
+  }
+
   try {
-    const { out, date } = await computeChips();
+    const { out, date } = await computeChips(days.filter((d) => !lastDate || d > lastDate), !last);
     // Day-over-day change, against the previous trading day's numbers.
     const prev = await previousChips(origin, ctx, date).catch(() => null);
     if (prev) {
@@ -625,11 +641,12 @@ async function fetchChips(origin, ctx) {
     return out;
   } catch (err) {
     // Fall back to the last good result so a bad upstream response does not blank the cards.
-    const last = await cache.match(lastKey);
     if (!last) throw err;
-    const out = await last.json();
+    const out = structuredClone(last);
+    // Yesterday's numbers while today's aren't out yet are normal; only older data is stale.
+    const isStale = !lastDate || lastDate < days[1];
     for (const q of Object.values(out)) {
-      q.stale = true;
+      if (isStale) q.stale = true;
       q.staleReason = String(err?.message || err);
     }
     // Serve the fallback for 10 min instead of retrying TAIFEX on every refresh.
@@ -712,19 +729,38 @@ async function fetchChipsOpenApi() {
   return { inst: await instRes.text(), daily: await dailyRes.text(), source: 'TAIFEX' };
 }
 
-// Before the ~15:00 publication the website already serves a partial file for the day (open
-// interest all zero, no day-session OI), so only accept it if it parses into complete numbers.
-async function computeChips() {
-  let webError;
-  try {
-    return parseChips(await fetchChipsWeb());
-  } catch (err) {
-    webError = err;
+// Trading days ("YYYY-MM-DD", newest first) from today back, skipping weekends and TWSE holidays.
+async function recentTradingDays(origin, ctx, count) {
+  const holidays = new Set((await fetchHolidays(origin, ctx).catch(() => [])).map((h) => h.date ?? h));
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);
+  let t = Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate());
+  const out = [];
+  while (out.length < count) {
+    const d = new Date(t);
+    const iso = d.toISOString().slice(0, 10);
+    if (![0, 6].includes(d.getUTCDay()) && !holidays.has(iso)) out.push(iso);
+    t -= 86400000;
   }
+  return out;
+}
+
+// Website CSVs for the given trading days, newest first, taking the first complete one. Before
+// the ~15:00 publication the day's file is partial (open interest all zero) and is skipped.
+// The OpenAPI (a day or more behind) is only a last resort when nothing is cached yet.
+async function computeChips(days, allowOpenApi) {
+  const errors = [];
+  for (const day of days) {
+    try {
+      return parseChips(await fetchChipsWeb(day.replace(/-/g, '/')));
+    } catch (err) {
+      errors.push(`${day}: ${err.message}`);
+    }
+  }
+  if (!allowOpenApi) throw new Error(`web ${errors.join('; ') || 'nothing newer'}`);
   try {
     return parseChips(await fetchChipsOpenApi());
   } catch (err) {
-    throw new Error(`web: ${webError?.message}; openapi: ${err.message}`);
+    throw new Error(`web ${errors.join('; ')}; openapi: ${err.message}`);
   }
 }
 
