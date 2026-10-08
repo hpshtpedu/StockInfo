@@ -401,11 +401,14 @@ async function fetchInstitutional(origin, ctx) {
 }
 
 // TWSE sometimes corrects the day's numbers in the evening (e.g. 投信), so after today's data is
-// in, recheck hourly until 22:00 before holding it until the next afternoon.
+// in, recheck once at 18:00 and once at 21:00, then hold it until the next afternoon.
 function institutionalTtl(dataDate) {
   const tw = new Date(Date.now() + 8 * 3600 * 1000);
   const today = tw.toISOString().slice(0, 10).replace(/-/g, '');
-  if (dataDate === today && tw.getUTCHours() < 22) return 3600;
+  if (dataDate !== today) return dailyTtl(dataDate, 15);
+  const untilHour = (h) => Math.max(60, Math.round((Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate(), h) - tw.getTime()) / 1000));
+  if (tw.getUTCHours() < 18) return untilHour(18);
+  if (tw.getUTCHours() < 21) return untilHour(21);
   return dailyTtl(dataDate, 15);
 }
 
