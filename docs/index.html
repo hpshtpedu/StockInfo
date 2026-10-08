@@ -68,6 +68,8 @@
   .sec-bar i { display: block; height: 100%; background: var(--warn); }
   /* 最後一行（時間）貼齊卡片底部，同一排的時間才會對齊 */
   .card:not(.cal) > :last-child { margin-top: auto; }
+  /* 加權卡片（有 K 線）：漲跌幅要緊接在漲跌下面，不把最後一列推到底 */
+  .card.has-k > :last-child { margin-top: 0; }
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price { font-size: clamp(17px, 5.2vw, 24px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* 名稱優先完整顯示，空間不夠時截斷 badge */
@@ -687,7 +689,7 @@
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
            ${meta}`;
       return `
-        <div class="card">
+        <div class="card${chart ? ' has-k' : ''}">
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
           <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}</div>
           ${body}
