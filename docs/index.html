@@ -99,6 +99,7 @@
   .down { color: var(--down); }
   .meta { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lag { color: var(--warn); }
+  .txt { color: var(--text); }
   .error { color: var(--warn); font-size: 12px; }
   .cal { grid-column: 1 / -1; font-size: 13px; gap: 3px; }
   /* 懸掛縮排：圖示獨立一欄，換行文字對齊「今」；明日行用隱形圖示佔位，跟「今」對齊 */
@@ -336,7 +337,7 @@
     if (q.change != null) {
       const cdir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
       const csign = q.change > 0 ? '+' : '';
-      change = ` · 前日 <span class="${cdir}">${csign}${fmt(q.change, q.unit === 'ratio' ? 2 : 0)}</span>`;
+      change = ` · <span class="txt">前日</span> <span class="${cdir}">${csign}${fmt(q.change, q.unit === 'ratio' ? 2 : 0)}</span>`;
     }
     return `
       <div class="card">
