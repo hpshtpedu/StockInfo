@@ -4,7 +4,8 @@ All sources are fetched automatically (run nightly by GitHub Actions):
   CPI / NFP / PCE / retail sales: FRED release calendar API (needs FRED_API_KEY)
   FOMC decisions: federalreserve.gov meeting calendar page; minutes = decision + 21 days
   ISM PMI: computed (1st / 3rd US business day; 2nd / 4th in January)
-  TSMC earnings call: Yahoo TW company calendar page (tw.stock.yahoo.com/quote/2330.TW/calendar)
+  TSMC earnings call, 2330/0056/00878 ex-dividend and pay dates: Yahoo TW company calendar
+    pages (tw.stock.yahoo.com/quote/<symbol>.TW/calendar; not disallowed by robots.txt)
 If a source fails, its events from the previous run are kept.
 """
 import datetime as dt
@@ -119,20 +120,46 @@ def ism(today, until):
     return out
 
 
-def tsmc(today, until):
-    # Yahoo TW embeds the company calendar as JSON in the page. Investor meetings include
-    # brokers' conferences; keep only TSMC's own quarterly calls ("本公司…法人說明會").
-    html = get('https://tw.stock.yahoo.com/quote/2330.TW/calendar', as_json=False)
+def yahoo_tw_calendar(symbol):
+    """Events embedded as JSON in a Yahoo TW company calendar page: [(eventType, detail)]."""
+    html = get(f'https://tw.stock.yahoo.com/quote/{symbol}.TW/calendar', as_json=False)
+    # Split at each event so an event without "detail" (e.g. 停券) can't borrow the next one's.
+    chunks = re.split(r'(?="eventType":")', html)[1:]
     out = []
-    for detail in re.findall(r'"eventType":"earningsCall".*?"detail":(\{[^}]*\})', html):
-        d = json.loads(detail)
-        info = d.get('information', '')
-        if not (info.startswith('本公司') and '法人說明會' in info):
-            continue
-        when = dt.datetime.fromisoformat(d['date']).astimezone(TW)
-        if today <= when.date() <= until:
-            out.append(event('tsmc', '台積電法說會', when.date(), when.strftime('%H:%M'), TW))
+    for chunk in chunks:
+        kind = re.match(r'"eventType":"(\w+)"', chunk).group(1)
+        detail = re.search(r'"detail":(\{[^}]*\})', chunk)
+        if detail:
+            out.append((kind, json.loads(detail.group(1))))
     return out
+
+
+DIVIDEND_STOCKS = {'2330': '台積電', '0056': '0056', '00878': '00878'}
+
+
+def tw_stocks(today, until):
+    out = []
+    for i, (symbol, name) in enumerate(DIVIDEND_STOCKS.items()):
+        if i:
+            time.sleep(3)
+        for kind, d in yahoo_tw_calendar(symbol):
+            if kind == 'dividend':
+                cash = f'{float(d["cash"]):g}元' if d.get('cash') else ''
+                for field, what in (('exDate', '除息'), ('payDate', '配息')):
+                    if d.get(field):
+                        day = dt.datetime.fromisoformat(d[field]).date()
+                        if today <= day <= until:
+                            out.append({'src': 'tw_stocks', 'date': day.isoformat(), 'time': '',
+                                        'label': f'{name}{what}{cash}'})
+            # Investor meetings include brokers' conferences; keep only TSMC's own quarterly calls.
+            elif kind == 'earningsCall' and symbol == '2330':
+                info = d.get('information', '')
+                if info.startswith('本公司') and '法人說明會' in info:
+                    when = dt.datetime.fromisoformat(d['date']).astimezone(TW)
+                    if today <= when.date() <= until:
+                        out.append(event('tw_stocks', '台積電法說會', when.date(), when.strftime('%H:%M'), TW))
+    # The page lists some events twice (e.g. upcoming and past sections).
+    return [dict(t) for t in {tuple(e.items()) for e in out}]
 
 
 def main():
@@ -140,7 +167,7 @@ def main():
     until = today + dt.timedelta(days=HORIZON_DAYS)
     old = json.loads(OUT.read_text(encoding='utf-8')) if OUT.exists() else []
     events, failed = [], []
-    sources = (('fred', fred), ('fomc', fomc), ('ism', ism), ('tsmc', tsmc))
+    sources = (('fred', fred), ('fomc', fomc), ('ism', ism), ('tw_stocks', tw_stocks))
     for name, fn in sources:
         try:
             got = fn(today, until)

@@ -173,7 +173,7 @@
     const settle = settlements(t);
     const weekday = t.getUTCDay() !== 0 && t.getUTCDay() !== 6;
     if (weekday && holidays.has(key(t))) settle.unshift('台股休市');
-    const econ = (econEvents[key(t)] ?? []).map((e) => `${e.label} ${e.time}`);
+    const econ = (econEvents[key(t)] ?? []).map((e) => (e.time ? `${e.label} ${e.time}` : e.label));
     return { settle, econ, any: settle.length + econ.length > 0 };
   }
 
