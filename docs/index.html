@@ -74,6 +74,7 @@
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
+  .badge.buy { background: var(--up); color: var(--bg); }
   .ma-row { display: flex; justify-content: space-between; gap: 6px; font-size: clamp(11.5px, 3.4vw, 13px); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .ma-row .k { font-size: inherit; }
   /* 我的持股：代號靠左、價格靠右（紅綠表示漲跌）；限制寬度，PC 上才不會拉得太開 */
@@ -105,7 +106,7 @@
   .meta { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lag { color: var(--warn); }
   .txt { color: var(--text); }
-  .cmp { font-size: clamp(11.5px, 3.4vw, 13px); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  .cmp { font-size: clamp(12px, 3.5vw, 13.5px); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .cmp .txt, .chg .txt { font-weight: 400; }
   .error { color: var(--warn); font-size: 12px; }
   .cal { grid-column: 1 / -1; font-size: 13px; gap: 3px; }
@@ -520,9 +521,12 @@
     const trend = last - fiveAgo;
     const dir = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : '');
     const sign = (v) => (v > 0 ? '+' : '');
-    const badge = pct >= 90 && change < 0
-      ? '<span class="badge warn">高檔回落</span>'
-      : `<span class="badge">第${pct}百分位</span>`;
+    // VIX 超過 40（今年兩次底部都在 40 以上）→ 紅色「買進訊號」，優先於其他狀態
+    const badge = last > 40
+      ? '<span class="badge buy">買進訊號</span>'
+      : pct >= 90 && change < 0
+        ? '<span class="badge warn">高檔回落</span>'
+        : `<span class="badge">第${pct}百分位</span>`;
     const [, mm, dd] = lastDate.split('-').map(Number);
     return `
       <div class="card">
