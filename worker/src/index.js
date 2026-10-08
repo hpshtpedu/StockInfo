@@ -142,10 +142,10 @@ function dailyTtl(dataDate, publishHour, retrySeconds = 300) {
   return retrySeconds;
 }
 
-// TWSE market holidays as ["YYYY-MM-DD"], used by the settlement calendar.
+// TWSE market holidays as [{ date: "YYYY-MM-DD", name }], used by the calendar.
 async function fetchHolidays(origin, ctx) {
   const cache = caches.default;
-  const key = new Request(origin + '/_holidays');
+  const key = new Request(origin + '/_holidays_v2');
   const cached = await cache.match(key);
   if (cached) return cached.json();
 
@@ -154,7 +154,16 @@ async function fetchHolidays(origin, ctx) {
   // Rows like 國曆新年開始交易日 / 農曆春節前最後交易日 are trading days; Date is ROC "1151009".
   const out = (await res.json())
     .filter((r) => !r.Name.includes('交易日'))
-    .map((r) => `${1911 + Number(r.Date.slice(0, 3))}-${r.Date.slice(3, 5)}-${r.Date.slice(5, 7)}`);
+    .map((r) => {
+      const [m, d] = [Number(r.Date.slice(3, 5)), Number(r.Date.slice(5, 7))];
+      // e.g. "國慶日為10月10日適逢星期六，於10月9日（星期五）補假。"
+      const bridge = (r.Description ?? '').includes(`於${m}月${d}日`) && r.Description.includes('補假');
+      return {
+        date: `${1911 + Number(r.Date.slice(0, 3))}-${r.Date.slice(3, 5)}-${r.Date.slice(5, 7)}`,
+        // "市場無交易，僅辦理結算交割作業" (days around Lunar New Year) has no holiday name.
+        name: r.Name.includes('無交易') ? '' : r.Name.replace(/\s+/g, '') + (bridge ? '補假' : ''),
+      };
+    });
 
   ctx.waitUntil(cache.put(key, new Response(JSON.stringify(out), {
     headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${HOLIDAYS_CACHE_SECONDS}` },

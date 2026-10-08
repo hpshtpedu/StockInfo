@@ -128,8 +128,8 @@
     return 1 + ((dow - first + 7) % 7) + (n - 1) * 7;
   }
 
-  // 台股休市日（證交所公告，由 Worker 提供）
-  let holidays = new Set();
+  // 台股休市日（證交所公告，由 Worker 提供）：日期 -> 節日名稱
+  let holidays = new Map();
 
   // 日期一律用 UTC 午夜的 Date 表示台北日曆日
   const utcDate = (y, m, d) => new Date(Date.UTC(y, m - 1, d));
@@ -178,10 +178,16 @@
   // 經濟數據、財報等事件（台灣時間），由 scripts/build_events.py 產生 events.json
   let econEvents = {};
 
+  // 平日休市才標示，例如「國慶日補假休市」
+  function holidayLabel(t) {
+    if (t.getUTCDay() === 0 || t.getUTCDay() === 6 || !holidays.has(key(t))) return '';
+    return `${holidays.get(key(t)) || '台股'}休市`;
+  }
+
   function dayEvents(t) {
     const settle = settlements(t);
-    const weekday = t.getUTCDay() !== 0 && t.getUTCDay() !== 6;
-    if (weekday && holidays.has(key(t))) settle.unshift('台股休市');
+    const holiday = holidayLabel(t);
+    if (holiday) settle.unshift(holiday);
     const econ = (econEvents[key(t)] ?? []).map((e) => e.label);
     return { settle, econ, any: settle.length + econ.length > 0 };
   }
@@ -218,11 +224,15 @@
   function calendarHtml(inst) {
     const tw = new Date(Date.now() + 8 * 3600 * 1000);
     const today = utcDate(tw.getUTCFullYear(), tw.getUTCMonth() + 1, tw.getUTCDate());
-    const next = nextBusinessDay(addDays(today, 1));
-    const nextLabel = key(next) === key(addDays(today, 1)) ? '明日' : '下個交易日';
+    const tomorrow = addDays(today, 1);
+    const next = nextBusinessDay(tomorrow);
+    const lines = [];
+    // 明天平日休市：先提醒休市，再列下個交易日
+    if (holidayLabel(tomorrow)) lines.push(dayLine('明日', tomorrow, dayEvents(tomorrow)));
     const nextEvents = dayEvents(next);
-    // 下一天沒有結算就不顯示
-    const nextHtml = nextEvents.any ? `<div class="next">${dayLine(nextLabel, next, nextEvents)}</div>` : '';
+    // 下一天沒有事件就不顯示
+    if (nextEvents.any) lines.push(dayLine(key(next) === key(tomorrow) ? '明日' : '下個交易日', next, nextEvents));
+    const nextHtml = lines.map((l) => `<div class="next">${l}</div>`).join('');
     return `
       <div class="card cal">
         <div class="today">📅 ${dayLine('今日', today, dayEvents(today))}</div>
@@ -341,7 +351,9 @@
   }
 
   function render(data, margin, profile) {
-    if (data.holidays?.length) holidays = new Set(data.holidays);
+    if (data.holidays?.length) {
+      holidays = new Map(data.holidays.map((h) => (typeof h === 'string' ? [h, ''] : [h.date, h.name])));
+    }
     const byId = Object.fromEntries(data.quotes.map((q) => [q.id, q]));
     const badges = {
       twii: turnoverBadge(byId.twii, profile),
