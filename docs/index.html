@@ -245,15 +245,13 @@
   function calendarHtml(inst) {
     const tw = new Date(Date.now() + 8 * 3600 * 1000);
     const today = utcDate(tw.getUTCFullYear(), tw.getUTCMonth() + 1, tw.getUTCDate());
+    // 只列下一個平日（明天，或週末後的週一），沒有事件就不顯示
     const tomorrow = addDays(today, 1);
-    const next = nextBusinessDay(tomorrow);
-    const lines = [];
-    // 明天平日休市：先提醒休市，再列下個交易日
-    if (holidayLabel(tomorrow)) lines.push(dayLine('明日', tomorrow, dayEvents(tomorrow)));
+    let next = tomorrow;
+    while (next.getUTCDay() === 0 || next.getUTCDay() === 6) next = addDays(next, 1);
     const nextEvents = dayEvents(next);
-    // 下一天沒有事件就不顯示
-    if (nextEvents.any) lines.push(dayLine(key(next) === key(tomorrow) ? '明日' : '下個交易日', next, nextEvents));
-    const nextHtml = lines.map((l) => `<div class="next">${l}</div>`).join('');
+    const nextLabel = key(next) === key(tomorrow) ? '明日' : `下週${WEEKDAYS[next.getUTCDay()]}`;
+    const nextHtml = nextEvents.any ? `<div class="next">${dayLine(nextLabel, next, nextEvents)}</div>` : '';
     return `
       <div class="card cal">
         <div class="today">📅 ${dayLine('今日', today, dayEvents(today))}</div>
