@@ -85,11 +85,15 @@
   .hold-row b { text-align: right; }
   .hold-row .k { color: var(--text); }
   .hold-row .ext { display: none; text-align: right; }
-  /* PC／平板橫放（寬度 ≥ 600px）：多顯示漲跌和漲跌幅，卡片才不會太空 */
+  /* PC／平板橫放（寬度 ≥ 600px）：持股多顯示漲跌和漲跌幅、K 線放大，卡片才不會太空 */
   @media (min-width: 600px) {
     .holds { max-width: none; }
     .hold-row { grid-template-columns: auto 1fr 4.5em 4.8em; }
     .hold-row .ext { display: block; }
+    /* 加權的 30 分 K 在 PC 上放大，卡片高度上限跟著放寬 */
+    .kbox, .kchart { width: 120px; }
+    .kchart { height: 36px; }
+    .card:not(.cal) { max-height: 160px; }
   }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
