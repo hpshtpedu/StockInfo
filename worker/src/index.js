@@ -375,7 +375,7 @@ async function fetchSectors(origin, ctx) {
 // TWSE 三大法人買賣金額 (BFI82U), latest trading day, in NT$ 億. Published ~15:00 Taipei.
 async function fetchInstitutional(origin, ctx) {
   const cache = caches.default;
-  const key = new Request(origin + '/_institutional');
+  const key = new Request(origin + '/_institutional_v2');
   const cached = await cache.match(key);
   if (cached) return cached.json();
 
