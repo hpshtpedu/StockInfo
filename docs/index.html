@@ -96,8 +96,10 @@
   .cal .next b { color: inherit; font-weight: 400; }
   .cal .ev { color: var(--text); font-weight: 600; }
   .cal .next .ev { color: inherit; font-weight: 400; }
-  .cal .inst-title { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11px; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
-  .cal .inst-title span:last-child:not(:first-child) { font-weight: 600; }
+  .cal .inst-title { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; color: var(--muted); font-size: 11px; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
+  /* 標題橫跨前三欄置中（中心正好在「投信」上方），連買連賣對齊「合計」 */
+  .cal .inst-title > span:first-child { grid-column: 1 / span 3; white-space: nowrap; }
+  .cal .inst-title > span:nth-child(2) { font-weight: 600; white-space: nowrap; }
   .cal .inst { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; }
   .cal .inst .k { color: var(--muted); font-size: 11px; }
   .cal .inst .v { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
