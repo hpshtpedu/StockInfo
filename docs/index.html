@@ -545,7 +545,7 @@
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
       return `<div class="hold-row"><span class="k">${h.code}</span><b class="${dir}">${fmt(h.price, h.price >= 1000 ? 0 : 2)}</b></div>`;
     }).join('');
-    const state = STATE_LABELS[twii?.state] ? ` ${STATE_LABELS[twii.state]}` : '';
+    const state = STATE_LABELS[twii?.state] ? ` · ${STATE_LABELS[twii.state]}` : '';
     return `
       <div class="card">
         <div class="head"><div class="name">我的持股</div><span class="meta">${hhmm(list[0].time)}${state}</span></div>
