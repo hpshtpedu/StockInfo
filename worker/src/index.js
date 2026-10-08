@@ -434,7 +434,7 @@ async function fetchBreadth() {
 // = -(institutional MTX net OI) / (MTX total OI). Cached separately since it changes daily.
 async function fetchChips(origin, ctx) {
   const cache = caches.default;
-  const key = new Request(origin + '/_chips_v2');
+  const key = new Request(origin + '/_chips_v3');
   const lastKey = new Request(origin + '/_chips_last');
   const cached = await cache.match(key);
   if (cached) return cached.json();
