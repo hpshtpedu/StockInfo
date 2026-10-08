@@ -77,7 +77,9 @@
   /* 最下面一行：左邊報價時間，右邊加權的迷你 30 分 K */
   .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 4px; min-width: 0; }
   .foot-left { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  .kchart { flex-shrink: 0; width: 64px; height: 32px; display: block; }
+  .kbox { flex-shrink: 0; width: 64px; display: flex; flex-direction: column; align-items: flex-end; }
+  .klabel { color: var(--muted); font-size: 9px; line-height: 1; margin-bottom: 1px; }
+  .kchart { width: 64px; height: 24px; display: block; }
   .badge { min-width: 0; font-size: clamp(10px, 3.2vw, 12px); font-weight: 600; line-height: 1.5; padding: 0 3px; letter-spacing: -0.2px; border-radius: 999px; background: var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .chg { font-size: clamp(11.5px, 3.4vw, 13px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price small { font-size: 13px; font-weight: 600; }
@@ -400,7 +402,7 @@
         + `<rect x="${x + 1.5}" y="${top}" width="4" height="${height}" fill="${color}"/>`;
     });
     const base = prev == null ? '' : `<line x1="0" x2="${candles.length * w}" y1="${y(prev)}" y2="${y(prev)}" stroke="var(--muted)" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/>`;
-    return `<svg class="kchart" viewBox="0 0 ${candles.length * w} 100" preserveAspectRatio="none" aria-hidden="true">${base}${parts.join('')}</svg>`;
+    return `<div class="kbox"><span class="klabel">30分K</span><svg class="kchart" viewBox="0 0 ${candles.length * w} 100" preserveAspectRatio="none" aria-hidden="true">${base}${parts.join('')}</svg></div>`;
   }
 
   // 證交所產業名稱 -> 簡稱（沒列到的照原名）
