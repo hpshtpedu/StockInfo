@@ -277,8 +277,8 @@
     let n = 0;
     for (let i = values.length - 1; i >= 0 && Math.sign(values[i]) === sign; i--) n++;
     // 當日新資料：只有「N買」紅、「N賣」綠，「外資連」維持灰色
-    const tail = `${n}${sign > 0 ? '買' : '賣'}`;
-    return `<span>外資連${fresh ? `<span class="${sign > 0 ? 'up' : 'down'}">${tail}</span>` : tail}</span>`;
+    const tail = `連${n}${sign > 0 ? '買' : '賣'}`;
+    return `<span>外資${fresh ? `<span class="${sign > 0 ? 'up' : 'down'}">${tail}</span>` : tail}</span>`;
   }
 
   // 三大法人買賣超：一直顯示；當日 15:10 到下個交易日 08:00 是新資料（彩色），其餘時間整塊轉灰
