@@ -76,6 +76,12 @@
   .badge.warn { background: var(--warn); color: var(--bg); }
   .ma-row { display: flex; justify-content: space-between; gap: 6px; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .ma-row .k { font-size: 13px; }
+  /* 我的持股：代號、價格、漲跌幅三欄 */
+  .holds { display: flex; flex-direction: column; gap: 2px; }
+  .hold-row { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .hold-row .k { color: var(--muted); }
+  .hold-row b { text-align: right; }
+  .hold-row span:last-child { min-width: 4.2em; text-align: right; font-weight: 600; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
   .badge.vol-high { background: #d9c44a; color: var(--bg); }
@@ -497,6 +503,55 @@
 
   // 大盤均線：每晚存的加權收盤（taiex_history.json）+ 即時指數當最新一天
   let taiexHistory = null;
+  let vixHistory = null;
+
+  // 台指 VIX：每晚累積的歷史（vix_history.json）+ Worker 抓到的最新收盤。
+  // 百分位看位置、5 日變化看方向；百分位 ≥90 且當天回落 → 「高檔回落」（今年兩次底部的訊號）
+  function vixHtml(vix) {
+    const byDate = new Map((vixHistory?.closes ?? []).map((c) => [c.date, c.close]));
+    for (const c of vix?.closes ?? []) byDate.set(c.date, c.close);
+    const series = [...byDate.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
+    if (series.length < 6) return '';
+    const [lastDate, last] = series.at(-1);
+    const prev = series.at(-2)[1];
+    const fiveAgo = series.at(-6)[1];
+    const window = series.slice(-250).map(([, v]) => v);
+    const pct = Math.round((window.filter((v) => v <= last).length / window.length) * 100);
+    const span = window.length >= 240 ? '近1年' : `近${Math.max(1, Math.round(window.length / 21))}月`;
+    const change = last - prev;
+    const trend = last - fiveAgo;
+    const dir = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : '');
+    const sign = (v) => (v > 0 ? '+' : '');
+    const badge = pct >= 90 && change < 0
+      ? '<span class="badge warn">高檔回落</span>'
+      : `<span class="badge">第${pct}百分位</span>`;
+    const [, mm, dd] = lastDate.split('-').map(Number);
+    return `
+      <div class="card">
+        <div class="head"><div class="name">台指VIX</div>${badge}</div>
+        <div class="price">${fmt(last, 2)}</div>
+        <div class="chg ${dir(change)}">${sign(change)}${fmt(change, 2)} (${sign(change)}${fmt((change / prev) * 100, 1)}%)</div>
+        <div class="cmp"><span class="txt">5日</span> <span class="${dir(trend)}">${trend > 0 ? '升溫' : '降溫'} ${sign(trend)}${fmt(trend, 2)}</span></div>
+        <div class="meta">${mm}/${dd} 收盤 · ${span}百分位</div>
+      </div>`;
+  }
+
+  // 我的持股：代號、價格、漲跌幅
+  function holdingsHtml(list, twii) {
+    if (!list?.length) return '';
+    const rows = list.map((h) => {
+      const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
+      const sign = h.change > 0 ? '+' : '';
+      return `<div class="hold-row"><span class="k">${h.code}</span><b>${fmt(h.price, h.price >= 1000 ? 0 : 2)}</b>`
+        + `<span class="${dir}">${sign}${fmt(h.changePct, 2)}%</span></div>`;
+    }).join('');
+    const state = STATE_LABELS[twii?.state] ? ` ${STATE_LABELS[twii.state]}` : '';
+    return `
+      <div class="card">
+        <div class="head"><div class="name">我的持股</div><span class="meta">${hhmm(list[0].time)}${state}</span></div>
+        <div class="holds">${rows}</div>
+      </div>`;
+  }
 
   function maHtml(twii) {
     const closes = taiexHistory?.closes;
@@ -572,7 +627,10 @@
       tsm: adrBadge(byId.tsm),
     };
     // 插在某張卡片後面的卡片：加權後接大盤均線（半寬），漲跌家數後接產業成交比重（全寬）
-    const after = { twii: maHtml(byId.twii), breadth: sectorsHtml(data.sectors) };
+    const after = {
+      twii: maHtml(byId.twii),
+      breadth: vixHtml(data.vix) + holdingsHtml(data.holdings, byId.twii) + sectorsHtml(data.sectors),
+    };
     const cardFor = (q) => {
       if (q.error) {
         return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`;
@@ -622,6 +680,7 @@
       const eventsReq = getJson('events.json');
       const historyReq = getJson('institutional.json');
       const taiexReq = getJson('taiex_history.json');
+      const vixReq = getJson('vix_history.json');
       const res = await fetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
@@ -632,6 +691,7 @@
       }
       instHistory = (await historyReq) ?? instHistory;
       taiexHistory = (await taiexReq) ?? taiexHistory;
+      vixHistory = (await vixReq) ?? vixHistory;
       render(data, pickMargin(data.margin, await marginReq), await profileReq);
       $status.className = '';
       $status.textContent = `更新 ${hhmm(data.updated)} (GMT+8)`;

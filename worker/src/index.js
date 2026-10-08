@@ -20,8 +20,11 @@ const YAHOO = {
 const YAHOO_TW = {
   twii: { name: '加權指數', symbol: '^TWII', digits: 2 },
   txf: { name: '台指期', symbol: 'WTX&', digits: 0 },
-  // Not a card: only used for the TSM ADR premium.
+  // Holdings card (tw2330 also feeds the TSM ADR premium).
   tw2330: { name: '台積電', symbol: '2330.TW', digits: 0 },
+  tw0056: { name: '元大高股息', symbol: '0056.TW', digits: 2 },
+  tw00878: { name: '國泰永續高股息', symbol: '00878.TW', digits: 2 },
+  tw00685L: { name: '群益臺灣加權正2', symbol: '00685L.TW', digits: 2 },
 };
 
 const BREADTH = { breadth: { name: '漲跌家數(上市)' } };
@@ -111,7 +114,40 @@ async function buildQuotes(origin, ctx) {
     fetchMargin(origin, ctx).catch(() => null),
   ]);
   const announcements = await fetchAnnouncements(origin, ctx, holidays).catch(() => null);
-  return { updated: Date.now(), quotes, holidays, institutional, sectors, margin, announcements };
+  const vix = await fetchVix(origin, ctx).catch(() => null);
+  const holdings = (await Promise.all(['tw2330', 'tw0056', 'tw00878', 'tw00685L'].map(async (id) => {
+    const q = await pick(tw, id).catch(() => null);
+    return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time };
+  }))).filter(Boolean);
+  return { updated: Date.now(), quotes, holidays, institutional, sectors, margin, announcements, vix, holdings };
+}
+
+// TAIFEX 臺指選擇權波動率指數: daily 13:45 closes from TAIFEX's monthly files (a few hundred
+// bytes each). Returns the latest ~10 closes; the nightly vix_history.json supplies the rest.
+async function fetchVix(origin, ctx) {
+  const key = new Request(origin + '/_vix');
+  const cached = await caches.default.match(key);
+  if (cached) return cached.json();
+
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);
+  const ym = (y, m) => `${y}${String(m).padStart(2, '0')}`;
+  const [y, m] = [tw.getUTCFullYear(), tw.getUTCMonth() + 1];
+  const months = [m === 1 ? ym(y - 1, 12) : ym(y, m - 1), ym(y, m)];
+  const closes = [];
+  for (const month of months) {
+    const res = await fetch(`https://www.taifex.com.tw/file/taifex/Dailydownload/vix/log2data/${month}new.txt`, { headers: { 'User-Agent': UA } });
+    if (!res.ok) continue;
+    for (const [, d, v] of (await res.text()).matchAll(/^(\d{8})\s+\d+\s+([\d.]+)/gm)) {
+      closes.push({ date: `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`, close: Number(v) });
+    }
+  }
+  if (!closes.length) throw new Error('TAIFEX VIX no data');
+  const out = { closes: closes.slice(-10) };
+  const last = out.closes.at(-1).date.replace(/-/g, '');
+  ctx.waitUntil(caches.default.put(key, new Response(JSON.stringify(out), {
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${dailyTtl(last, 14, 600)}` },
+  })));
+  return out;
 }
 
 // ---- Same-day announcements for the calendar ----
