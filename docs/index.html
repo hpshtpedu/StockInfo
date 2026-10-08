@@ -56,7 +56,7 @@
     overflow: hidden;
   }
   /* 行情卡片的框：內容出錯也只會被裁掉，不會把卡片撐大 */
-  .card:not(.cal) { max-height: 146px; }
+  .card:not(.cal) { max-height: 160px; }
   /* 產業成交比重：全寬，兩欄四行 */
   .card.wide { grid-column: 1 / -1; max-height: 170px; gap: 4px; }
   .card.wide .head .meta { flex-shrink: 1; min-width: 0; }
@@ -70,7 +70,7 @@
   .card:not(.cal) > :last-child { margin-top: auto; }
   /* 加權卡片（有 K 線）：漲跌幅要緊接在漲跌下面，不把最後一列推到底 */
   /* 加權的 30 分 K：整行寬，上下跟文字隔開；「30分K」放在時間那一行的最右邊 */
-  .krow { margin-top: 5px; }
+  .krow { margin: 8px 0 4px; }
   .card.has-k .foot { align-items: center; }
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price { font-size: clamp(17px, 5.2vw, 24px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -97,7 +97,7 @@
   .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 2px; min-width: 0; }
   .foot-left { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   .klabel { flex-shrink: 0; color: var(--muted); font-size: 9px; }
-  .kchart { width: 100%; height: 22px; display: block; }
+  .kchart { width: 100%; height: 30px; display: block; }
   .badge { min-width: 0; font-size: clamp(10px, 3.2vw, 12px); font-weight: 600; line-height: 1.5; padding: 0 3px; letter-spacing: -0.2px; border-radius: 999px; background: var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .chg { font-size: clamp(11.5px, 3.4vw, 13px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price small { font-size: 13px; font-weight: 600; }
@@ -149,8 +149,8 @@
     .hold-row { grid-template-columns: auto 1fr 4.5em 4.8em; }
     .hold-row .ext { display: block; }
     /* 加權的 30 分 K 在 PC 上放大，卡片高度上限跟著放寬 */
-    .kchart { height: 34px; }
-    .card:not(.cal) { max-height: 160px; }
+    .kchart { height: 40px; }
+    .card:not(.cal) { max-height: 176px; }
   }
 </style>
 </head>
