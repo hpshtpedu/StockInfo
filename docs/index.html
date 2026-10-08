@@ -92,9 +92,13 @@
   .lag { color: var(--warn); }
   .error { color: var(--warn); font-size: 12px; }
   .cal { grid-column: 1 / -1; font-size: 13px; gap: 3px; }
+  /* 懸掛縮排：圖示獨立一欄，換行文字對齊「今」；明日行用隱形圖示佔位，跟「今」對齊 */
+  .cal .today, .cal .next { display: flex; gap: 4px; }
+  .cal .ico { flex-shrink: 0; font-size: 13px; }
+  .cal .next .ico { visibility: hidden; }
   .cal .today { font-weight: 600; }
   .cal .today b { color: var(--warn); }
-  .cal .next { color: var(--muted); font-size: 12px; padding-left: 1.6em; }
+  .cal .next { color: var(--muted); font-size: 12px; }
   .cal .next b { color: inherit; font-weight: 400; }
   .cal .ev { color: var(--text); font-weight: 600; }
   .cal .next .ev { color: inherit; font-weight: 400; }
@@ -286,10 +290,10 @@
     while (next.getUTCDay() === 0 || next.getUTCDay() === 6) next = addDays(next, 1);
     const nextEvents = dayEvents(next);
     const nextLabel = key(next) === key(tomorrow) ? '明日' : `下週${WEEKDAYS[next.getUTCDay()]}`;
-    const nextHtml = nextEvents.any ? `<div class="next">${dayLine(nextLabel, next, nextEvents)}</div>` : '';
+    const nextHtml = nextEvents.any ? `<div class="next"><span class="ico">📅</span><span>${dayLine(nextLabel, next, nextEvents)}</span></div>` : '';
     return `
       <div class="card cal">
-        <div class="today">📅 ${dayLine('今日', today, dayEvents(today))}</div>
+        <div class="today"><span class="ico">📅</span><span>${dayLine('今日', today, dayEvents(today))}</span></div>
         ${nextHtml}
         ${institutionalHtml(inst, history)}
       </div>`;
