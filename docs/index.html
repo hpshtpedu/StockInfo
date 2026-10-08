@@ -338,16 +338,30 @@
     ? text.split(' ').map((s) => `<span class="seg">${s.replace(/^([^\d+-]+)/, '<span class="k">$1</span>')}</span>`).join('')
     : text;
 
+  // 淨未平倉從 prev 變成 cur 的白話描述
+  function netOiChange(prev, cur) {
+    const lots = (n) => `${fmt(Math.abs(n), 0)}口`;
+    if (prev < 0 && cur >= 0) return `淨多${lots(cur)}`;  // 翻多
+    if (prev >= 0 && cur < 0) return `淨空${lots(cur)}`;  // 翻空
+    const side = cur < 0 ? '淨空' : '淨多';
+    const grew = Math.abs(cur) > Math.abs(prev);
+    return `${side}${grew ? '增加' : '減少'}${lots(cur - prev)}`;
+  }
+
   function dailyHtml(q) {
     const dir = q.price > 0 ? 'up' : q.price < 0 ? 'down' : '';
     const sign = q.price > 0 ? '+' : '';
     const value = q.unit === 'ratio' ? `${sign}${fmt(q.price, q.digits)}%` : `${sign}${fmt(q.price, q.digits)}<small> 口</small>`;
-    // 跟前一個交易日比：淨 OI 用口數，多空比用百分點
+    // 跟前一個交易日比：多空比用百分點；淨 OI 用白話描述（淨空增加/減少、翻多…），對多方有利紅、不利綠
     let change = '';
     if (q.change != null) {
       const cdir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
-      const csign = q.change > 0 ? '+' : '';
-      change = ` · <span class="txt">前日</span> <span class="${cdir}">${csign}${fmt(q.change, q.unit === 'ratio' ? 2 : 0)}${q.unit === 'ratio' ? '%' : '口'}</span>`;
+      if (q.unit === 'ratio') {
+        const csign = q.change > 0 ? '+' : '';
+        change = ` · <span class="txt">前日</span> <span class="${cdir}">${csign}${fmt(q.change, 2)}%</span>`;
+      } else {
+        change = ` · <span class="${cdir}">${netOiChange(q.price - q.change, q.price)}</span>`;
+      }
     }
     return `
       <div class="card">
