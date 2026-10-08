@@ -1,6 +1,6 @@
 {
-  "name": "行情看板",
-  "short_name": "行情",
+  "name": "股市大局觀",
+  "short_name": "大局觀",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0f1115",
