@@ -164,24 +164,66 @@ def tw_stocks(today, until):
     return [dict(t) for t in {tuple(e.items()) for e in out}]
 
 
+# English names from the holidays package -> everyday Traditional Chinese names.
+HOLIDAY_ZH = {
+    # US (NYSE)
+    "New Year's Day": '元旦', 'Martin Luther King Jr. Day': '金恩紀念日', "Washington's Birthday": '總統日',
+    'Good Friday': '耶穌受難日', 'Memorial Day': '陣亡將士紀念日', 'Juneteenth National Independence Day': '六月節',
+    'Independence Day': '獨立紀念日', 'Labor Day': '勞動節', 'Thanksgiving Day': '感恩節', 'Christmas Day': '聖誕節',
+    # Japan
+    'Coming of Age Day': '成人日', 'Foundation Day': '建國紀念日', "Emperor's Birthday": '天皇誕辰',
+    'Vernal Equinox Day': '春分', 'Showa Day': '昭和日', 'Constitution Day': '憲法紀念日', 'Greenery Day': '綠之日',
+    "Children's Day": '兒童節', 'Marine Day': '海之日', 'Mountain Day': '山之日', 'Respect for the Aged Day': '敬老日',
+    'Autumnal Equinox Day': '秋分', 'Sports Day': '體育日', 'Culture Day': '文化日',
+    'Labor Thanksgiving Day': '勤勞感謝日', 'Substitute Holiday': '補假', 'National Holiday': '國民休日',
+    # Korea
+    'Korean New Year': '春節', 'The day preceding Korean New Year': '春節', 'The second day of Korean New Year': '春節',
+    'Independence Movement Day': '三一節', "Buddha's Birthday": '佛誕日', 'Liberation Day': '光復節',
+    'Chuseok': '中秋', 'The day preceding Chuseok': '中秋', 'The second day of Chuseok': '中秋',
+    'National Foundation Day': '開天節', 'Hangul Day': '韓文日',
+}
+
+
+# Same English name, different holiday in Korea.
+HOLIDAY_ZH_KR = {'Constitution Day': '制憲節'}
+
+
+def holiday_zh(name, overrides=None):
+    name = name.split(';')[0].strip()  # several holidays on one day: take the first
+    for prefix in ('Alternative holiday for ', 'Substitute holiday for '):
+        if name.startswith(prefix):
+            return holiday_zh(name[len(prefix):], overrides) + '補假'
+    if name.endswith(' (observed)'):
+        return holiday_zh(name[:-len(' (observed)')], overrides) + '補假'
+    if 'Election Day' in name:
+        return '選舉日'
+    return (overrides or {}).get(name) or HOLIDAY_ZH.get(name, name)
+
+
 def market_holidays(today, until):
     """Weekday closures of the US (NYSE), Japanese (TSE) and Korean (KRX) markets. No network."""
     import holidays  # pip install holidays
 
     years = range(today.year, until.year + 1)
+    jp = dict(holidays.country_holidays('JP', years=years, language='en_US'))
+    kr = dict(holidays.country_holidays('KR', years=years, language='en_US'))
+    for y in years:
+        # TSE closes Dec 31 - Jan 3; KRX closes Labor Day and the last day of the year.
+        jp.setdefault(dt.date(y, 12, 31), '年底')
+        jp.setdefault(dt.date(y, 1, 2), '新年')
+        jp.setdefault(dt.date(y, 1, 3), '新年')
+        kr.setdefault(dt.date(y, 5, 1), 'Labor Day')
+        kr.setdefault(dt.date(y, 12, 31), '年底')
     closed = {
-        '美股休市': set(holidays.financial_holidays('NYSE', years=years)),
-        # TSE: national holidays plus the Dec 31 - Jan 3 year-end break.
-        '日股休市': set(holidays.country_holidays('JP', years=years))
-        | {dt.date(y, 12, 31) for y in years} | {dt.date(y, 1, d) for y in years for d in (2, 3)},
-        # KRX: public holidays plus Labor Day and the last day of the year.
-        '韓股休市': set(holidays.country_holidays('KR', years=years))
-        | {dt.date(y, 5, 1) for y in years} | {dt.date(y, 12, 31) for y in years},
+        '美股': dict(holidays.financial_holidays('NYSE', years=years, language='en_US')),
+        '日股': jp,
+        '韓股': kr,
     }
     out = []
-    for label, days in closed.items():
-        for day in sorted(days):
+    for market, days in closed.items():
+        for day, name in sorted(days.items()):
             if day.weekday() < 5 and today <= day <= until:
+                label = f'{market}休市({holiday_zh(name, HOLIDAY_ZH_KR if market == "韓股" else None)})'
                 out.append({'src': 'market_holidays', 'date': day.isoformat(), 'time': '', 'label': label})
     return out
 
