@@ -144,12 +144,8 @@
 
   // 原定到期日 t 的台指結算項目（尚未順延）
   function taifexExpiries(t) {
-    const [y, m, d, dow] = [t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(), t.getUTCDay()];
-    const out = [];
-    if (d === nthWeekday(y, m, 3, 3)) out.push('台指期貨＋選擇權月結算');
-    else if (dow === 3) out.push('台指選擇權週結算');
-    if (dow === 5) out.push('台指選擇權週結算');
-    return out;
+    const [y, m, d] = [t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate()];
+    return d === nthWeekday(y, m, 3, 3) ? ['台指期貨＋選擇權月結算'] : [];
   }
 
   // 台灣與美國的結算
