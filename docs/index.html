@@ -673,7 +673,8 @@
       const stale = q.stale ? ' · <span class="lag">舊資料</span>' : '';
       const chart = q.candles ? miniCandles(q.candles, q.prev) : '';
       // 沒有報價時間（例如 Yahoo 換到下一個交易時段）就不顯示時間，只留狀態
-      const when = q.time ? (sameDay ? hhmm(q.time) : mdhm(q.time)) : '';
+      // 收盤、休市等狀態只顯示時間，不加日期
+      const when = q.time ? (sameDay || STATE_LABELS[q.state] ? hhmm(q.time) : mdhm(q.time)) : '';
       const meta = `<div class="meta">${when}${when ? lag : lag.replace(/^ · /, '')}${stale}</div>`;
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
       // 有 K 線的卡片（加權）：K 線獨立一整行，最下面一列左邊時間、右邊「30分K」
