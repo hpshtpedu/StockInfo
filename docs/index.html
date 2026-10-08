@@ -74,8 +74,8 @@
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
-  .ma-row { display: flex; justify-content: space-between; gap: 6px; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .ma-row .k { font-size: 13px; }
+  .ma-row { display: flex; justify-content: space-between; gap: 6px; font-size: clamp(11.5px, 3.4vw, 13px); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ma-row .k { font-size: inherit; }
   /* 我的持股：代號靠左、價格靠右（紅綠表示漲跌）；限制寬度，PC 上才不會拉得太開 */
   .holds { display: flex; flex-direction: column; gap: 2px; width: 100%; max-width: 11em; }
   .hold-row { display: grid; grid-template-columns: auto 1fr; gap: 8px; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -563,7 +563,7 @@
     const row = (name, ma) => {
       const gap = ((p - ma) / ma) * 100;
       return `<div class="ma-row"><span><span class="k">${name}</span> ${fmt(ma, 0)}</span>`
-        + `<b class="${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">${fmt(Math.abs(gap), 1)}%</b></div>`;
+        + `<b class="${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</b></div>`;
     };
     const closed = twii.state && twii.state !== 'open';
     return `
