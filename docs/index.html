@@ -101,7 +101,7 @@
   .lag { color: var(--warn); }
   .txt { color: var(--text); }
   .cmp { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
-  .cmp .txt { font-weight: 400; }
+  .cmp .txt, .chg .txt { font-weight: 400; }
   .error { color: var(--warn); font-size: 12px; }
   .cal { grid-column: 1 / -1; font-size: 13px; gap: 3px; }
   /* 懸掛縮排：圖示獨立一欄，換行文字對齊「今」；明日行用隱形圖示佔位，跟「今」對齊 */
@@ -391,7 +391,7 @@
     if (m.prev != null) {
       const diff = m.ratio - m.prev;
       dir = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
-      chg = `${diff > 0 ? '+' : ''}${fmt(diff, 2)}%`;
+      chg = `<span class="txt">較前日</span> ${diff > 0 ? '+' : ''}${fmt(diff, 2)}%`;
     }
     return `
       <div class="card">
