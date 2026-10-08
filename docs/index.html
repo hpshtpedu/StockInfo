@@ -57,6 +57,14 @@
   }
   /* 行情卡片的框：內容出錯也只會被裁掉，不會把卡片撐大 */
   .card:not(.cal) { max-height: 136px; }
+  /* 產業成交比重：全寬，兩欄四行 */
+  .card.wide { grid-column: 1 / -1; max-height: 170px; gap: 4px; }
+  .card.wide .head .meta { flex-shrink: 1; min-width: 0; }
+  .secs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 14px; }
+  .sec-row { display: flex; justify-content: space-between; gap: 6px; font-size: 13px; white-space: nowrap; }
+  .sec-row b { font-variant-numeric: tabular-nums; }
+  .sec-bar { height: 3px; margin-top: 2px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .sec-bar i { display: block; height: 100%; background: var(--warn); }
   /* 最後一行（時間）貼齊卡片底部，同一排的時間才會對齊 */
   .card:not(.cal) > :last-child { margin-top: auto; }
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -362,6 +370,31 @@
     return `<svg class="kchart" viewBox="0 0 ${candles.length * w} 100" preserveAspectRatio="none" aria-hidden="true">${base}${parts.join('')}</svg>`;
   }
 
+  // 證交所產業名稱 -> 簡稱（沒列到的照原名）
+  const SECTOR_SHORT_NAMES = {
+    '電腦及週邊設備': '電腦週邊', '電子零組件': '零組件', '通信網路': '網通', '電子通路': '通路',
+    '資訊服務': '資服', '金融保險': '金融', '生技醫療': '生技', '電機機械': '電機', '電器電纜': '電纜',
+    '紡織纖維': '紡織', '玻璃陶瓷': '玻陶', '建材營造': '營建', '觀光餐旅': '觀光', '貿易百貨': '百貨',
+    '油電燃氣': '油電', '綠能環保': '綠能', '數位雲端': '雲端', '居家生活': '居家',
+  };
+
+  // 產業成交比重：全寬卡片，兩欄四行，長條長度相對於第一名
+  function sectorsHtml(s) {
+    if (!s?.top?.length) return '';
+    const max = s.top[0].share;
+    const cells = s.top.map((r) => `
+      <div class="sec">
+        <div class="sec-row"><span>${SECTOR_SHORT_NAMES[r.name] ?? r.name}</span><b>${fmt(r.share, 1)}%</b></div>
+        <div class="sec-bar"><i style="width:${(r.share / max) * 100}%"></i></div>
+      </div>`).join('');
+    return `
+      <div class="card wide">
+        <div class="head"><div class="name">產業成交比重</div>
+          <div class="meta">電子 ${fmt(s.electronics, 1)}% · ${hhmm(s.time)}${s.stale ? ' · <span class="lag">舊資料</span>' : ''}</div></div>
+        <div class="secs">${cells}</div>
+      </div>`;
+  }
+
   function render(data, margin, profile) {
     if (data.holidays?.length) {
       holidays = new Map(data.holidays.map((h) => (typeof h === 'string' ? [h, ''] : [h.date, h.name])));
@@ -373,7 +406,8 @@
     };
     $list.innerHTML = calendarHtml(data.institutional) + data.quotes.map((q) => {
       if (q.error) {
-        return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`;
+        return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`
+          + (q.id === 'otc' ? sectorsHtml(data.sectors) : '');
       }
       if (q.kind === 'daily') return dailyHtml(q);
       if (q.kind === 'breadth') return breadthHtml(q, byId.twii);
@@ -398,12 +432,14 @@
             ? `${sign}${fmt(q.change * 100, 1)}bp`
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
            ${meta}`;
+      // 產業成交比重接在櫃買後面，獨佔一整排
+      const after = q.id === 'otc' ? sectorsHtml(data.sectors) : '';
       return `
         <div class="card">
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
           <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}</div>
           ${body}
-        </div>`;
+        </div>${after}`;
     }).join('') + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
   }
 

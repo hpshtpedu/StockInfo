@@ -95,11 +95,63 @@ async function buildQuotes(origin, ctx) {
     }),
   );
 
-  const [holidays, institutional] = await Promise.all([
+  const [holidays, institutional, sectors] = await Promise.all([
     fetchHolidays(origin, ctx).catch(() => []),
     fetchInstitutional(origin, ctx).catch(() => null),
+    fetchSectors(origin, ctx).catch(() => null),
   ]);
-  return { updated: Date.now(), quotes, holidays, institutional };
+  return { updated: Date.now(), quotes, holidays, institutional, sectors };
+}
+
+// Electronics = TWSE's eight electronic sub-industries.
+const ELECTRONICS = new Set(['IX0028', 'IX0029', 'IX0030', 'IX0031', 'IX0032', 'IX0033', 'IX0034', 'IX0035']);
+
+// Intraday turnover share by industry, from the TWSE industry indices embedded in Fugle's public
+// heat map page (robots.txt allows all). Cached 30 min in market hours, 6 h otherwise.
+async function fetchSectors(origin, ctx) {
+  const cache = caches.default;
+  const key = new Request(origin + '/_sectors');
+  const lastKey = new Request(origin + '/_sectors_last');
+  const cached = await cache.match(key);
+  if (cached) return cached.json();
+
+  try {
+    const res = await fetch('https://heatmap.fugle.tw/', { headers: { 'User-Agent': UA } });
+    if (!res.ok) throw new Error(`Fugle heatmap HTTP ${res.status}`);
+    const html = await res.text();
+    const head = html.match(/"heatmap":\{"date":"(\d{4})-(\d{2})-(\d{2})","time":"(\d{2})(\d{2})(\d{2})"/);
+    // Pick out only the ~33 index rows instead of parsing the whole page (Worker CPU limit).
+    const rows = [...html.matchAll(/"type":"INDEX","symbol":"(IX\d+)","name":"([^"]+)"[^{}]*?"tradeValue":(\d+)/g)]
+      .map(([, symbol, name, value]) => ({ symbol, name: name.replace(/類指數$|指數$/, ''), value: Number(value) }));
+    const total = rows.find((r) => r.symbol === 'IX0001')?.value;
+    if (!head || !total) throw new Error('Fugle heatmap: no data');
+
+    const industries = rows.filter((r) => r.symbol !== 'IX0001');
+    const electronics = industries.filter((r) => ELECTRONICS.has(r.symbol)).reduce((s, r) => s + r.value, 0);
+    const [, y, mo, d, h, mi, s] = head.map(Number);
+    const out = {
+      time: Date.UTC(y, mo - 1, d, h - 8, mi, s),
+      electronics: (electronics / total) * 100,
+      top: industries
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 8)
+        .map((r) => ({ name: r.name, share: (r.value / total) * 100 })),
+    };
+
+    const tw = new Date(Date.now() + 8 * 3600 * 1000);
+    const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+    const trading = tw.getUTCDay() >= 1 && tw.getUTCDay() <= 5 && mins >= 9 * 60 && mins < 14 * 60;
+    const store = (k, ttl) => cache.put(k, new Response(JSON.stringify(out), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
+    }));
+    ctx.waitUntil(store(key, trading ? 1800 : 6 * 3600));
+    ctx.waitUntil(store(lastKey, 3 * 86400));
+    return out;
+  } catch (err) {
+    const last = await cache.match(lastKey);
+    if (!last) throw err;
+    return { ...(await last.json()), stale: true };
+  }
 }
 
 // TWSE 三大法人買賣金額 (BFI82U), latest trading day, in NT$ 億. Published ~15:00 Taipei.
