@@ -76,12 +76,10 @@
   .badge.warn { background: var(--warn); color: var(--bg); }
   .ma-row { display: flex; justify-content: space-between; gap: 6px; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .ma-row .k { font-size: 13px; }
-  /* 我的持股：代號、價格、漲跌幅三欄 */
+  /* 我的持股：代號固定寬度（像 Tab 對齊），價格用紅綠表示漲跌 */
   .holds { display: flex; flex-direction: column; gap: 2px; }
-  .hold-row { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .hold-row .k { color: var(--muted); }
-  .hold-row b { text-align: right; }
-  .hold-row span:last-child { min-width: 4.2em; text-align: right; font-weight: 600; }
+  .hold-row { display: grid; grid-template-columns: 4.2em 1fr; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .hold-row .k { color: var(--text); }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
   .badge.vol-high { background: #d9c44a; color: var(--bg); }
@@ -540,9 +538,7 @@
     if (!list?.length) return '';
     const rows = list.map((h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
-      const sign = h.change > 0 ? '+' : '';
-      return `<div class="hold-row"><span class="k">${h.code}</span><b>${fmt(h.price, h.price >= 1000 ? 0 : 2)}</b>`
-        + `<span class="${dir}">${sign}${fmt(h.changePct, 2)}%</span></div>`;
+      return `<div class="hold-row"><span class="k">${h.code}</span><b class="${dir}">${fmt(h.price, h.price >= 1000 ? 0 : 2)}</b></div>`;
     }).join('');
     const state = STATE_LABELS[twii?.state] ? ` ${STATE_LABELS[twii.state]}` : '';
     return `
