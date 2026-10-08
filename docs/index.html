@@ -650,10 +650,11 @@
       txf: basisBadge(byId.txf, byId.twii),
       tsm: adrBadge(byId.tsm),
     };
-    // 插在某張卡片後面的卡片：加權後接大盤均線；USD/TWD 後接我的持股和產業成交比重（全寬）；美債後接台指VIX
+    // 插在某張卡片後面的卡片：加權後接大盤均線；漲跌家數後接我的持股；USD/TWD 後接產業成交比重（全寬）；美債後接台指VIX
     const after = {
       twii: maHtml(byId.twii),
-      usdtwd: holdingsHtml(data.holdings, byId.twii) + sectorsHtml(data.sectors),
+      breadth: holdingsHtml(data.holdings, byId.twii),
+      usdtwd: sectorsHtml(data.sectors),
       us10y: vixHtml(data.vix),
     };
     const cardFor = (q) => {
