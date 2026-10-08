@@ -100,8 +100,11 @@
   /* 標題橫跨前三欄置中（中心正好在「投信」上方），連買連賣對齊「合計」 */
   .cal .inst-title > span:first-child { grid-column: 1 / span 3; white-space: nowrap; }
   .cal .inst-title > span:nth-child(2) { font-weight: 600; white-space: nowrap; }
-  .cal .inst { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; }
-  .cal .inst .k { color: var(--muted); font-size: 11px; }
+  /* 表格：格線用 1px 間隙透出外框色，表頭一列淺底色 */
+  .cal .inst { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-top: 4px; text-align: center;
+    background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .cal .inst > div { background: var(--card); padding: 3px 2px; }
+  .cal .inst .k { color: var(--muted); font-size: 11px; background: color-mix(in srgb, var(--line) 55%, var(--card)); }
   .cal .inst .v { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
   /* 非當日（盤中、隔天早上前）的舊資料：整塊轉灰 */
   .cal .inst.stale .v { color: var(--muted); font-weight: 600; }
@@ -250,14 +253,16 @@
     const nowTw = Date.now() + 8 * 3600000;
     const fresh = nowTw >= freshFrom && nowTw < freshUntil;
 
-    const cell = (label, v) => {
+    const cols = [['外資', inst.foreign], ['投信', inst.trust], ['自營商', inst.dealer], ['合計', inst.total]];
+    const header = cols.map(([label]) => `<div class="k">${label}</div>`).join('');
+    const values = cols.map(([, v]) => {
       const dir = v > 0 ? 'up' : v < 0 ? 'down' : '';
-      return `<div><div class="k">${label}</div><div class="v ${dir}">${v > 0 ? '+' : ''}${fmt(v, 1)}</div></div>`;
-    };
+      return `<div class="v ${dir}">${v > 0 ? '+' : ''}${fmt(v, 1)}</div>`;
+    }).join('');
     return `
       <div class="inst-title"><span>三大法人買賣超 ${m}/${d}（億元）</span>${foreignStreak(inst, history, fresh)}</div>
       <div class="inst${fresh ? '' : ' stale'}">
-        ${cell('外資', inst.foreign)}${cell('投信', inst.trust)}${cell('自營商', inst.dealer)}${cell('合計', inst.total)}
+        ${header}${values}
       </div>`;
   }
 
