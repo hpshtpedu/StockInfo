@@ -522,8 +522,10 @@ async function fetchYahooTw() {
       prev,
       change: prev != null ? price - prev : null,
       changePct: prev ? ((price - prev) / prev) * 100 : null,
-      // Yahoo TW stamps the end of the current minute bar, which can be ahead of now.
-      time: Math.min(meta.regularMarketTime * 1000, Date.now()),
+      // Yahoo TW stamps the end of the current minute bar (up to a minute ahead), but after a
+      // session it can jump to the next session's end (e.g. 10/12 05:00 on the 10/9 holiday):
+      // anything more than 2 minutes ahead is not a trade time.
+      time: meta.regularMarketTime * 1000 <= Date.now() + 120000 ? Math.min(meta.regularMarketTime * 1000, Date.now()) : 0,
       state: marketState(meta),
     };
     // Yahoo's trading period for WTX& covers only the day session, so judge TXF by its last
@@ -546,7 +548,7 @@ async function fetchYahooTw() {
 // settlement price as the new reference, so the day's change collapses to a few points.
 // Remember the last quote that had a trade time and serve it until the new session trades.
 async function keepSessionQuote(origin, ctx, q) {
-  const key = new Request(`${origin}/_session/${q.id}`);
+  const key = new Request(`${origin}/_session2/${q.id}`);
   if (q.time) {
     ctx.waitUntil(caches.default.put(key, new Response(JSON.stringify(q), {
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=345600' },  // 4 days: covers long weekends
