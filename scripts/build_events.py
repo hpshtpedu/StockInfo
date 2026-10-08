@@ -6,6 +6,8 @@ All sources are fetched automatically (run nightly by GitHub Actions):
   ISM PMI: computed (1st / 3rd US business day; 2nd / 4th in January)
   TSMC earnings call, 2330/0056/00878 ex-dividend and pay dates: Yahoo TW company calendar
     pages (tw.stock.yahoo.com/quote/<symbol>.TW/calendar; not disallowed by robots.txt)
+  US / Japan / Korea market holidays: computed with the `holidays` package (NYSE calendar;
+    JP and KR public holidays plus exchange year-end and Labor Day closures)
 If a source fails, its events from the previous run are kept.
 """
 import datetime as dt
@@ -162,12 +164,35 @@ def tw_stocks(today, until):
     return [dict(t) for t in {tuple(e.items()) for e in out}]
 
 
+def market_holidays(today, until):
+    """Weekday closures of the US (NYSE), Japanese (TSE) and Korean (KRX) markets. No network."""
+    import holidays  # pip install holidays
+
+    years = range(today.year, until.year + 1)
+    closed = {
+        '美股休市': set(holidays.financial_holidays('NYSE', years=years)),
+        # TSE: national holidays plus the Dec 31 - Jan 3 year-end break.
+        '日股休市': set(holidays.country_holidays('JP', years=years))
+        | {dt.date(y, 12, 31) for y in years} | {dt.date(y, 1, d) for y in years for d in (2, 3)},
+        # KRX: public holidays plus Labor Day and the last day of the year.
+        '韓股休市': set(holidays.country_holidays('KR', years=years))
+        | {dt.date(y, 5, 1) for y in years} | {dt.date(y, 12, 31) for y in years},
+    }
+    out = []
+    for label, days in closed.items():
+        for day in sorted(days):
+            if day.weekday() < 5 and today <= day <= until:
+                out.append({'src': 'market_holidays', 'date': day.isoformat(), 'time': '', 'label': label})
+    return out
+
+
 def main():
     today = dt.datetime.now(TW).date() - dt.timedelta(days=1)
     until = today + dt.timedelta(days=HORIZON_DAYS)
     old = json.loads(OUT.read_text(encoding='utf-8')) if OUT.exists() else []
     events, failed = [], []
-    sources = (('fred', fred), ('fomc', fomc), ('ism', ism), ('tw_stocks', tw_stocks))
+    sources = (('fred', fred), ('fomc', fomc), ('ism', ism), ('tw_stocks', tw_stocks),
+               ('market_holidays', market_holidays))
     for name, fn in sources:
         try:
             got = fn(today, until)

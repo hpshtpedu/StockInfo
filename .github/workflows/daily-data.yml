@@ -28,6 +28,8 @@ jobs:
         continue-on-error: true
       - run: python scripts/volume_profile.py
         continue-on-error: true
+      - run: pip install holidays
+        continue-on-error: true
       - run: python scripts/build_events.py
         continue-on-error: true
         env:
