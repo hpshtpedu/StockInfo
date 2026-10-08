@@ -70,8 +70,10 @@
   .card:not(.cal) > :last-child { margin-top: auto; }
   /* 加權卡片（有 K 線）：漲跌幅要緊接在漲跌下面，不把最後一列推到底 */
   .card.has-k > :last-child { margin-top: 0; }
-  /* 手機：K 線那一列靠上對齊，(-0.99%) 才會緊接在漲跌下面 */
-  .card.has-k .foot { align-items: flex-start; }
+  /* 手機：K 線那一列撐滿剩下的高度；(-0.99%) 貼在上面緊接漲跌，時間和 K 線貼齊卡片底部 */
+  .card.has-k .foot { flex: 1; align-items: stretch; }
+  .card.has-k .foot-left { justify-content: space-between; }
+  .card.has-k .kbox { align-self: flex-end; }
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price { font-size: clamp(17px, 5.2vw, 24px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* 名稱優先完整顯示，空間不夠時截斷 badge */
@@ -157,8 +159,8 @@
     .card:not(.cal) { max-height: 160px; }
     .pct-wide { display: inline; }
     .pct-narrow { display: none; }
-    /* PC：左邊只剩時間，靠底對齊 */
-    .card.has-k .foot { align-items: flex-end; }
+    /* PC：左邊只剩時間，貼齊底部 */
+    .card.has-k .foot-left { justify-content: flex-end; }
   }
 </style>
 </head>
