@@ -512,10 +512,11 @@
       twii: turnoverBadge(byId.twii, profile),
       txf: basisBadge(byId.txf, byId.twii),
     };
-    $list.innerHTML = calendarHtml(data.institutional, instHistory) + data.quotes.map((q) => {
+    // 插在某張卡片後面的卡片：加權後接大盤均線（半寬），漲跌家數後接產業成交比重（全寬）
+    const after = { twii: maHtml(byId.twii), breadth: sectorsHtml(data.sectors) };
+    const cardFor = (q) => {
       if (q.error) {
-        return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`
-          + (q.id === 'txf' ? maHtml(byId.twii) + sectorsHtml(data.sectors) : '');
+        return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`;
       }
       if (q.kind === 'daily') return dailyHtml(q);
       if (q.kind === 'breadth') return breadthHtml(q, byId.twii);
@@ -540,15 +541,16 @@
             ? `${sign}${fmt(q.change * 100, 1)}bp`
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
            ${meta}`;
-      // 台指期後面接大盤均線（半寬）和產業成交比重（全寬）
-      const after = q.id === 'txf' ? maHtml(byId.twii) + sectorsHtml(data.sectors) : '';
       return `
         <div class="card">
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
           <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}</div>
           ${body}
-        </div>${after}`;
-    }).join('') + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
+        </div>`;
+    };
+    $list.innerHTML = calendarHtml(data.institutional, instHistory)
+      + data.quotes.map((q) => cardFor(q) + (after[q.id] ?? '')).join('')
+      + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
   }
 
   async function load() {
