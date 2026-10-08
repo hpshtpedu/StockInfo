@@ -436,7 +436,10 @@ async function fetchChips(origin, ctx) {
     const last = await cache.match(lastKey);
     if (!last) throw err;
     const out = await last.json();
-    for (const q of Object.values(out)) q.stale = true;
+    for (const q of Object.values(out)) {
+      q.stale = true;
+      q.staleReason = String(err?.message || err);
+    }
     return out;
   }
 }
@@ -494,10 +497,16 @@ async function fetchChipsOpenApi() {
 // Before the ~15:00 publication the website already serves a partial file for the day (open
 // interest all zero, no day-session OI), so only accept it if it parses into complete numbers.
 async function computeChips() {
+  let webError;
   try {
     return parseChips(await fetchChipsWeb());
-  } catch {
+  } catch (err) {
+    webError = err;
+  }
+  try {
     return parseChips(await fetchChipsOpenApi());
+  } catch (err) {
+    throw new Error(`web: ${webError?.message}; openapi: ${err.message}`);
   }
 }
 
