@@ -20,6 +20,8 @@ const YAHOO = {
 const YAHOO_TW = {
   twii: { name: '加權指數', symbol: '^TWII', digits: 2 },
   txf: { name: '台指期', symbol: 'WTX&', digits: 0 },
+  // Not a card: only used for the TSM ADR premium.
+  tw2330: { name: '台積電', symbol: '2330.TW', digits: 0 },
 };
 
 const BREADTH = { breadth: { name: '漲跌家數(上市)' } };
@@ -93,6 +95,14 @@ async function buildQuotes(origin, ctx) {
       }
     }),
   );
+
+  // TSM ADR premium: ADR price in TWD per share (1 ADR = 5 shares) vs 2330 on the TWSE.
+  const tsm = quotes.find((q) => q.id === 'tsm');
+  const usdtwd = quotes.find((q) => q.id === 'usdtwd');
+  const tw2330 = await pick(tw, 'tw2330').catch(() => null);
+  if (tsm?.price && usdtwd?.price && tw2330?.price) {
+    tsm.adrPremium = ((tsm.price * usdtwd.price) / 5 / tw2330.price - 1) * 100;
+  }
 
   const [holidays, institutional, sectors, margin] = await Promise.all([
     fetchHolidays(origin, ctx).catch(() => []),

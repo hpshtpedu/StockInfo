@@ -393,6 +393,13 @@
   }
 
   // 價差 = 台指期 - 加權指數
+  // TSM ADR 溢價率：ADR 換算成台幣每股（1 ADR = 5 股）÷ 2330 − 1；溢價紅、折價綠
+  function adrBadge(tsm) {
+    const p = tsm?.adrPremium;
+    if (p == null) return '';
+    return `<span class="badge ${p > 0 ? 'up' : p < 0 ? 'down' : ''}">${p >= 0 ? '溢價' : '折價'}${p > 0 ? '+' : ''}${fmt(p, 1)}%</span>`;
+  }
+
   function basisBadge(txf, twii) {
     if (txf?.price == null || twii?.price == null) return '';
     const b = Math.round(txf.price - twii.price);
@@ -546,6 +553,7 @@
     const badges = {
       twii: turnoverBadge(byId.twii, profile),
       txf: basisBadge(byId.txf, byId.twii),
+      tsm: adrBadge(byId.tsm),
     };
     // 插在某張卡片後面的卡片：加權後接大盤均線（半寬），漲跌家數後接產業成交比重（全寬）
     const after = { twii: maHtml(byId.twii), breadth: sectorsHtml(data.sectors) };
