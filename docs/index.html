@@ -331,12 +331,19 @@
     const dir = q.price > 0 ? 'up' : q.price < 0 ? 'down' : '';
     const sign = q.price > 0 ? '+' : '';
     const value = q.unit === 'ratio' ? `${sign}${fmt(q.price, q.digits)}%` : `${sign}${fmt(q.price, q.digits)}<small> 口</small>`;
+    // 跟前一個交易日比：淨 OI 用口數，多空比用百分點
+    let change = '';
+    if (q.change != null) {
+      const cdir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
+      const csign = q.change > 0 ? '+' : '';
+      change = ` · 前日 <span class="${cdir}">${csign}${fmt(q.change, q.unit === 'ratio' ? 2 : 0)}</span>`;
+    }
     return `
       <div class="card">
         <div class="name">${q.name}</div>
         <div class="price ${dir}">${value}</div>
         <div class="chg">${segments(q.detail)}</div>
-        <div class="meta">${q.dataDate} 盤後${q.stale ? ' · <span class="lag">舊資料</span>' : ''}</div>
+        <div class="meta">${q.dataDate} 盤後${change}${q.stale ? ' · <span class="lag">舊資料</span>' : ''}</div>
       </div>`;
   }
 

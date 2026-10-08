@@ -441,6 +441,12 @@ async function fetchChips(origin, ctx) {
 
   try {
     const { out, date } = await computeChips();
+    // Day-over-day change, against the previous trading day's numbers.
+    const prev = await previousChips(origin, ctx, date).catch(() => null);
+    if (prev) {
+      out.foreignOi.change = out.foreignOi.price - prev.foreignOi;
+      out.retailRatio.change = out.retailRatio.price - prev.ratio;
+    }
     const store = (k, ttl) => cache.put(k, new Response(JSON.stringify(out), {
       headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
     }));
@@ -493,10 +499,32 @@ async function taifexWebCsv(path, form) {
   return text;
 }
 
-// Today's data from the website.
-async function fetchChipsWeb() {
-  const tw = new Date(Date.now() + 8 * 3600 * 1000);
-  const day = tw.toISOString().slice(0, 10).replace(/-/g, '/');
+// The trading day before `date` (YYYYMMDD): its foreign net OI and retail ratio, from the website
+// CSVs for that date. Cached per date, so retries before the 15:00 publication don't refetch it.
+async function previousChips(origin, ctx, date) {
+  const holidays = new Set((await fetchHolidays(origin, ctx).catch(() => [])).map((h) => h.date ?? h));
+  let t = Date.UTC(+date.slice(0, 4), +date.slice(4, 6) - 1, +date.slice(6, 8));
+  let iso;
+  do {
+    t -= 86400000;
+    iso = new Date(t).toISOString().slice(0, 10);
+  } while ([0, 6].includes(new Date(t).getUTCDay()) || holidays.has(iso));
+
+  const cache = caches.default;
+  const key = new Request(`${origin}/_chips_day/${iso}`);
+  const cached = await cache.match(key);
+  if (cached) return cached.json();
+
+  const { out } = parseChips(await fetchChipsWeb(iso.replace(/-/g, '/')));
+  const prev = { foreignOi: out.foreignOi.price, ratio: out.retailRatio.price };
+  ctx.waitUntil(cache.put(key, new Response(JSON.stringify(prev), {
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=259200' },
+  })));
+  return prev;
+}
+
+// One day's data from the website (default: today), day as "YYYY/MM/DD".
+async function fetchChipsWeb(day = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, '/')) {
   const [inst, daily] = await Promise.all([
     taifexWebCsv('futContractsDateDown', { queryStartDate: day, queryEndDate: day, commodityId: '' }),
     taifexWebCsv('futDataDown', { down_type: '1', commodity_id: 'MTX', commodity_id2: '', queryStartDate: day, queryEndDate: day }),
