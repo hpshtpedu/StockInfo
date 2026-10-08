@@ -347,7 +347,7 @@
     if (q.change != null) {
       const cdir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
       const csign = q.change > 0 ? '+' : '';
-      change = ` · <span class="txt">前日</span> <span class="${cdir}">${csign}${fmt(q.change, q.unit === 'ratio' ? 2 : 0)}${q.unit === 'ratio' ? '%' : ''}</span>`;
+      change = ` · <span class="txt">前日</span> <span class="${cdir}">${csign}${fmt(q.change, q.unit === 'ratio' ? 2 : 0)}${q.unit === 'ratio' ? '%' : '口'}</span>`;
     }
     return `
       <div class="card">
@@ -375,7 +375,7 @@
     if (m.prev != null) {
       const diff = m.ratio - m.prev;
       dir = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
-      chg = `${diff > 0 ? '+' : ''}${fmt(diff, 2)}`;
+      chg = `${diff > 0 ? '+' : ''}${fmt(diff, 2)}%`;
     }
     return `
       <div class="card">
