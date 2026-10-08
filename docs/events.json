@@ -6,12 +6,6 @@
   "label": "台積電配息7元"
  },
  {
-  "src": "fomc",
-  "date": "2026-10-08",
-  "time": "02:00",
-  "label": "FOMC會議紀要"
- },
- {
   "src": "market_holidays",
   "date": "2026-10-09",
   "time": "",
