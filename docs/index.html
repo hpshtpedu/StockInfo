@@ -383,6 +383,13 @@
   function sectorsHtml(s) {
     if (!s?.top?.length) return '';
     const max = s.top[0].share;
+    // 盤中（台股交易日 09:00-13:30）資料落後 5 分鐘以上才標「慢X分」，收盤後不標
+    const tw = new Date(Date.now() + 8 * 3600000);
+    const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+    const today = utcDate(tw.getUTCFullYear(), tw.getUTCMonth() + 1, tw.getUTCDate());
+    const ageMin = Math.round((Date.now() - s.time) / 60000);
+    const lag = isBusinessDay(today) && mins >= 540 && mins <= 810 && ageMin >= 5
+      ? ` · <span class="lag">慢${ageMin}分</span>` : '';
     const cells = s.top.map((r) => `
       <div class="sec">
         <div class="sec-row"><span>${SECTOR_SHORT_NAMES[r.name] ?? r.name}</span><b>${fmt(r.share, 1)}%</b></div>
@@ -391,7 +398,7 @@
     return `
       <div class="card wide">
         <div class="head"><div class="name">產業成交比重</div>
-          <div class="meta">電子 ${fmt(s.electronics, 1)}% · ${hhmm(s.time)}${s.stale ? ' · <span class="lag">舊資料</span>' : ''}</div></div>
+          <div class="meta">電子 ${fmt(s.electronics, 1)}% · ${hhmm(s.time)}${lag}${s.stale ? ' · <span class="lag">舊資料</span>' : ''}</div></div>
         <div class="secs">${cells}</div>
       </div>`;
   }
