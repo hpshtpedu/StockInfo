@@ -69,7 +69,7 @@
   /* 最後一行（時間）貼齊卡片底部，同一排的時間才會對齊 */
   .card:not(.cal) > :last-child { margin-top: auto; }
   /* 加權卡片（有 K 線）：漲跌幅要緊接在漲跌下面，不把最後一列推到底 */
-  /* 加權的 30 分 K：整行寬，上下跟文字隔開；「30分K」放在時間那一行的最右邊 */
+  /* 加權的 30 分 K：整行寬，上下跟文字隔開；「15分K」放在時間那一行的最右邊 */
   .krow { margin: 8px 0 4px; }
   .card.has-k .foot { align-items: center; }
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -497,7 +497,7 @@
       </div>`;
   }
 
-  // 迷你 30 分 K：9 個時段（09:00-13:30），虛線為昨收
+  // 迷你 15 分 K：18 個時段（09:00-13:30），虛線為昨收
   function miniCandles(candles, prev) {
     const bars = candles.map((c, i) => c && { i, o: c[0], h: c[1], l: c[2], c: c[3] }).filter(Boolean);
     if (!bars.length) return '';
@@ -678,11 +678,11 @@
       const when = q.time ? (sameDay || STATE_LABELS[q.state] ? hhmm(q.time) : mdhm(q.time)) : '';
       const meta = `<div class="meta">${when}${when ? lag : lag.replace(/^ · /, '')}${stale}</div>`;
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
-      // 有 K 線的卡片（加權）：K 線獨立一整行，最下面一列左邊時間、右邊「30分K」
+      // 有 K 線的卡片（加權）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K」
       const body = chart
         ? `<div class="chg ${dir}">${sign}${fmt(q.change, q.digits)} ${pct}</div>
            <div class="krow">${chart}</div>
-           <div class="foot">${meta}<span class="klabel">30分K</span></div>`
+           <div class="foot">${meta}<span class="klabel">15分K</span></div>`
         : `<div class="chg ${dir}">${q.unit === 'yield'
             ? `${sign}${fmt(q.change * 100, 1)}bp`
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
