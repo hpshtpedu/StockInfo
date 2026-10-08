@@ -57,6 +57,8 @@
   }
   /* 行情卡片的框：內容出錯也只會被裁掉，不會把卡片撐大 */
   .card:not(.cal) { max-height: 136px; }
+  /* 最後一行（時間）貼齊卡片底部，同一排的時間才會對齊 */
+  .card:not(.cal) > :last-child { margin-top: auto; }
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price { font-size: clamp(17px, 5.2vw, 24px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* 名稱優先完整顯示，空間不夠時截斷 badge */
