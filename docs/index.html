@@ -517,7 +517,6 @@
     const fiveAgo = series.at(-6)[1];
     const window = series.slice(-250).map(([, v]) => v);
     const pct = Math.round((window.filter((v) => v <= last).length / window.length) * 100);
-    const span = window.length >= 240 ? '近1年' : `近${Math.max(1, Math.round(window.length / 21))}月`;
     const change = last - prev;
     const trend = last - fiveAgo;
     const dir = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : '');
@@ -532,7 +531,7 @@
         <div class="price">${fmt(last, 2)}</div>
         <div class="chg ${dir(change)}">${sign(change)}${fmt(change, 2)} (${sign(change)}${fmt((change / prev) * 100, 1)}%)</div>
         <div class="cmp"><span class="txt">5日</span> <span class="${dir(trend)}">${trend > 0 ? '升溫' : '降溫'} ${sign(trend)}${fmt(trend, 2)}</span></div>
-        <div class="meta">${mm}/${dd} 收盤 · ${span}百分位</div>
+        <div class="meta">${mm}/${dd} 收盤</div>
       </div>`;
   }
 
@@ -562,6 +561,7 @@
     const series = [...prior, twii.price];
     const avg = (n) => series.slice(-n).reduce((a, b) => a + b, 0) / n;
     const [ma20, ma60, p] = [avg(20), avg(60), twii.price];
+    const ma240 = series.length >= 240 ? avg(240) : null;  // 年線：歷史還不夠一年時先不顯示
     const label = p > ma20 && ma20 > ma60 ? ['多頭排列', 'up'] : p < ma20 && ma20 < ma60 ? ['空頭排列', 'down'] : ['盤整', ''];
     const row = (name, ma) => {
       const gap = ((p - ma) / ma) * 100;
@@ -572,7 +572,7 @@
     return `
       <div class="card">
         <div class="head"><div class="name">大盤均線</div><span class="badge ${label[1]}">${label[0]}</span></div>
-        ${row('月線', ma20)}${row('季線', ma60)}
+        ${row('月線', ma20)}${row('季線', ma60)}${ma240 ? row('年線', ma240) : ''}
         <div class="meta">${hhmm(twii.time)}${closed ? ` · ${STATE_LABELS[twii.state]}` : ''}</div>
       </div>`;
   }

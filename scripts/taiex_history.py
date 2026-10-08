@@ -1,8 +1,8 @@
 """Keep recent TAIEX daily closes in docs/taiex_history.json for the moving-average card.
 
 Source: TWSE 發行量加權股價指數歷史資料 (one month per request, 3 s apart). The first run
-backfills five months; later runs refetch only the current month (and the previous one early
-in a month), keeping the last 90 trading days.
+backfills 13 months; later runs refetch only the current month (and the previous one early
+in a month), keeping the last 260 trading days.
 """
 import datetime as dt
 import json
@@ -13,7 +13,7 @@ import urllib.request
 
 OUT = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'taiex_history.json'
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
-KEEP = 90
+KEEP = 260  # enough for the 240-day (annual) moving average
 
 
 def fetch_month(first_day):
@@ -39,7 +39,7 @@ def main():
     old = json.loads(OUT.read_text(encoding='utf-8')) if OUT.exists() else {'closes': []}
     closes = {c['date']: c['close'] for c in old['closes']}
     today = dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).date()
-    months = 5 if len(closes) < 70 else (2 if today.day <= 7 else 1)
+    months = 13 if len(closes) < 240 else (2 if today.day <= 7 else 1)
 
     for i, first in enumerate(month_starts(today, months)):
         if i:
