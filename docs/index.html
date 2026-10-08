@@ -56,7 +56,7 @@
     overflow: hidden;
   }
   /* 行情卡片的框：內容出錯也只會被裁掉，不會把卡片撐大 */
-  .card:not(.cal) { max-height: 124px; }
+  .card:not(.cal) { max-height: 136px; }
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price { font-size: clamp(17px, 5.2vw, 24px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* 名稱優先完整顯示，空間不夠時截斷 badge */
@@ -65,8 +65,8 @@
   .badge.warn { background: var(--warn); color: var(--bg); }
   /* 最下面一行：左邊報價時間，右邊加權的迷你 30 分 K */
   .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 4px; min-width: 0; }
-  .foot .meta { min-width: 0; }
-  .kchart { flex-shrink: 0; width: 64px; height: 22px; display: block; }
+  .foot-left { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .kchart { flex-shrink: 0; width: 64px; height: 32px; display: block; }
   .badge { min-width: 0; font-size: clamp(10px, 3.2vw, 12px); font-weight: 600; line-height: 1.5; padding: 0 3px; letter-spacing: -0.2px; border-radius: 999px; background: var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .chg { font-size: clamp(11.5px, 3.4vw, 13px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price small { font-size: 13px; font-weight: 600; }
@@ -362,14 +362,21 @@
         + (lagMin ? ` · <span class="lag">慢${lagMin}分</span>` : '');
       const stale = q.stale ? ' · <span class="lag">舊資料</span>' : '';
       const chart = q.candles ? miniCandles(q.candles, q.prev) : '';
+      const meta = `<div class="meta">${sameDay ? hhmm(q.time) : mdhm(q.time)}${lag}${stale}</div>`;
+      const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
+      // 有 K 線的卡片（加權）：漲跌幅移到下一行，和時間疊在左邊、K 線在右邊
+      const body = chart
+        ? `<div class="chg ${dir}">${sign}${fmt(q.change, q.digits)}</div>
+           <div class="foot"><div class="foot-left"><div class="chg ${dir}">${pct}</div>${meta}</div>${chart}</div>`
+        : `<div class="chg ${dir}">${q.unit === 'yield'
+            ? `${sign}${fmt(q.change * 100, 1)}bp`
+            : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
+           ${meta}`;
       return `
         <div class="card">
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
           <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}</div>
-          <div class="chg ${dir}">${q.unit === 'yield'
-            ? `${sign}${fmt(q.change * 100, 1)}bp`
-            : `${sign}${fmt(q.change, q.digits)} (${sign}${fmt(q.changePct, 2)}%)`}</div>
-          <div class="foot"><div class="meta">${sameDay ? hhmm(q.time) : mdhm(q.time)}${lag}${stale}</div>${chart}</div>
+          ${body}
         </div>`;
     }).join('') + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
   }
