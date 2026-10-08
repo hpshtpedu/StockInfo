@@ -216,19 +216,25 @@
     return `${name}休市`;
   }
 
+  // 美國的事件（events.json 的來源）—— 對台灣多在半夜，同一天排在最前面
+  const US_SOURCES = new Set(['fred', 'fomc', 'ism', 'nvidia']);
+
+  // 每項：{ text, settle: 結算類（橘色）, us: 美國事件 }；美國的排前面，其餘維持原順序
   function dayEvents(t) {
-    const settle = settlements(t);
     const holiday = holidayLabel(t);
-    if (holiday) settle.unshift(holiday);
-    const econ = (econEvents[key(t)] ?? []).map((e) => e.label);
-    return { settle, econ, any: settle.length + econ.length > 0 };
+    const items = [
+      ...(holiday ? [holiday] : []),
+      ...settlements(t),
+    ].map((text) => ({ text, settle: true, us: text.startsWith('美股') }));
+    for (const e of econEvents[key(t)] ?? []) {
+      items.push({ text: e.label, settle: false, us: US_SOURCES.has(e.src) || e.label.startsWith('美股') });
+    }
+    items.sort((a, b) => b.us - a.us);
+    return { items, any: items.length > 0 };
   }
 
   function dayLine(label, t, ev) {
-    const parts = [
-      ev.settle.length ? `<b>${ev.settle.join('、')}</b>` : '',
-      ev.econ.length ? `<span class="ev">${ev.econ.join('、')}</span>` : '',
-    ].filter(Boolean).join('、');
+    const parts = ev.items.map((i) => (i.settle ? `<b>${i.text}</b>` : `<span class="ev">${i.text}</span>`)).join('、');
     return `${label} ${t.getUTCMonth() + 1}/${t.getUTCDate()}(${WEEKDAYS[t.getUTCDay()]})${parts ? `　${parts}` : ''}`;
   }
 
