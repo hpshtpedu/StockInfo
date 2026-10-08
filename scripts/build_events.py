@@ -8,6 +8,7 @@ All sources are fetched automatically (run nightly by GitHub Actions):
     pages (tw.stock.yahoo.com/quote/<symbol>.TW/calendar; not disallowed by robots.txt)
   US / Japan / Korea market holidays: computed with the `holidays` package (NYSE calendar;
     JP and KR public holidays plus exchange year-end and Labor Day closures)
+  NVIDIA earnings call: official newsroom RSS (nvidianews.nvidia.com/releases.xml)
 If a source fails, its events from the previous run are kept.
 """
 import datetime as dt
@@ -228,13 +229,51 @@ def market_holidays(today, until):
     return out
 
 
+PT = ZoneInfo('America/Los_Angeles')
+MONTHS = {m: i for i, m in enumerate(
+    ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'], 1)}
+
+
+def nvidia(today, until):
+    """NVIDIA's earnings call, from its official newsroom RSS ("NVIDIA Sets Conference Call for
+    ...Financial Results", posted ~4 weeks ahead). The feed keeps only ~20 items, so a date found
+    earlier is carried over from the previous events.json until it has passed."""
+    import html as htmllib
+
+    feed = get('https://nvidianews.nvidia.com/releases.xml', as_json=False)
+    out = []
+    for item in re.findall(r'<item>(.*?)</item>', feed, re.S):
+        text = htmllib.unescape(re.sub(r'<!\[CDATA\[|\]\]>', '', item))
+        title = re.search(r'<title>(.*?)</title>', text, re.S)
+        if not title or not ('Conference Call' in title.group(1) and 'Financial Results' in title.group(1)):
+            continue
+        # e.g. "will host a conference call on Wednesday, Nov. 18, at 2 p.m. PT (5 p.m. ET)"
+        when = re.search(r'conference call on \w+, (\w+)\.? (\d{1,2}),? at (\d{1,2})(?::(\d{2}))? ([ap])\.m\. PT', text)
+        published = re.search(r'<pubDate>\w+, \d+ \w+ (\d{4})', text)
+        if not when or not published:
+            continue
+        month, day = MONTHS[when.group(1)[:3].lower()], int(when.group(2))
+        year = int(published.group(1))
+        hour = int(when.group(3)) % 12 + (12 if when.group(5) == 'p' else 0)
+        local = dt.datetime(year, month, day, hour, int(when.group(4) or 0), tzinfo=PT)
+        if local.date() < today - dt.timedelta(days=60):  # e.g. a January call announced in December
+            local = local.replace(year=year + 1)
+        if today <= local.date() <= until:
+            out.append(event('nvidia', '輝達財報', local.date(), local.strftime('%H:%M'), PT))
+
+    if not out:
+        old = json.loads(OUT.read_text(encoding='utf-8')) if OUT.exists() else []
+        out = [e for e in old if e.get('src') == 'nvidia' and e['date'] >= today.isoformat()]
+    return out
+
+
 def main():
     today = dt.datetime.now(TW).date() - dt.timedelta(days=1)
     until = today + dt.timedelta(days=HORIZON_DAYS)
     old = json.loads(OUT.read_text(encoding='utf-8')) if OUT.exists() else []
     events, failed = [], []
     sources = (('fred', fred), ('fomc', fomc), ('ism', ism), ('tw_stocks', tw_stocks),
-               ('market_holidays', market_holidays))
+               ('market_holidays', market_holidays), ('nvidia', nvidia))
     for name, fn in sources:
         try:
             got = fn(today, until)
