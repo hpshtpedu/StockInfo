@@ -53,7 +53,10 @@
     flex-direction: column;
     gap: 2px;
     min-width: 0;
+    overflow: hidden;
   }
+  /* 行情卡片的框：內容出錯也只會被裁掉，不會把卡片撐大 */
+  .card:not(.cal) { max-height: 124px; }
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price { font-size: clamp(17px, 5.2vw, 24px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* 名稱優先完整顯示，空間不夠時截斷 badge */
@@ -63,7 +66,7 @@
   /* 最下面一行：左邊報價時間，右邊加權的迷你 30 分 K */
   .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 4px; min-width: 0; }
   .foot .meta { min-width: 0; }
-  .k { flex-shrink: 0; width: 64px; height: 22px; display: block; }
+  .kchart { flex-shrink: 0; width: 64px; height: 22px; display: block; }
   .badge { min-width: 0; font-size: clamp(10px, 3.2vw, 12px); font-weight: 600; line-height: 1.5; padding: 0 3px; letter-spacing: -0.2px; border-radius: 999px; background: var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .chg { font-size: clamp(11.5px, 3.4vw, 13px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price small { font-size: 13px; font-weight: 600; }
@@ -332,7 +335,7 @@
         + `<rect x="${x + 1.5}" y="${top}" width="4" height="${height}" fill="${color}"/>`;
     });
     const base = prev == null ? '' : `<line x1="0" x2="${candles.length * w}" y1="${y(prev)}" y2="${y(prev)}" stroke="var(--muted)" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/>`;
-    return `<svg class="k" viewBox="0 0 ${candles.length * w} 100" preserveAspectRatio="none" aria-hidden="true">${base}${parts.join('')}</svg>`;
+    return `<svg class="kchart" viewBox="0 0 ${candles.length * w} 100" preserveAspectRatio="none" aria-hidden="true">${base}${parts.join('')}</svg>`;
   }
 
   function render(data, margin, profile) {
