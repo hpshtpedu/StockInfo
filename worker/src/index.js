@@ -160,6 +160,21 @@ async function fetchMargin(origin, ctx) {
   return out;
 }
 
+// Every 30 min during the session, but expire right after the 13:30 close and retry every 5 min
+// until the closing snapshot is in; then hold until the next morning.
+function sectorsTtl(dataTime) {
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);
+  const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+  const weekday = tw.getUTCDay() >= 1 && tw.getUTCDay() <= 5;
+  const CLOSE = 13 * 60 + 33;
+  if (!weekday || mins < 9 * 60) return 6 * 3600;
+  if (mins < CLOSE) return Math.max(60, Math.min(1800, (CLOSE - mins) * 60));
+  const data = new Date(dataTime + 8 * 3600 * 1000);
+  const today = data.getUTCDate() === tw.getUTCDate();
+  if (!today) return 1800;  // market holiday: the page still shows the last session
+  return data.getUTCHours() * 60 + data.getUTCMinutes() >= 13 * 60 + 30 ? 6 * 3600 : 300;
+}
+
 // Electronics = TWSE's eight electronic sub-industries.
 const ELECTRONICS = new Set(['IX0028', 'IX0029', 'IX0030', 'IX0031', 'IX0032', 'IX0033', 'IX0034', 'IX0035']);
 
@@ -195,13 +210,10 @@ async function fetchSectors(origin, ctx) {
         .map((r) => ({ name: r.name, share: (r.value / total) * 100 })),
     };
 
-    const tw = new Date(Date.now() + 8 * 3600 * 1000);
-    const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
-    const trading = tw.getUTCDay() >= 1 && tw.getUTCDay() <= 5 && mins >= 9 * 60 && mins < 14 * 60;
     const store = (k, ttl) => cache.put(k, new Response(JSON.stringify(out), {
       headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
     }));
-    ctx.waitUntil(store(key, trading ? 1800 : 6 * 3600));
+    ctx.waitUntil(store(key, sectorsTtl(out.time)));
     ctx.waitUntil(store(lastKey, 3 * 86400));
     return out;
   } catch (err) {
