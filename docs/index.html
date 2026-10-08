@@ -569,8 +569,9 @@
     const state = STATE_LABELS[twii?.state] ? ` · ${STATE_LABELS[twii.state]}` : '';
     return `
       <div class="card">
-        <div class="head"><div class="name">我的持股</div><span class="meta">${hhmm(list[0].time)}${state}</span></div>
+        <div class="name">我的持股</div>
         <div class="holds">${rows}</div>
+        <div class="meta">${hhmm(list[0].time)}${state}</div>
       </div>`;
   }
 
