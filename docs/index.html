@@ -178,10 +178,22 @@
   // 經濟數據、財報等事件（台灣時間），由 scripts/build_events.py 產生 events.json
   let econEvents = {};
 
+  // 證交所的正式節日名稱 -> 一般說法（「補假」後綴會保留）
+  const HOLIDAY_SHORT_NAMES = {
+    '中華民國開國紀念日': '元旦',
+    '農曆除夕及春節': '春節',
+    '和平紀念日': '228',
+    '兒童節及民族掃墓節': '清明連假',
+    '孔子誕辰紀念日/教師節': '教師節',
+    '臺灣光復暨金門古寧頭大捷紀念日': '光復節',
+  };
+
   // 平日休市才標示，例如「國慶日補假休市」
   function holidayLabel(t) {
     if (t.getUTCDay() === 0 || t.getUTCDay() === 6 || !holidays.has(key(t))) return '';
-    return `${holidays.get(key(t)) || '台股'}休市`;
+    let name = holidays.get(key(t)) || '台股';
+    for (const [full, short] of Object.entries(HOLIDAY_SHORT_NAMES)) name = name.replace(full, short);
+    return `${name}休市`;
   }
 
   function dayEvents(t) {
