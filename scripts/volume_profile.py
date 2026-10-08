@@ -26,20 +26,24 @@ def fetch_day(day):
     # Rows every 5 seconds: [時間, ..., 累積成交金額(百萬)]; keep whole minutes only.
     cum = {r[0][:5]: float(r[-1].replace(',', '')) for r in data['data'] if r[0].endswith(':00')}
     final = cum.get('13:30')
-    return {m: v / final for m, v in cum.items()} if final else None
+    return ({m: v / final for m, v in cum.items()}, final) if final else None
 
 
 def main():
-    shares, dates = [], []
+    shares, dates, totals = [], [], {}
     day = dt.date.today()
-    for _ in range(14):  # look back far enough to find DAYS trading days
-        if len(shares) == DAYS:
+    # Profile from the latest DAYS sessions; totals for one more, so a 5-day average that
+    # excludes the day being judged is always available.
+    for _ in range(16):
+        if len(totals) == DAYS + 1:
             break
         if day.weekday() < 5:
-            share = fetch_day(day)
-            if share:
-                shares.append(share)
-                dates.append(day.isoformat())
+            got = fetch_day(day)
+            if got:
+                if len(shares) < DAYS:
+                    shares.append(got[0])
+                    dates.append(day.isoformat())
+                totals[day.isoformat()] = got[1]
             time.sleep(3)  # TWSE asks clients to keep request rates low
         day -= dt.timedelta(days=1)
 
@@ -48,7 +52,8 @@ def main():
         return 1
     minutes = sorted(set.intersection(*(set(s) for s in shares)))
     profile = {m: round(sum(s[m] for s in shares) / len(shares), 4) for m in minutes}
-    OUT.write_text(json.dumps({'dates': dates, 'share': profile}) + '\n', encoding='utf-8')
+    # totals: full-day turnover (NT$ millions) per day, for the volume-vs-5-day-average badge.
+    OUT.write_text(json.dumps({'dates': dates, 'share': profile, 'totals': totals}) + '\n', encoding='utf-8')
     print(dates, len(profile), 'minutes;', {m: profile[m] for m in ('09:30', '11:00', '13:00', '13:25') if m in profile})
     return 0
 

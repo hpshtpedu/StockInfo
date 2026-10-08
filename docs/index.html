@@ -74,6 +74,10 @@
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
+  /* 量能：避開漲跌用的紅綠，量縮灰 → 正常 → 放量黃 → 爆量橘 */
+  .badge.vol-low { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
+  .badge.vol-high { background: #d9c44a; color: var(--bg); }
+  .badge.vol-hot { background: var(--warn); color: var(--bg); }
   /* 最下面一行：左邊報價時間，右邊加權的迷你 30 分 K */
   .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 4px; min-width: 0; }
   .foot-left { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -359,14 +363,28 @@
     return `<span class="badge ${dir}">${label}${b > 0 ? '+' : ''}${b}</span>`;
   }
 
+  // 量能顏色：成交（或估量）÷ 前 5 個交易日平均。≤0.8 量縮灰、≥1.2 放量黃、≥1.5 爆量橘
+  function volumeClass(amount, twii, profile) {
+    const day = new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10);
+    const prior = Object.entries(profile?.totals ?? {}).filter(([d]) => d < day).sort().slice(-5).map(([, v]) => v);
+    if (prior.length < 5) return '';
+    const ratio = amount / (prior.reduce((a, b) => a + b, 0) / prior.length);
+    return ratio >= 1.5 ? ' vol-hot' : ratio >= 1.2 ? ' vol-high' : ratio <= 0.8 ? ' vol-low' : '';
+  }
+
   // 盤中：累積成交金額 ÷ 過去 5 日同一分鐘的成交占比；收盤後：實際成交金額
   function turnoverBadge(twii, profile) {
     if (!twii?.turnover) return '';
     const minute = hhmm(twii.time);
-    if (twii.state !== 'open' || minute >= '13:30') return `<span class="badge">成交${money(twii.turnover)}</span>`;
+    if (twii.state !== 'open' || minute >= '13:30') {
+      return `<span class="badge${volumeClass(twii.turnover, twii, profile)}">成交${money(twii.turnover)}</span>`;
+    }
     const share = profile?.share?.[minute];
     if (minute < '09:05' || !share) return '';
-    return `<span class="badge">估${money(twii.turnover / share)}</span>`;
+    const estimate = twii.turnover / share;
+    // 開盤頭 30 分鐘估量誤差大，先不變色
+    const cls = minute >= '09:30' ? volumeClass(estimate, twii, profile) : '';
+    return `<span class="badge${cls}">估${money(estimate)}</span>`;
   }
 
   // 漲跌家數：指數漲、下跌家數卻較多時標「拉雞盤」
