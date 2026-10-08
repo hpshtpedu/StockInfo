@@ -84,6 +84,13 @@
   .hold-row { display: grid; grid-template-columns: auto 1fr; gap: 8px; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .hold-row b { text-align: right; }
   .hold-row .k { color: var(--text); }
+  .hold-row .ext { display: none; text-align: right; }
+  /* PC／平板橫放（寬度 ≥ 600px）：多顯示漲跌和漲跌幅，卡片才不會太空 */
+  @media (min-width: 600px) {
+    .holds { max-width: none; }
+    .hold-row { grid-template-columns: auto 1fr 4.5em 4.8em; }
+    .hold-row .ext { display: block; }
+  }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
   .badge.vol-high { background: #d9c44a; color: var(--bg); }
@@ -546,7 +553,11 @@
     if (!list?.length) return '';
     const rows = list.map((h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
-      return `<div class="hold-row"><span class="k">${h.code}</span><b class="${dir}">${fmt(h.price, h.price >= 1000 ? 0 : 2)}</b></div>`;
+      const sign = h.change > 0 ? '+' : '';
+      const digits = h.price >= 1000 ? 0 : 2;
+      // 漲跌、漲跌幅只在寬螢幕（PC）顯示
+      return `<div class="hold-row"><span class="k">${h.code}</span><b class="${dir}">${fmt(h.price, digits)}</b>`
+        + `<span class="ext ${dir}">${sign}${fmt(h.change, digits)}</span><span class="ext ${dir}">${sign}${fmt(h.changePct, 2)}%</span></div>`;
     }).join('');
     const state = STATE_LABELS[twii?.state] ? ` · ${STATE_LABELS[twii.state]}` : '';
     return `
