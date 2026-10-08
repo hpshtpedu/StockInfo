@@ -36,7 +36,7 @@ const NAMES = Object.fromEntries(
 );
 
 // TAIFEX publishes institutional positions once a day after the close (~15:00 Taipei).
-const CHIPS_RETRY_SECONDS = 1800;
+const CHIPS_RETRY_SECONDS = 600;  // retry every 10 min after 14:00 until the day's data is in
 const HOLIDAYS_CACHE_SECONDS = 86400;
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
