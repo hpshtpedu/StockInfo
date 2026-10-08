@@ -364,6 +364,13 @@ async function fetchYahooTw() {
       time: Math.min(meta.regularMarketTime * 1000, Date.now()),
       state: marketState(meta),
     };
+    // Yahoo's trading period for WTX& covers only the day session, so judge TXF by its last
+    // trade instead: trading if it printed within 10 minutes, and 15:00-05:00 is the night session.
+    if (id === 'txf') {
+      const recent = out[id].time && Date.now() - out[id].time < 10 * 60 * 1000;
+      const hour = new Date(Date.now() + 8 * 3600 * 1000).getUTCHours();
+      out[id].state = !recent ? 'closed' : hour >= 15 || hour < 5 ? 'night' : 'open';
+    }
     // TAIEX per-minute volume is turnover in NT$ millions; the sum is today's cumulative turnover.
     if (id === 'twii') {
       out[id].turnover = (chart.indicators?.quote?.[0]?.volume ?? []).reduce((sum, v) => sum + (v || 0), 0);
