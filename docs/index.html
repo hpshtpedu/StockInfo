@@ -384,7 +384,7 @@
     if (q.change != null) {
       const cdir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
       const text = q.unit === 'ratio'
-        ? `${q.change > 0 ? '+' : ''}${fmt(q.change, 2)}%`
+        ? `${q.change > 0 ? '+' : ''}${fmt(q.change, 2)}個百分點`
         : netOiChange(q.price - q.change, q.price);
       change = `<div class="cmp"><span class="txt">較前日</span> <span class="${cdir}">${text}</span></div>`;
     }
@@ -415,7 +415,7 @@
     if (m.prev != null) {
       const diff = m.ratio - m.prev;
       dir = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
-      chg = `<span class="txt">較前日</span> ${diff > 0 ? '+' : ''}${fmt(diff, 2)}%`;
+      chg = `<span class="txt">較前日</span> ${diff > 0 ? '+' : ''}${fmt(diff, 2)}個百分點`;
     }
     return `
       <div class="card">
