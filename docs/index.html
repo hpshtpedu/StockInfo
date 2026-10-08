@@ -432,6 +432,13 @@
     const ageMin = Math.round((Date.now() - s.time) / 60000);
     const lag = isBusinessDay(today) && mins >= 540 && mins <= 810 && ageMin >= 5
       ? ` · <span class="lag">慢${ageMin}分</span>` : '';
+    // 收盤後的快照（富果約 13:35）跟其他卡片一樣標成「13:30 · 收盤」；前一交易日的加日期
+    const data = new Date(s.time + 8 * 3600000);
+    const dataToday = key(utcDate(data.getUTCFullYear(), data.getUTCMonth() + 1, data.getUTCDate())) === key(today);
+    const closed = !dataToday || data.getUTCHours() * 60 + data.getUTCMinutes() >= 810;
+    const when = closed
+      ? `${dataToday ? '' : `${data.getUTCMonth() + 1}/${data.getUTCDate()} `}${data.getUTCHours() * 60 + data.getUTCMinutes() >= 810 ? '13:30' : hhmm(s.time)} · 收盤`
+      : hhmm(s.time) + lag;
     const cells = s.top.map((r) => `
       <div class="sec">
         <div class="sec-row"><span>${SECTOR_SHORT_NAMES[r.name] ?? r.name}</span><b>${fmt(r.share, 1)}%</b></div>
@@ -440,7 +447,7 @@
     return `
       <div class="card wide">
         <div class="head"><div class="name">產業成交比重</div>
-          <div class="meta">電子 ${fmt(s.electronics, 1)}% · ${hhmm(s.time)}${lag}${s.stale ? ' · <span class="lag">舊資料</span>' : ''}</div></div>
+          <div class="meta">電子 ${fmt(s.electronics, 1)}% · ${when}${s.stale ? ' · <span class="lag">舊資料</span>' : ''}</div></div>
         <div class="secs">${cells}</div>
       </div>`;
   }
