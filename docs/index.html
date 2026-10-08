@@ -92,6 +92,8 @@
   /* 最下面一行：左邊報價時間，右邊加權的迷你 30 分 K */
   .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 2px; min-width: 0; }
   .foot-left { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  /* 漲跌幅：手機放在 K 線旁（pct-narrow），PC 跟漲跌同一行（pct-wide） */
+  .pct-wide { display: none; }
   .kbox { flex-shrink: 0; width: 56px; display: flex; flex-direction: column; align-items: flex-end; }
   .klabel { color: var(--muted); font-size: 9px; line-height: 1; margin-top: 1px; }
   .kchart { width: 56px; height: 24px; display: block; }
@@ -149,6 +151,8 @@
     .kbox, .kchart { width: 120px; }
     .kchart { height: 36px; }
     .card:not(.cal) { max-height: 160px; }
+    .pct-wide { display: inline; }
+    .pct-narrow { display: none; }
   }
 </style>
 </head>
@@ -675,8 +679,8 @@
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
       // 有 K 線的卡片（加權）：漲跌幅移到下一行，和時間疊在左邊、K 線在右邊
       const body = chart
-        ? `<div class="chg ${dir}">${sign}${fmt(q.change, q.digits)}</div>
-           <div class="foot"><div class="foot-left"><div class="chg ${dir}">${pct}</div>${meta}</div>${chart}</div>`
+        ? `<div class="chg ${dir}">${sign}${fmt(q.change, q.digits)}<span class="pct-wide"> ${pct}</span></div>
+           <div class="foot"><div class="foot-left"><div class="chg ${dir} pct-narrow">${pct}</div>${meta}</div>${chart}</div>`
         : `<div class="chg ${dir}">${q.unit === 'yield'
             ? `${sign}${fmt(q.change * 100, 1)}bp`
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
