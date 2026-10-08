@@ -347,7 +347,7 @@
     if (q.change != null) {
       const cdir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
       const csign = q.change > 0 ? '+' : '';
-      change = ` · <span class="txt">前日</span> <span class="${cdir}">${csign}${fmt(q.change, q.unit === 'ratio' ? 2 : 0)}</span>`;
+      change = ` · <span class="txt">前日</span> <span class="${cdir}">${csign}${fmt(q.change, q.unit === 'ratio' ? 2 : 0)}${q.unit === 'ratio' ? '%' : ''}</span>`;
     }
     return `
       <div class="card">
