@@ -237,6 +237,9 @@
   const US_SOURCES = new Set(['fred', 'fomc', 'ism', 'nvidia']);
 
   // 每項：{ text, settle: 結算類（橘色）, us: 美國事件 }；美國的排前面，其餘維持原順序
+  // Worker 當天抓到的公告：{ date, revenue: { month, yoy, mom }, dividends: [文字] }
+  let announcements = null;
+
   // 台積電月營收：每月 10 日公布上月營收，遇假日提前到前一個營業日
   function tsmcRevenueLabel(t) {
     let day = utcDate(t.getUTCFullYear(), t.getUTCMonth() + 1, 10);
@@ -255,8 +258,15 @@
     for (const e of econEvents[key(t)] ?? []) {
       items.push({ text: e.label, settle: false, us: US_SOURCES.has(e.src) || e.label.startsWith('美股') });
     }
+    // 當天抓到的公告（Worker 提供）：營收換成帶年增/月增的版本，另外加上配息公告
+    const ann = announcements?.date === key(t) ? announcements : null;
     const revenue = tsmcRevenueLabel(t);
-    if (revenue) items.push({ text: revenue, settle: false, us: false });
+    if (revenue) {
+      const r = ann?.revenue;
+      const pct = (v) => `<span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${v > 0 ? '+' : ''}${fmt(v, 2)}%</span>`;
+      items.push({ text: r ? `台積電${r.month}月營收(YoY ${pct(r.yoy)}, MoM ${pct(r.mom)})` : revenue, settle: false, us: false });
+    }
+    for (const text of ann?.dividends ?? []) items.push({ text, settle: false, us: false });
     items.sort((a, b) => b.us - a.us);
     return { items, any: items.length > 0 };
   }
@@ -528,6 +538,7 @@
   }
 
   function render(data, margin, profile) {
+    announcements = data.announcements ?? null;
     if (data.holidays?.length) {
       holidays = new Map(data.holidays.map((h) => (typeof h === 'string' ? [h, ''] : [h.date, h.name])));
     }

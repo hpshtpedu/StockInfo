@@ -100,7 +100,111 @@ async function buildQuotes(origin, ctx) {
     fetchSectors(origin, ctx).catch(() => null),
     fetchMargin(origin, ctx).catch(() => null),
   ]);
-  return { updated: Date.now(), quotes, holidays, institutional, sectors, margin };
+  const announcements = await fetchAnnouncements(origin, ctx, holidays).catch(() => null);
+  return { updated: Date.now(), quotes, holidays, institutional, sectors, margin, announcements };
+}
+
+// ---- Same-day announcements for the calendar ----
+// Each check runs only in its window and caches its own result, so most refreshes make no
+// upstream request at all.
+
+const MOPS = 'https://mops.twse.com.tw/mops/api/';
+const ETF_DIVIDEND_MONTHS = { '0056': [1, 4, 7, 10], '00878': [2, 5, 8, 11] };
+
+async function cached(origin, ctx, path, ttlFor, compute) {
+  const key = new Request(origin + path);
+  const hit = await caches.default.match(key);
+  if (hit) return hit.json();
+  const value = await compute();
+  ctx.waitUntil(caches.default.put(key, new Response(JSON.stringify(value), {
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttlFor(value)}` },
+  })));
+  return value;
+}
+
+async function mops(api, body) {
+  const res = await fetch(MOPS + api, {
+    method: 'POST',
+    headers: { 'User-Agent': UA, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`MOPS ${api} HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.code !== 200) throw new Error(`MOPS ${api}: ${data.message}`);
+  return data.result;
+}
+
+async function fetchAnnouncements(origin, ctx, holidays) {
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);
+  const [y, m, d] = [tw.getUTCFullYear(), tw.getUTCMonth() + 1, tw.getUTCDate()];
+  const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+  const today = tw.toISOString().slice(0, 10);
+  const holidaySet = new Set(holidays.map((h) => h.date ?? h));
+  const isBusinessDay = (t) => ![0, 6].includes(t.getUTCDay()) && !holidaySet.has(t.toISOString().slice(0, 10));
+  const out = { date: today, revenue: null, dividends: [] };
+
+  // TSMC monthly revenue: released on the 10th (or the previous business day) at ~13:30.
+  let revDay = new Date(Date.UTC(y, m - 1, 10));
+  while (!isBusinessDay(revDay)) revDay = new Date(revDay.getTime() - 86400000);
+  if (revDay.toISOString().slice(0, 10) === today && mins >= 13 * 60 + 45) {
+    out.revenue = await cached(origin, ctx, `/_ann/rev/${today}`, (v) => (v ? 2 * 86400 : 600), async () => {
+      const [py, pm] = m === 1 ? [y - 1, 12] : [y, m - 1];
+      const [qy, qm] = pm === 1 ? [py - 1, 12] : [py, pm - 1];
+      const revenue = (yy, mm) => mops('t05st10_ifrs', {
+        companyId: '2330', dataType: '2', season: '', year: String(yy - 1911), month: String(mm), subsidiaryCompanyId: '',
+      });
+      try {
+        const cur = await revenue(py, pm);
+        const prev = await revenue(qy, qm);
+        const num = (s) => Number(String(s).replace(/,/g, ''));
+        const thisMonth = num(cur.data.find((r) => r[0] === '本月')[1]);
+        const lastMonth = num(prev.data.find((r) => r[0] === '本月')[1]);
+        const yoy = num(cur.data.find((r) => r[0] === '增減百分比')[1]);  // first one: vs same month last year
+        return { month: pm, yoy, mom: (thisMonth / lastMonth - 1) * 100 };
+      } catch {
+        return null;  // not published yet: retry in 10 min
+      }
+    });
+  }
+
+  // TSMC dividend: a board resolution on 股利 in today's MOPS material news, weekdays 14:00-19:00.
+  if (isBusinessDay(new Date(Date.UTC(y, m - 1, d))) && mins >= 14 * 60 && mins < 19 * 60) {
+    const div = await cached(origin, ctx, `/_ann/tsmcdiv/${today}`, (v) => (v.amount ? 86400 : 3600), async () => {
+      const news = await mops('t146sb05', { companyId: '2330' });
+      const rocToday = `${y - 1911}/${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}`;
+      const item = (news.recent_important_news?.data ?? [])
+        .find(([date, title]) => date === rocToday && title.includes('股利') && title.includes('決議'));
+      if (!item) return {};
+      const detail = await mops('t05st01_detail', item[2].parameters);
+      const text = detail.data?.[0]?.at(-1) ?? '';
+      const amount = text.match(/每股(?:配發|現金股利)?\s*(?:新台幣)?\s*([\d.]+)\s*元/)?.[1];
+      return amount ? { amount: Number(amount) } : {};
+    }).catch(() => ({}));
+    if (div.amount) out.dividends.push(`台積電宣布配息${+div.amount.toFixed(2)}元`);
+  }
+
+  // ETF distributions: announced around 17:00 on the 1st of the distribution month. Shown on the
+  // day the amount first appears on the Yahoo TW calendar page.
+  for (const [code, months] of Object.entries(ETF_DIVIDEND_MONTHS)) {
+    if (!months.includes(m) || d > 4 || (d === 1 && mins < 17 * 60)) continue;
+    const found = await cached(origin, ctx, `/_ann/etf/${code}/${today}`, (v) => (v.cash ? 86400 : 1800), async () => {
+      const html = await fetch(`https://tw.stock.yahoo.com/quote/${code}.TW/calendar`, { headers: { 'User-Agent': UA } }).then((r) => r.text());
+      for (const chunk of html.split('"eventType":"').slice(1)) {
+        if (!chunk.startsWith('dividend"')) continue;
+        const detail = chunk.match(/"detail":(\{[^}]*\})/);
+        if (!detail) continue;
+        const dv = JSON.parse(detail[1]);
+        const ex = (dv.exDate ?? '').slice(0, 10);
+        if (dv.cash && ex.slice(0, 7) === today.slice(0, 7) && ex >= today) return { cash: Number(dv.cash), exDate: ex };
+      }
+      return {};
+    }).catch(() => ({}));
+    if (!found.cash) continue;
+    // Only on the first day it was seen, remembered per ex-date.
+    const seen = await cached(origin, ctx, `/_ann/etfseen/${code}/${found.exDate}`, () => 40 * 86400, async () => ({ first: today }));
+    if (seen.first === today) out.dividends.push(`${code}宣布配息${+found.cash.toFixed(4)}元`);
+  }
+  return out;
 }
 
 // TWSE (上市) margin maintenance ratio and balance change, from the website reports published
