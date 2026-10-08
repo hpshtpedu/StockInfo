@@ -75,6 +75,8 @@
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
   .badge.buy { background: var(--up); color: var(--bg); }
+  .heat { color: var(--warn); }
+  .cool { color: #5b8fd6; }
   .ma-row { display: flex; justify-content: space-between; gap: 6px; font-size: clamp(11.5px, 3.4vw, 13px); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .ma-row .k { font-size: inherit; }
   /* 我的持股：代號靠左、價格靠右（紅綠表示漲跌）；限制寬度，PC 上才不會拉得太開 */
@@ -519,7 +521,8 @@
     const pct = Math.round((window.filter((v) => v <= last).length / window.length) * 100);
     const change = last - prev;
     const trend = last - fiveAgo;
-    const dir = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : '');
+    // VIX 上升是警訊，不用漲跌的紅綠：升溫橘、降溫藍
+    const dir = (v) => (v > 0 ? 'heat' : v < 0 ? 'cool' : '');
     const sign = (v) => (v > 0 ? '+' : '');
     // VIX 超過 40（今年兩次底部都在 40 以上）→ 紅色「買進訊號」，優先於其他狀態
     const badge = last > 40
