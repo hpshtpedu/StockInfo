@@ -529,7 +529,7 @@
         <div class="price">${fmt(last, 2)}</div>
         <div class="chg ${dir(change)}">${sign(change)}${fmt(change, 2)} (${sign(change)}${fmt((change / prev) * 100, 1)}%)</div>
         <div class="cmp"><span class="txt">5日</span> <span class="${dir(trend)}">${trend > 0 ? '升溫' : '降溫'} ${sign(trend)}${fmt(trend, 2)}</span></div>
-        <div class="meta">${mm}/${dd} 收盤</div>
+        <div class="meta">${mm}/${dd} 盤後</div>
       </div>`;
   }
 
