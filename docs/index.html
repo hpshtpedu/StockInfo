@@ -404,7 +404,7 @@
         <div class="head"><div class="name">${q.name}</div>${badge}</div>
         <div class="price tight"><span class="up">▲${q.up}</span> <span class="down">▼${q.down}</span></div>
         <div class="chg brd"><span class="seg up"><i>漲停</i>${q.limitUp}</span><span class="seg down"><i>跌停</i>${q.limitDown}</span><span class="seg"><i>平</i>${q.flat}</span></div>
-        <div class="meta">${hhmm(twii?.time ?? q.time)}</div>
+        <div class="meta">${hhmm(twii?.time ?? q.time)}${STATE_LABELS[twii?.state] ? ` · ${STATE_LABELS[twii.state]}` : ''}</div>
       </div>`;
   }
 
