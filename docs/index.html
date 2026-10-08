@@ -75,7 +75,7 @@
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
   .ma-row { display: flex; justify-content: space-between; gap: 6px; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .ma-row .k { color: var(--muted); font-size: 12px; }
+  .ma-row .k { font-size: 13px; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
   .badge.vol-high { background: #d9c44a; color: var(--bg); }
@@ -397,7 +397,7 @@
       <div class="card">
         <div class="head"><div class="name">${q.name}</div>${badge}</div>
         <div class="price tight"><span class="up">▲${q.up}</span> <span class="down">▼${q.down}</span></div>
-        <div class="chg">${segments(`漲停${q.limitUp} 跌停${q.limitDown} 平${q.flat}`)}</div>
+        <div class="chg"><span class="seg up">漲停 ${q.limitUp}</span><span class="seg down">跌停 ${q.limitDown}</span><span class="seg">平 ${q.flat}</span></div>
         <div class="meta">${hhmm(twii?.time ?? q.time)}</div>
       </div>`;
   }
