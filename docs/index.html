@@ -76,9 +76,10 @@
   .badge.warn { background: var(--warn); color: var(--bg); }
   .ma-row { display: flex; justify-content: space-between; gap: 6px; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .ma-row .k { font-size: 13px; }
-  /* 我的持股：代號固定寬度（像 Tab 對齊），價格用紅綠表示漲跌 */
-  .holds { display: flex; flex-direction: column; gap: 2px; }
-  .hold-row { display: grid; grid-template-columns: 4.2em 1fr; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* 我的持股：代號靠左、價格靠右（紅綠表示漲跌）；限制寬度，PC 上才不會拉得太開 */
+  .holds { display: flex; flex-direction: column; gap: 2px; width: 100%; max-width: 11em; }
+  .hold-row { display: grid; grid-template-columns: auto 1fr; gap: 8px; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .hold-row b { text-align: right; }
   .hold-row .k { color: var(--text); }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
@@ -562,7 +563,7 @@
     const row = (name, ma) => {
       const gap = ((p - ma) / ma) * 100;
       return `<div class="ma-row"><span><span class="k">${name}</span> ${fmt(ma, 0)}</span>`
-        + `<b class="${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</b></div>`;
+        + `<b class="${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">${fmt(Math.abs(gap), 1)}%</b></div>`;
     };
     const closed = twii.state && twii.state !== 'open';
     return `
@@ -622,10 +623,11 @@
       txf: basisBadge(byId.txf, byId.twii),
       tsm: adrBadge(byId.tsm),
     };
-    // 插在某張卡片後面的卡片：加權後接大盤均線（半寬），漲跌家數後接產業成交比重（全寬）
+    // 插在某張卡片後面的卡片：加權後接大盤均線；USD/TWD 後接我的持股和產業成交比重（全寬）；美債後接台指VIX
     const after = {
       twii: maHtml(byId.twii),
-      breadth: vixHtml(data.vix) + holdingsHtml(data.holdings, byId.twii) + sectorsHtml(data.sectors),
+      usdtwd: holdingsHtml(data.holdings, byId.twii) + sectorsHtml(data.sectors),
+      us10y: vixHtml(data.vix),
     };
     const cardFor = (q) => {
       if (q.error) {

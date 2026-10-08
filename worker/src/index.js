@@ -34,7 +34,7 @@ const CHIPS = {
   retailRatio: { name: '小台散戶多空比' },
 };
 
-const ORDER = ['twii', 'txf', 'breadth', 'sox', 'tsm', 'nq', 'kospi', 'nikkei', 'usdtwd', 'brent', 'us10y', 'foreignOi', 'retailRatio'];
+const ORDER = ['twii', 'txf', 'breadth', 'usdtwd', 'sox', 'tsm', 'nq', 'kospi', 'nikkei', 'brent', 'us10y', 'foreignOi', 'retailRatio'];
 
 const NAMES = Object.fromEntries(
   Object.entries({ ...YAHOO, ...YAHOO_TW, ...BREADTH, ...CHIPS }).map(([id, cfg]) => [id, cfg.name]),
