@@ -469,29 +469,39 @@ async function taifexWebCsv(path, form) {
   return text;
 }
 
-// Today's data from the website when available, else the OpenAPI (usually the previous day).
-async function fetchChipsSources() {
+// Today's data from the website.
+async function fetchChipsWeb() {
   const tw = new Date(Date.now() + 8 * 3600 * 1000);
   const day = tw.toISOString().slice(0, 10).replace(/-/g, '/');
+  const [inst, daily] = await Promise.all([
+    taifexWebCsv('futContractsDateDown', { queryStartDate: day, queryEndDate: day, commodityId: '' }),
+    taifexWebCsv('futDataDown', { down_type: '1', commodity_id: 'MTX', commodity_id2: '', queryStartDate: day, queryEndDate: day }),
+  ]);
+  return { inst, daily, source: 'TAIFEX web' };
+}
+
+// The OpenAPI, usually a day behind the website.
+async function fetchChipsOpenApi() {
+  const base = 'https://openapi.taifex.com.tw/v1/';
+  const [instRes, dailyRes] = await Promise.all([
+    fetch(base + 'MarketDataOfMajorInstitutionalTradersDetailsOfFuturesContractsBytheDate', { headers: { 'User-Agent': UA } }),
+    fetch(base + 'DailyMarketReportFut', { headers: { 'User-Agent': UA } }),
+  ]);
+  if (!instRes.ok || !dailyRes.ok) throw new Error(`TAIFEX OpenAPI HTTP ${instRes.status}/${dailyRes.status}`);
+  return { inst: await instRes.text(), daily: await dailyRes.text(), source: 'TAIFEX' };
+}
+
+// Before the ~15:00 publication the website already serves a partial file for the day (open
+// interest all zero, no day-session OI), so only accept it if it parses into complete numbers.
+async function computeChips() {
   try {
-    const [inst, daily] = await Promise.all([
-      taifexWebCsv('futContractsDateDown', { queryStartDate: day, queryEndDate: day, commodityId: '' }),
-      taifexWebCsv('futDataDown', { down_type: '1', commodity_id: 'MTX', commodity_id2: '', queryStartDate: day, queryEndDate: day }),
-    ]);
-    return { inst, daily, source: 'TAIFEX web' };
+    return parseChips(await fetchChipsWeb());
   } catch {
-    const base = 'https://openapi.taifex.com.tw/v1/';
-    const [instRes, dailyRes] = await Promise.all([
-      fetch(base + 'MarketDataOfMajorInstitutionalTradersDetailsOfFuturesContractsBytheDate', { headers: { 'User-Agent': UA } }),
-      fetch(base + 'DailyMarketReportFut', { headers: { 'User-Agent': UA } }),
-    ]);
-    if (!instRes.ok || !dailyRes.ok) throw new Error(`TAIFEX OpenAPI HTTP ${instRes.status}/${dailyRes.status}`);
-    return { inst: await instRes.text(), daily: await dailyRes.text(), source: 'TAIFEX' };
+    return parseChips(await fetchChipsOpenApi());
   }
 }
 
-async function computeChips() {
-  const src = await fetchChipsSources();
+function parseChips(src) {
   const inst = parseTaifex(src.inst, {
     date: ['Date', /^日期$/],
     contract: ['ContractCode', /^商品名稱$/],
@@ -514,7 +524,8 @@ async function computeChips() {
   const mtxOi = daily
     .filter((r) => r.contract === 'MTX' && !r.month.includes('/') && /^\d+$/.test(r.oi))
     .reduce((sum, r) => sum + Number(r.oi), 0);
-  if (!foreign || !mtxOi || Number.isNaN(mtxInstNet)) throw new Error('TAIFEX OpenAPI no data');
+  const foreignOi = foreign ? Number(foreign.oiLong) + Number(foreign.oiShort) : 0;
+  if (!foreignOi || !mtxOi || Number.isNaN(mtxInstNet)) throw new Error(`${src.source}: incomplete data`);
 
   const date = foreign.date.replace(/\D/g, ''); // YYYYMMDD
   const dataDate = `${+date.slice(4, 6)}/${+date.slice(6, 8)}`;
