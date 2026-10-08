@@ -440,6 +440,10 @@ async function fetchChips(origin, ctx) {
       q.stale = true;
       q.staleReason = String(err?.message || err);
     }
+    // Serve the fallback for 10 min instead of retrying TAIFEX on every refresh.
+    ctx.waitUntil(cache.put(key, new Response(JSON.stringify(out), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=600' },
+    })));
     return out;
   }
 }
