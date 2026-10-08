@@ -534,7 +534,9 @@
         + (lagMin ? ` · <span class="lag">慢${lagMin}分</span>` : '');
       const stale = q.stale ? ' · <span class="lag">舊資料</span>' : '';
       const chart = q.candles ? miniCandles(q.candles, q.prev) : '';
-      const meta = `<div class="meta">${sameDay ? hhmm(q.time) : mdhm(q.time)}${lag}${stale}</div>`;
+      // 沒有報價時間（例如 Yahoo 換到下一個交易時段）就不顯示時間，只留狀態
+      const when = q.time ? (sameDay ? hhmm(q.time) : mdhm(q.time)) : '';
+      const meta = `<div class="meta">${when}${when ? lag : lag.replace(/^ · /, '')}${stale}</div>`;
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
       // 有 K 線的卡片（加權）：漲跌幅移到下一行，和時間疊在左邊、K 線在右邊
       const body = chart

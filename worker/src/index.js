@@ -83,7 +83,8 @@ async function buildQuotes(origin, ctx) {
   const quotes = await Promise.all(
     ORDER.map(async (id) => {
       try {
-        const q = { id, ...(await jobs[id]) };
+        let q = { id, ...(await jobs[id]) };
+        if (YAHOO_TW[id]) q = await keepSessionQuote(origin, ctx, q);
         lastGood[id] = q;
         return q;
       } catch (err) {
@@ -370,6 +371,22 @@ async function fetchYahooTw() {
     }
   }
   return out;
+}
+
+// After a session ends Yahoo TW rolls WTX& over to the next one: no trade time yet and the
+// settlement price as the new reference, so the day's change collapses to a few points.
+// Remember the last quote that had a trade time and serve it until the new session trades.
+async function keepSessionQuote(origin, ctx, q) {
+  const key = new Request(`${origin}/_session/${q.id}`);
+  if (q.time) {
+    ctx.waitUntil(caches.default.put(key, new Response(JSON.stringify(q), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=72000' },
+    })));
+    return q;
+  }
+  const last = await caches.default.match(key);
+  if (last) return { ...(await last.json()), state: 'closed' };
+  return { ...q, change: null, changePct: null };  // nothing remembered: don't show a fake change
 }
 
 // 1-minute bars -> 30-minute [open, high, low, close] for the 09:00-13:30 session (9 slots,
