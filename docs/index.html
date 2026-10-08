@@ -124,6 +124,8 @@
   .cal .inst .v { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
   /* 非當日（盤中、隔天早上前）的舊資料：整塊轉灰 */
   .cal .inst.stale .v { color: var(--muted); font-weight: 600; }
+  /* 當日新資料：標題和欄位名稱用一般白字；舊資料維持灰色 */
+  .cal .inst-box.fresh .inst-title, .cal .inst-box.fresh .inst .k { color: var(--text); }
 </style>
 </head>
 <body>
@@ -284,7 +286,7 @@
       return `<div class="v ${dir}">${v > 0 ? '+' : ''}${fmt(v, 1)}</div>`;
     }).join('');
     return `
-      <div class="inst-box">
+      <div class="inst-box${fresh ? ' fresh' : ''}">
         <div class="inst-title"><span>三大法人買賣超 ${m}/${d}（億元）</span>${foreignStreak(inst, history, fresh) || '<span></span>'}</div>
         <div class="inst${fresh ? '' : ' stale'}">${header}${values}</div>
       </div>`;
