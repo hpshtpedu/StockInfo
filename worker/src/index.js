@@ -6,9 +6,9 @@ const DELAY_GRACE_MIN = 20;
 // delayMin: typical Yahoo feed delay, measured; shown when the market is not open.
 const YAHOO = {
   sox: { name: '費半 SOX', symbol: '^SOX', digits: 2 },
-  kospi: { name: 'KOSPI', symbol: '^KS11', digits: 2, delayMin: 20 },
+  kospi: { name: '韓股 KOSPI', symbol: '^KS11', digits: 2, delayMin: 20 },
   // Yahoo's trading period ignores the TSE lunch break (11:30-12:30 JST = 02:30-03:30 UTC).
-  nikkei: { name: 'Nikkei 225', symbol: '^N225', digits: 2, delayMin: 15, breaksUtc: [[150, 210]] },
+  nikkei: { name: '日經 Nikkei 225', symbol: '^N225', digits: 2, delayMin: 15, breaksUtc: [[150, 210]] },
   tsm: { name: 'TSM', symbol: 'TSM', digits: 2 },
   brent: { name: 'Brent 原油', symbol: 'BZ=F', digits: 2, delayMin: 10 },
   usdtwd: { name: 'USD/TWD', symbol: 'TWD=X', digits: 3 },
