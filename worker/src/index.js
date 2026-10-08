@@ -19,7 +19,6 @@ const YAHOO = {
 // Yahoo Taiwan: real-time TW indices and 台指期近一 (WTX&), fetched in one request.
 const YAHOO_TW = {
   twii: { name: '加權指數', symbol: '^TWII', digits: 2 },
-  otc: { name: '櫃買指數(OTC)', symbol: '^TWOII', digits: 2 },
   txf: { name: '台指期', symbol: 'WTX&', digits: 0 },
 };
 
@@ -30,7 +29,7 @@ const CHIPS = {
   retailRatio: { name: '小台散戶多空比' },
 };
 
-const ORDER = ['twii', 'breadth', 'txf', 'otc', 'sox', 'tsm', 'nq', 'kospi', 'nikkei', 'usdtwd', 'brent', 'us10y', 'foreignOi', 'retailRatio'];
+const ORDER = ['twii', 'breadth', 'txf', 'sox', 'tsm', 'nq', 'kospi', 'nikkei', 'usdtwd', 'brent', 'us10y', 'foreignOi', 'retailRatio'];
 
 const NAMES = Object.fromEntries(
   Object.entries({ ...YAHOO, ...YAHOO_TW, ...BREADTH, ...CHIPS }).map(([id, cfg]) => [id, cfg.name]),
@@ -75,7 +74,6 @@ async function buildQuotes(origin, ctx) {
   const jobs = {
     ...Object.fromEntries(Object.entries(YAHOO).map(([id, cfg]) => [id, fetchYahoo(cfg)])),
     twii: pick(tw, 'twii'),
-    otc: pick(tw, 'otc'),
     txf: pick(tw, 'txf').catch(() => fetchTaifex()),
     breadth: fetchBreadth(),
     foreignOi: pick(chips, 'foreignOi'),

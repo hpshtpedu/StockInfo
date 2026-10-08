@@ -74,6 +74,8 @@
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
+  .ma-row { display: flex; justify-content: space-between; gap: 6px; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ma-row .k { color: var(--muted); font-size: 12px; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
   .badge.vol-high { background: #d9c44a; color: var(--bg); }
@@ -125,7 +127,7 @@
 <header>
   <div>
     <h1>股市大局觀</h1>
-    <div id="source">來源：Yahoo、富果、證交所、櫃買、期交所</div>
+    <div id="source">來源：Yahoo、富果、證交所、期交所</div>
   </div>
   <div class="right">
     <div id="status">載入中…</div>
@@ -435,6 +437,33 @@
     return `<div class="kbox"><svg class="kchart" viewBox="0 0 ${candles.length * w} 100" preserveAspectRatio="none" aria-hidden="true">${base}${parts.join('')}</svg><span class="klabel">30分K</span></div>`;
   }
 
+  // 大盤均線：每晚存的加權收盤（taiex_history.json）+ 即時指數當最新一天
+  let taiexHistory = null;
+
+  function maHtml(twii) {
+    const closes = taiexHistory?.closes;
+    if (!twii?.price || !closes?.length) return '';
+    const day = new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10);
+    const prior = closes.filter((c) => c.date < day).map((c) => c.close);
+    if (prior.length < 59) return '';
+    const series = [...prior, twii.price];
+    const avg = (n) => series.slice(-n).reduce((a, b) => a + b, 0) / n;
+    const [ma20, ma60, p] = [avg(20), avg(60), twii.price];
+    const label = p > ma20 && ma20 > ma60 ? ['多頭排列', 'up'] : p < ma20 && ma20 < ma60 ? ['空頭排列', 'down'] : ['盤整', ''];
+    const row = (name, ma) => {
+      const gap = ((p - ma) / ma) * 100;
+      return `<div class="ma-row"><span><span class="k">${name}</span> ${fmt(ma, 0)}</span>`
+        + `<b class="${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</b></div>`;
+    };
+    const closed = twii.state && twii.state !== 'open';
+    return `
+      <div class="card">
+        <div class="head"><div class="name">大盤均線</div><span class="badge ${label[1]}">${label[0]}</span></div>
+        ${row('月線', ma20)}${row('季線', ma60)}
+        <div class="meta">${hhmm(twii.time)}${closed ? ` · ${STATE_LABELS[twii.state]}` : ''}</div>
+      </div>`;
+  }
+
   // 證交所產業名稱 -> 簡稱（沒列到的照原名）
   const SECTOR_SHORT_NAMES = {
     '電腦及週邊設備': '電腦週邊', '電子零組件': '零組件', '通信網路': '網通', '電子通路': '通路',
@@ -486,7 +515,7 @@
     $list.innerHTML = calendarHtml(data.institutional, instHistory) + data.quotes.map((q) => {
       if (q.error) {
         return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`
-          + (q.id === 'otc' ? sectorsHtml(data.sectors) : '');
+          + (q.id === 'txf' ? maHtml(byId.twii) + sectorsHtml(data.sectors) : '');
       }
       if (q.kind === 'daily') return dailyHtml(q);
       if (q.kind === 'breadth') return breadthHtml(q, byId.twii);
@@ -511,8 +540,8 @@
             ? `${sign}${fmt(q.change * 100, 1)}bp`
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
            ${meta}`;
-      // 產業成交比重接在櫃買後面，獨佔一整排
-      const after = q.id === 'otc' ? sectorsHtml(data.sectors) : '';
+      // 台指期後面接大盤均線（半寬）和產業成交比重（全寬）
+      const after = q.id === 'txf' ? maHtml(byId.twii) + sectorsHtml(data.sectors) : '';
       return `
         <div class="card">
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
@@ -529,6 +558,7 @@
       const profileReq = getJson('volume_profile.json');
       const eventsReq = getJson('events.json');
       const historyReq = getJson('institutional.json');
+      const taiexReq = getJson('taiex_history.json');
       const res = await fetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
@@ -538,6 +568,7 @@
         for (const e of events) (econEvents[e.date] ??= []).push(e);
       }
       instHistory = (await historyReq) ?? instHistory;
+      taiexHistory = (await taiexReq) ?? taiexHistory;
       render(data, pickMargin(data.margin, await marginReq), await profileReq);
       $status.className = '';
       $status.textContent = `更新 ${hhmm(data.updated)} (GMT+8)`;
