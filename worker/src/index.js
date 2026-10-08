@@ -95,12 +95,69 @@ async function buildQuotes(origin, ctx) {
     }),
   );
 
-  const [holidays, institutional, sectors] = await Promise.all([
+  const [holidays, institutional, sectors, margin] = await Promise.all([
     fetchHolidays(origin, ctx).catch(() => []),
     fetchInstitutional(origin, ctx).catch(() => null),
     fetchSectors(origin, ctx).catch(() => null),
+    fetchMargin(origin, ctx).catch(() => null),
   ]);
-  return { updated: Date.now(), quotes, holidays, institutional, sectors };
+  return { updated: Date.now(), quotes, holidays, institutional, sectors, margin };
+}
+
+// TWSE (上市) margin maintenance ratio and balance change, from the website reports published
+// ~21:00 Taipei. ratio = sum(margin lots * 1000 * close) / total margin amount.
+async function fetchMargin(origin, ctx) {
+  const cache = caches.default;
+  const key = new Request(origin + '/_margin');
+  const lastKey = new Request(origin + '/_margin_last');
+  const cached = await cache.match(key);
+  if (cached) return cached.json();
+
+  const last = await cache.match(lastKey).then((r) => (r ? r.json() : null));
+  const get = async (url) => {
+    const res = await fetch(url, { headers: { 'User-Agent': UA } });
+    if (!res.ok) throw new Error(`TWSE HTTP ${res.status}`);
+    return res.json();
+  };
+  const table = (report, title) => report.tables?.find((t) => (t.title ?? '').includes(title));
+  const num = (s) => Number(String(s).replace(/,/g, ''));
+
+  // Without a date the report returns the latest day that has margin data.
+  const margin = await get('https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?selectType=ALL&response=json');
+  if (margin.stat !== 'OK') throw new Error('TWSE MI_MARGN no data');
+  const ymd = margin.date;
+  if (last?.date === `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6)}`) {
+    // Nothing new yet: keep serving the last result and check again later.
+    ctx.waitUntil(cache.put(key, new Response(JSON.stringify(last), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${dailyTtl(ymd, 21, 900)}` },
+    })));
+    return last;
+  }
+
+  const amountRow = table(margin, '信用交易統計').data.find((r) => r[0].startsWith('融資金額'));
+  const amount = num(amountRow[5]) * 1000;      // 今日餘額 (仟元 -> 元)
+  const amountPrev = num(amountRow[4]) * 1000;  // 前日餘額
+  const lots = table(margin, '融資融券彙總').data.map((r) => [r[0], num(r[6])]);  // 融資今日餘額 (張)
+
+  const quotes = await get(`https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=${ymd}&type=ALLBUT0999&response=json`);
+  const closeTable = table(quotes, '每日收盤行情');
+  if (quotes.date !== ymd || !closeTable) throw new Error('TWSE MI_INDEX not ready');
+  const price = new Map(closeTable.data.map((r) => [r[0], num(r[8])]));
+  const marketValue = lots.reduce((s, [code, n]) => s + (price.get(code) > 0 ? n * 1000 * price.get(code) : 0), 0);
+
+  const out = {
+    date: `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6)}`,
+    ratio: Math.round((marketValue / amount) * 10000) / 100,
+    balance: Math.round(amount / 1e6) / 100,                       // 億元
+    balanceChange: Math.round((amount - amountPrev) / 1e6) / 100,  // 億元
+    prev: last?.ratio ?? null,  // previous trading day's ratio, if this colo still has it
+  };
+  const store = (k, ttl) => cache.put(k, new Response(JSON.stringify(out), {
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
+  }));
+  ctx.waitUntil(store(key, dailyTtl(ymd, 21, 900)));
+  ctx.waitUntil(store(lastKey, 7 * 86400));
+  return out;
 }
 
 // Electronics = TWSE's eight electronic sub-industries.

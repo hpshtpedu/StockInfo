@@ -278,7 +278,16 @@
       </div>`;
   }
 
-  // 上市融資維持率：GitHub Actions 每晚計算後寫入 margin.json
+  // 融資資料：Worker（21:00 後即時）優先；GitHub Actions 產生的 margin.json 當備援，
+  // 也用來補 Worker 缺的「前一日維持率」
+  function pickMargin(w, f) {
+    if (!w) return f;
+    if (!f || w.date > f.date) return { ...w, prev: w.prev ?? f?.ratio ?? null };
+    if (w.date === f.date) return { ...w, prev: w.prev ?? f.prev ?? null };
+    return f;
+  }
+
+  // 上市融資維持率
   function marginHtml(m) {
     const [, mm, dd] = m.date.split('-').map(Number);
     let chg = '&nbsp;';
@@ -463,7 +472,7 @@
         econEvents = {};
         for (const e of events) (econEvents[e.date] ??= []).push(e);
       }
-      render(data, await marginReq, await profileReq);
+      render(data, pickMargin(data.margin, await marginReq), await profileReq);
       $status.className = '';
       $status.textContent = `更新 ${hhmm(data.updated)} (GMT+8)`;
     } catch (err) {
