@@ -60,10 +60,10 @@
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
-  /* 加權卡片右側的迷你 15 分 K，文字讓出右邊空間 */
-  .card.has-k { position: relative; }
-  .card.has-k .price, .card.has-k .chg, .card.has-k .meta { padding-right: 48px; }
-  .k { position: absolute; right: 7px; top: 30px; bottom: 9px; width: 44px; }
+  /* 最下面一行：左邊報價時間，右邊加權的迷你 30 分 K */
+  .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 4px; min-width: 0; }
+  .foot .meta { min-width: 0; }
+  .k { flex-shrink: 0; width: 64px; height: 22px; display: block; }
   .badge { min-width: 0; font-size: clamp(10px, 3.2vw, 12px); font-weight: 600; line-height: 1.5; padding: 0 3px; letter-spacing: -0.2px; border-radius: 999px; background: var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .chg { font-size: clamp(11.5px, 3.4vw, 13px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price small { font-size: 13px; font-weight: 600; }
@@ -315,21 +315,21 @@
       </div>`;
   }
 
-  // 迷你 15 分 K：18 個時段（09:00-13:30），虛線為昨收
+  // 迷你 30 分 K：9 個時段（09:00-13:30），虛線為昨收
   function miniCandles(candles, prev) {
     const bars = candles.map((c, i) => c && { i, o: c[0], h: c[1], l: c[2], c: c[3] }).filter(Boolean);
     if (!bars.length) return '';
     const lo = Math.min(prev ?? Infinity, ...bars.map((b) => b.l));
     const hi = Math.max(prev ?? -Infinity, ...bars.map((b) => b.h));
     const y = (v) => (hi === lo ? 50 : ((hi - v) / (hi - lo)) * 100);
-    const w = 3;
+    const w = 7;
     const parts = bars.map((b) => {
       const color = b.c >= b.o ? 'var(--up)' : 'var(--down)';
       const top = y(Math.max(b.o, b.c));
-      const height = Math.max(0.8, y(Math.min(b.o, b.c)) - top);
+      const height = Math.max(2, y(Math.min(b.o, b.c)) - top);
       const x = b.i * w;
-      return `<line x1="${x + 1.5}" x2="${x + 1.5}" y1="${y(b.h)}" y2="${y(b.l)}" stroke="${color}" vector-effect="non-scaling-stroke"/>`
-        + `<rect x="${x + 0.5}" y="${top}" width="2" height="${height}" fill="${color}"/>`;
+      return `<line x1="${x + 3.5}" x2="${x + 3.5}" y1="${y(b.h)}" y2="${y(b.l)}" stroke="${color}" vector-effect="non-scaling-stroke"/>`
+        + `<rect x="${x + 1.5}" y="${top}" width="4" height="${height}" fill="${color}"/>`;
     });
     const base = prev == null ? '' : `<line x1="0" x2="${candles.length * w}" y1="${y(prev)}" y2="${y(prev)}" stroke="var(--muted)" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/>`;
     return `<svg class="k" viewBox="0 0 ${candles.length * w} 100" preserveAspectRatio="none" aria-hidden="true">${base}${parts.join('')}</svg>`;
@@ -360,14 +360,13 @@
       const stale = q.stale ? ' · <span class="lag">舊資料</span>' : '';
       const chart = q.candles ? miniCandles(q.candles, q.prev) : '';
       return `
-        <div class="card${chart ? ' has-k' : ''}">
-          ${chart}
+        <div class="card">
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
           <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}</div>
           <div class="chg ${dir}">${q.unit === 'yield'
             ? `${sign}${fmt(q.change * 100, 1)}bp`
             : `${sign}${fmt(q.change, q.digits)} (${sign}${fmt(q.changePct, 2)}%)`}</div>
-          <div class="meta">${sameDay ? hhmm(q.time) : mdhm(q.time)}${lag}${stale}</div>
+          <div class="foot"><div class="meta">${sameDay ? hhmm(q.time) : mdhm(q.time)}${lag}${stale}</div>${chart}</div>
         </div>`;
     }).join('') + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
   }

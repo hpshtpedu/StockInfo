@@ -238,23 +238,23 @@ async function fetchYahooTw() {
     // TAIEX per-minute volume is turnover in NT$ millions; the sum is today's cumulative turnover.
     if (id === 'twii') {
       out[id].turnover = (chart.indicators?.quote?.[0]?.volume ?? []).reduce((sum, v) => sum + (v || 0), 0);
-      out[id].candles = candles15(chart);
+      out[id].candles = candles30(chart);
     }
   }
   return out;
 }
 
-// 1-minute bars -> 15-minute [open, high, low, close] for the 09:00-13:30 session (18 slots,
+// 1-minute bars -> 30-minute [open, high, low, close] for the 09:00-13:30 session (9 slots,
 // null where no trades yet). The 13:30 closing auction is folded into the last slot.
-function candles15(chart) {
+function candles30(chart) {
   const ts = chart.timestamp ?? [];
   const q = chart.indicators?.quote?.[0] ?? {};
-  const slots = Array(18).fill(null);
+  const slots = Array(9).fill(null);
   ts.forEach((t, i) => {
     const [o, h, l, c] = [q.open?.[i], q.high?.[i], q.low?.[i], q.close?.[i]];
     if ([o, h, l, c].some((v) => v == null)) return;
     const tw = new Date((t + 8 * 3600) * 1000);
-    const slot = Math.min(17, Math.floor((tw.getUTCHours() * 60 + tw.getUTCMinutes() - 540) / 15));
+    const slot = Math.min(8, Math.floor((tw.getUTCHours() * 60 + tw.getUTCMinutes() - 540) / 30));
     if (slot < 0) return;
     const s = slots[slot];
     slots[slot] = s ? [s[0], Math.max(s[1], h), Math.min(s[2], l), c] : [o, h, l, c];
