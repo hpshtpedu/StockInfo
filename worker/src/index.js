@@ -380,7 +380,7 @@ async function keepSessionQuote(origin, ctx, q) {
   const key = new Request(`${origin}/_session/${q.id}`);
   if (q.time) {
     ctx.waitUntil(caches.default.put(key, new Response(JSON.stringify(q), {
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=72000' },
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=345600' },  // 4 days: covers long weekends
     })));
     return q;
   }
