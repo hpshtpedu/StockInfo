@@ -96,10 +96,13 @@
   .cal .next b { color: inherit; font-weight: 400; }
   .cal .ev { color: var(--text); font-weight: 600; }
   .cal .next .ev { color: inherit; font-weight: 400; }
-  .cal .inst-title { color: var(--muted); font-size: 11px; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
+  .cal .inst-title { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11px; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
+  .cal .inst-title span:last-child:not(:first-child) { font-weight: 600; }
   .cal .inst { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; }
   .cal .inst .k { color: var(--muted); font-size: 11px; }
   .cal .inst .v { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  /* 非當日（盤中、隔天早上前）的舊資料：整塊轉灰 */
+  .cal .inst.stale .v { color: var(--muted); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -221,28 +224,42 @@
     return `${label} ${t.getUTCMonth() + 1}/${t.getUTCDate()}(${WEEKDAYS[t.getUTCDay()]})${parts ? `　${parts}` : ''}`;
   }
 
-  // 三大法人買賣超：當日 15:10 起顯示，到下個交易日 08:00 清掉
-  function institutionalHtml(inst) {
+  let instHistory = null;
+
+  // 外資連買/連賣天數：GitHub Actions 每晚記錄的歷史 + Worker 抓到的最新一天
+  function foreignStreak(inst, history, fresh) {
+    const byDate = new Map((history?.days ?? []).map((d) => [d.date, d.foreign]));
+    byDate.set(inst.date, inst.foreign);
+    const values = [...byDate.entries()].filter(([d]) => d <= inst.date).sort().map(([, v]) => v);
+    const sign = Math.sign(values.at(-1) ?? 0);
+    if (!sign) return '';
+    let n = 0;
+    for (let i = values.length - 1; i >= 0 && Math.sign(values[i]) === sign; i--) n++;
+    return `<span class="${fresh ? (sign > 0 ? 'up' : 'down') : ''}">外資連${n}${sign > 0 ? '買' : '賣'}</span>`;
+  }
+
+  // 三大法人買賣超：一直顯示；當日 15:10 到下個交易日 08:00 是新資料（彩色），其餘時間整塊轉灰
+  function institutionalHtml(inst, history) {
     if (!inst?.date) return '';
     const [y, m, d] = inst.date.split('-').map(Number);
     const day = utcDate(y, m, d);
-    const showFrom = day.getTime() + (15 * 60 + 10) * 60000;
-    const showUntil = nextBusinessDay(addDays(day, 1)).getTime() + 8 * 3600000;
+    const freshFrom = day.getTime() + (15 * 60 + 10) * 60000;
+    const freshUntil = nextBusinessDay(addDays(day, 1)).getTime() + 8 * 3600000;
     const nowTw = Date.now() + 8 * 3600000;
-    if (nowTw < showFrom || nowTw >= showUntil) return '';
+    const fresh = nowTw >= freshFrom && nowTw < freshUntil;
 
     const cell = (label, v) => {
       const dir = v > 0 ? 'up' : v < 0 ? 'down' : '';
       return `<div><div class="k">${label}</div><div class="v ${dir}">${v > 0 ? '+' : ''}${fmt(v, 1)}</div></div>`;
     };
     return `
-      <div class="inst-title">三大法人買賣超 ${m}/${d}（億元）</div>
-      <div class="inst">
+      <div class="inst-title"><span>三大法人買賣超 ${m}/${d}（億元）</span>${foreignStreak(inst, history, fresh)}</div>
+      <div class="inst${fresh ? '' : ' stale'}">
         ${cell('外資', inst.foreign)}${cell('投信', inst.trust)}${cell('自營商', inst.dealer)}${cell('合計', inst.total)}
       </div>`;
   }
 
-  function calendarHtml(inst) {
+  function calendarHtml(inst, history) {
     const tw = new Date(Date.now() + 8 * 3600 * 1000);
     const today = utcDate(tw.getUTCFullYear(), tw.getUTCMonth() + 1, tw.getUTCDate());
     // 只列下一個平日（明天，或週末後的週一），沒有事件就不顯示
@@ -256,7 +273,7 @@
       <div class="card cal">
         <div class="today">📅 ${dayLine('今日', today, dayEvents(today))}</div>
         ${nextHtml}
-        ${institutionalHtml(inst)}
+        ${institutionalHtml(inst, history)}
       </div>`;
   }
 
@@ -419,7 +436,7 @@
       twii: turnoverBadge(byId.twii, profile),
       txf: basisBadge(byId.txf, byId.twii),
     };
-    $list.innerHTML = calendarHtml(data.institutional) + data.quotes.map((q) => {
+    $list.innerHTML = calendarHtml(data.institutional, instHistory) + data.quotes.map((q) => {
       if (q.error) {
         return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`
           + (q.id === 'otc' ? sectorsHtml(data.sectors) : '');
@@ -464,6 +481,7 @@
       const marginReq = getJson('margin.json');
       const profileReq = getJson('volume_profile.json');
       const eventsReq = getJson('events.json');
+      const historyReq = getJson('institutional.json');
       const res = await fetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
@@ -472,6 +490,7 @@
         econEvents = {};
         for (const e of events) (econEvents[e.date] ??= []).push(e);
       }
+      instHistory = (await historyReq) ?? instHistory;
       render(data, pickMargin(data.margin, await marginReq), await profileReq);
       $status.className = '';
       $status.textContent = `更新 ${hhmm(data.updated)} (GMT+8)`;
