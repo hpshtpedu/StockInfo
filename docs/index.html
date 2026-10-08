@@ -105,7 +105,7 @@
   .meta { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lag { color: var(--warn); }
   .txt { color: var(--text); }
-  .cmp { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  .cmp { font-size: clamp(10.5px, 3vw, 12px); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .cmp .txt, .chg .txt { font-weight: 400; }
   .error { color: var(--warn); font-size: 12px; }
   .cal { grid-column: 1 / -1; font-size: 13px; gap: 3px; }
@@ -352,14 +352,14 @@
     if (prev >= 0 && cur < 0) return `淨空${lots(cur)}`;  // 翻空
     const side = cur < 0 ? '淨空' : '淨多';
     const grew = Math.abs(cur) > Math.abs(prev);
-    return `${side}${grew ? '增加' : '減少'}${lots(cur - prev)}`;
+    return `${side}${grew ? '增' : '減'}${lots(cur - prev)}`;
   }
 
   function dailyHtml(q) {
     const dir = q.price > 0 ? 'up' : q.price < 0 ? 'down' : '';
     const sign = q.price > 0 ? '+' : '';
     const value = q.unit === 'ratio' ? `${sign}${fmt(q.price, q.digits)}%` : `${sign}${fmt(q.price, q.digits)}<small> 口</small>`;
-    // 跟前一個交易日比：多空比用百分點；淨 OI 用白話描述（淨空增加/減少、翻多…），對多方有利紅、不利綠
+    // 跟前一個交易日比：多空比用百分點；淨 OI 用白話描述（淨空增/減、翻多…），對多方有利紅、不利綠
     // 「較前日」獨立一行，放在日期上方
     let change = '';
     if (q.change != null) {
