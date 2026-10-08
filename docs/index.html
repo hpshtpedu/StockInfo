@@ -496,10 +496,9 @@
     '油電燃氣': '油電', '綠能環保': '綠能', '數位雲端': '雲端', '居家生活': '居家',
   };
 
-  // 產業成交比重：全寬卡片，兩欄四行，長條長度相對於第一名
+  // 產業成交比重：全寬卡片，兩欄四行，長條以 100% 為滿格（長度＝實際比重）
   function sectorsHtml(s) {
     if (!s?.top?.length) return '';
-    const max = s.top[0].share;
     // 盤中（台股交易日 09:00-13:30）資料落後 5 分鐘以上才標「慢X分」，收盤後不標
     const tw = new Date(Date.now() + 8 * 3600000);
     const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
@@ -517,7 +516,7 @@
     const cells = s.top.map((r) => `
       <div class="sec">
         <div class="sec-row"><span>${SECTOR_SHORT_NAMES[r.name] ?? r.name}</span><b>${fmt(r.share, 1)}%</b></div>
-        <div class="sec-bar"><i style="width:${(r.share / max) * 100}%"></i></div>
+        <div class="sec-bar"><i style="width:${Math.min(100, r.share)}%"></i></div>
       </div>`).join('');
     return `
       <div class="card wide">
