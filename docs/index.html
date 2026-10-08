@@ -571,8 +571,9 @@
     const state = STATE_LABELS[twii?.state] ? ` · ${STATE_LABELS[twii.state]}` : '';
     return `
       <div class="card">
-        <div class="head"><div class="name">我的持股</div><span class="meta">${hhmm(list[0].time)}${state}</span></div>
+        <div class="name">我的持股</div>
         <div class="holds">${rows}</div>
+        <div class="meta">${hhmm(list[0].time)}${state}</div>
       </div>`;
   }
 
@@ -650,10 +651,10 @@
       txf: basisBadge(byId.txf, byId.twii),
       tsm: adrBadge(byId.tsm),
     };
-    // 插在某張卡片後面的卡片：加權後接大盤均線；漲跌家數後接我的持股；USD/TWD 後接產業成交比重（全寬）；美債後接台指VIX
+    // 插在某張卡片後面的卡片：加權後接我的持股；漲跌家數後接大盤均線；USD/TWD 後接產業成交比重（全寬）；美債後接台指VIX
     const after = {
-      twii: maHtml(byId.twii),
-      breadth: holdingsHtml(data.holdings, byId.twii),
+      twii: holdingsHtml(data.holdings, byId.twii),
+      breadth: maHtml(byId.twii),
       usdtwd: sectorsHtml(data.sectors),
       us10y: vixHtml(data.vix),
     };
