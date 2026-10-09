@@ -170,6 +170,9 @@
   const API = 'https://stockinfo-quotes.hpshtpedu.workers.dev/quotes';
   const POLL_MS = 120 * 1000;
   const STATE_LABELS = { lunch: '午休', closed: '收盤', holiday: '休市', night: '夜盤', opening: '開盤' };
+  // 「時間 · 狀態」；休市只寫「休市」（時間是上一個交易日的，沒意義）
+  const timeState = (time, state) => (state === 'holiday' ? '休市'
+    : `${hhmm(time)}${STATE_LABELS[state] ? ` · ${STATE_LABELS[state]}` : ''}`);
 
   const $list = document.getElementById('list');
   const $status = document.getElementById('status');
@@ -475,7 +478,7 @@
         <div class="head"><div class="name">${q.name}</div>${badge}</div>
         <div class="price tight"><span class="up">▲${q.up}</span> <span class="down">▼${q.down}</span></div>
         <div class="chg brd"><span class="seg up"><i>漲停</i>${q.limitUp}</span><span class="seg down"><i>跌停</i>${q.limitDown}</span><span class="seg"><i>平</i>${q.flat}</span></div>
-        <div class="meta">${hhmm(twii?.time ?? q.time)}${STATE_LABELS[twii?.state] ? ` · ${STATE_LABELS[twii.state]}` : ''}</div>
+        <div class="meta">${timeState(twii?.time ?? q.time, twii?.state)}</div>
       </div>`;
   }
 
@@ -563,12 +566,11 @@
       return `<div class="hold-row"><span class="k">${h.code}</span><b class="${dir}">${fmt(h.price, digits)}</b>`
         + `<span class="ext ${dir}">${sign}${fmt(h.change, digits)}</span><span class="ext ${dir}">${sign}${fmt(h.changePct, 2)}%</span></div>`;
     }).join('');
-    const state = STATE_LABELS[twii?.state] ? ` · ${STATE_LABELS[twii.state]}` : '';
     return `
       <div class="card">
         <div class="name">我的持股</div>
         <div class="holds">${rows}</div>
-        <div class="meta">${hhmm(list[0].time)}${state}</div>
+        <div class="meta">${timeState(list[0].time, twii?.state)}</div>
       </div>`;
   }
 
@@ -593,7 +595,7 @@
       <div class="card">
         <div class="head"><div class="name">大盤均線</div><span class="badge ${label[1]}">${label[0]}</span></div>
         ${row('月線', ma20)}${row('季線', ma60)}${ma240 ? row('年線', ma240) : ''}
-        <div class="meta">${hhmm(twii.time)}${closed ? ` · ${STATE_LABELS[twii.state]}` : ''}</div>
+        <div class="meta">${timeState(twii.time, closed ? twii.state : null)}</div>
       </div>`;
   }
 
@@ -620,7 +622,7 @@
     const dataToday = key(utcDate(data.getUTCFullYear(), data.getUTCMonth() + 1, data.getUTCDate())) === key(today);
     const closed = !dataToday || data.getUTCHours() * 60 + data.getUTCMinutes() >= 810;
     const when = closed
-      ? `${data.getUTCHours() * 60 + data.getUTCMinutes() >= 810 ? '13:30' : hhmm(s.time)} · ${isMarketHoliday('tw') ? '休市' : '收盤'}`
+      ? (isMarketHoliday('tw') ? '休市' : `${data.getUTCHours() * 60 + data.getUTCMinutes() >= 810 ? '13:30' : hhmm(s.time)} · 收盤`)
       : hhmm(s.time) + lag;
     const cells = s.top.map((r) => `
       <div class="sec">
@@ -701,7 +703,7 @@
       // 沒有報價時間（例如 Yahoo 換到下一個交易時段）就不顯示時間，只留狀態
       // 收盤、休市等狀態只顯示時間，不加日期
       // 開盤但延遲報價還沒出來：最新一筆是昨天的收盤，不顯示時間
-      const when = q.time && q.state !== 'opening' ? (sameDay || STATE_LABELS[q.state] ? hhmm(q.time) : mdhm(q.time)) : '';
+      const when = q.time && q.state !== 'opening' && q.state !== 'holiday' ? (sameDay || STATE_LABELS[q.state] ? hhmm(q.time) : mdhm(q.time)) : '';
       const meta = `<div class="meta">${when}${when ? lag : lag.replace(/^ · /, '')}${stale}</div>`;
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
       // 有 K 線的卡片（加權）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K」
