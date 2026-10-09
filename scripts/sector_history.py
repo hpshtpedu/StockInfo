@@ -3,6 +3,7 @@
 Source: the Fugle heatmap page (one request a day, after the close). It has no history, so
 this builds it up day by day for the 金融接棒 / 資金過度集中 badges (20-day averages).
 """
+import datetime as dt
 import json
 import pathlib
 import re
@@ -14,7 +15,18 @@ UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 KEEP = 60
 
 
+def is_trading_day():
+    """Today's TAIEX close is in (taiex_history.py runs earlier in the same job): not a holiday."""
+    taiex = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'taiex_history.json'
+    closes = json.loads(taiex.read_text(encoding='utf-8'))['closes'] if taiex.exists() else []
+    today = dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).date().isoformat()
+    return bool(closes) and closes[-1]['date'] == today
+
+
 def main():
+    if not is_trading_day():
+        print('market holiday: skip')
+        return 0
     req = urllib.request.Request('https://heatmap.fugle.tw/', headers={'User-Agent': UA})
     with urllib.request.urlopen(req, timeout=60) as res:
         html = res.read().decode('utf-8', 'replace')

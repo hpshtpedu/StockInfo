@@ -13,7 +13,18 @@ OUT = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'tsmc_weight.jso
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
 
 
+def is_trading_day():
+    """Today's TAIEX close is in (taiex_history.py runs earlier in the same job): not a holiday."""
+    taiex = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'taiex_history.json'
+    closes = json.loads(taiex.read_text(encoding='utf-8'))['closes'] if taiex.exists() else []
+    today = dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).date().isoformat()
+    return bool(closes) and closes[-1]['date'] == today
+
+
 def main():
+    if not is_trading_day():
+        print('market holiday: skip')
+        return 0
     req = urllib.request.Request('https://www.taifex.com.tw/cht/9/futuresQADetail', headers={'User-Agent': UA})
     with urllib.request.urlopen(req, timeout=60) as res:
         html = res.read().decode('utf-8', 'replace')
