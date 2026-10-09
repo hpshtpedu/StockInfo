@@ -15,11 +15,19 @@ on:
 permissions:
   contents: write
 
+# One run at a time: a queued run waits for the previous one to commit, so per-day guards
+# (e.g. gov_banks.py's one HiStock request a day) see what it wrote.
+concurrency:
+  group: daily-data
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main  # the latest commit, not the one that triggered a queued run
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
