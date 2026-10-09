@@ -105,7 +105,8 @@
   /* 最下面一行：左邊報價時間，右邊「15分K」標示 */
   .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 2px; min-width: 0; }
   .foot-left { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  /* 說明用的中性 badge（例如融資維持率的斷頭線），放卡片右下角 */
+  /* 說明用的中性 badge（例如融資維持率的警戒線），放卡片右下角 */
+  .foot .badge.warn { flex-shrink: 0; }
   .foot .badge.note { flex-shrink: 0; color: var(--muted); font-weight: 500; }
   .klabel { flex-shrink: 0; color: var(--muted); font-size: 9px; }
   .kchart { width: 100%; height: 30px; display: block; }
@@ -450,7 +451,7 @@
         <div class="name">上市融資維持率</div>
         <div class="price">${fmt(m.ratio, 2)}%</div>
         <div class="chg ${dir}">${chg}</div>
-        <div class="foot"><div class="meta">${mm}/${dd} 盤後</div><span class="badge note">斷頭線130%</span></div>
+        <div class="foot"><div class="meta">${mm}/${dd} 盤後</div><span class="badge ${m.ratio < 140 ? 'warn' : 'note'}">警戒線140%</span></div>
       </div>`;
   }
 
