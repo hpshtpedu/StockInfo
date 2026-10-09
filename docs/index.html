@@ -674,7 +674,8 @@
 
   // 我的持股：代號、價格、漲跌幅
   // 正二磨損：00685L 近 20 個交易日的實際漲跌，減掉「加權同期漲跌 × 2」（百分點）。
-  // 震盪盤每天重新槓桿會吃掉報酬；近一年約 10% 的日子 ≤ -3%，這時才警示
+  // 震盪盤每天重新槓桿會吃掉報酬；近一年約 10% 的日子 ≤ -3%，這時才警示。
+  // 反過來單邊趨勢時複利會超過 2 倍；正向差距比較小，近一年約 10% 的日子 ≥ +1%
   function leverageDecay(list, twii) {
     const etf = list.find((h) => h.code === '00685L');
     if (!etf?.price || !twii?.price) return null;
@@ -689,7 +690,9 @@
   function holdingsHtml(list, twii) {
     if (!list?.length) return '';
     const decay = leverageDecay(list, twii);
-    const badge = decay != null && decay <= -3 ? `<span class="badge warn">正二磨損${fmt(-decay, 1)}%</span>` : '';
+    const badge = decay == null ? ''
+      : decay <= -3 ? `<span class="badge warn">正二磨損${fmt(-decay, 1)}%</span>`
+      : decay >= 1 ? `<span class="badge buy">複利加速+${fmt(decay, 1)}%</span>` : '';
     const rows = list.map((h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
       const sign = h.change > 0 ? '+' : '';
