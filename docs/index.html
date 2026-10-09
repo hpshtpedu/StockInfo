@@ -700,8 +700,10 @@
     const series = [...prior, twii.price];
     const avg = (n) => series.slice(-n).reduce((a, b) => a + b, 0) / n;
     const [ma20, ma60, p] = [avg(20), avg(60), twii.price];
-    const ma240 = series.length >= 240 ? avg(240) : null;  // 年線：歷史還不夠一年時先不顯示
-    const label = p > ma20 && ma20 > ma60 ? ['多頭排列', 'up'] : p < ma20 && ma20 < ma60 ? ['空頭排列', 'down'] : ['盤整', ''];
+    // 月線乖離到極端時優先警示（近一年約 7% 的日子乖離 ≥ +8%、不到 5% 的日子 ≤ -5%），否則看均線排列
+    const bias = ((p - ma20) / ma20) * 100;
+    const label = bias >= 8 ? ['乖離過熱', 'warn'] : bias <= -5 ? ['乖離超跌', 'fuel']
+      : p > ma20 && ma20 > ma60 ? ['多頭排列', 'up'] : p < ma20 && ma20 < ma60 ? ['空頭排列', 'down'] : ['盤整', ''];
     const row = (name, ma) => {
       const gap = ((p - ma) / ma) * 100;
       return `<div class="ma-row"><span><span class="k">${name}</span> ${fmt(ma, 0)}</span>`
@@ -711,7 +713,7 @@
     return `
       <div class="card">
         <div class="head"><div class="name">大盤均線</div><span class="badge ${label[1]}">${label[0]}</span></div>
-        ${row('月線', ma20)}${row('季線', ma60)}${ma240 ? row('年線', ma240) : ''}
+        ${row('月線', ma20)}${row('季線', ma60)}
         <div class="meta">${timeState(twii.time, closed ? twii.state : null)}</div>
       </div>`;
   }
