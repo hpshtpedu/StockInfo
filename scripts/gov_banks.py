@@ -43,7 +43,14 @@ def main():
     if not days:
         print('HiStock: no data')
         return 0
-    OUT.write_text(json.dumps({'fetched': today, 'days': days[-KEEP:]}) + '\n', encoding='utf-8')
+    # Our own stored days are the history (the 連N買/賣 streak counts on them); each fetch only adds
+    # newer days, plus the last few in case HiStock revised them.
+    known = {d['date']: d for d in old.get('days', [])}
+    for d in days[-5:] if known else days:
+        known[d['date']] = d
+    merged = [known[k] for k in sorted(known)][-KEEP:]
+    OUT.write_text(json.dumps({'fetched': today, 'days': merged}) + '\n', encoding='utf-8')
+    days = merged
     print(days[-3:])
     return 0
 
