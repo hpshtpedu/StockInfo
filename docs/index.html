@@ -169,7 +169,7 @@
 <script>
   const API = 'https://stockinfo-quotes.hpshtpedu.workers.dev/quotes';
   const POLL_MS = 120 * 1000;
-  const STATE_LABELS = { lunch: '午休', closed: '收盤', holiday: '休市', night: '夜盤' };
+  const STATE_LABELS = { lunch: '午休', closed: '收盤', holiday: '休市', night: '夜盤', opening: '已開盤' };
 
   const $list = document.getElementById('list');
   const $status = document.getElementById('status');
@@ -651,11 +651,12 @@
   }
 
   // Worker 只能用交易時段猜：假日時 Yahoo 的時段跳到下一天（判成收盤），開盤初期延遲報價還沒出現（判成休市）。
-  // 以行事曆為準：今天是該市場休市日才顯示「休市」，否則一律「收盤」
+  // 以行事曆為準：今天是休市日才顯示「休市」；不是的話，開盤初期是「已開盤（報價延遲中）」，其餘為「收盤」
   function effectiveState(q) {
     const market = MARKET_OF[q.id];
     if (!market || (q.state !== 'closed' && q.state !== 'holiday')) return q.state;
-    return isMarketHoliday(market) ? 'holiday' : 'closed';
+    if (isMarketHoliday(market)) return 'holiday';
+    return q.state === 'holiday' ? 'opening' : 'closed';
   }
 
   function render(data, margin, profile) {
@@ -688,7 +689,7 @@
       const ageMin = Math.round((Date.now() - q.time) / 60000);
       const sameDay = new Date(q.time).toDateString() === new Date().toDateString();
       // Open: measured lag. Lunch: the feed's typical delay. Closed/holiday: none.
-      const lagMin = q.state === 'lunch' ? q.delayMin
+      const lagMin = q.state === 'lunch' || q.state === 'opening' ? q.delayMin
         : STATE_LABELS[q.state] ? 0 : ageMin >= 5 && ageMin < 60 ? ageMin : 0;
       const lag = (STATE_LABELS[q.state] ? ` · ${STATE_LABELS[q.state]}` : '')
         + (lagMin ? ` · <span class="lag">慢${lagMin}分</span>` : '');
@@ -696,7 +697,8 @@
       const chart = q.candles ? miniCandles(q.candles, q.prev) : '';
       // 沒有報價時間（例如 Yahoo 換到下一個交易時段）就不顯示時間，只留狀態
       // 收盤、休市等狀態只顯示時間，不加日期
-      const when = q.time ? (sameDay || STATE_LABELS[q.state] ? hhmm(q.time) : mdhm(q.time)) : '';
+      // 已開盤但延遲報價還沒出來：最新一筆是昨天的收盤，不顯示時間
+      const when = q.time && q.state !== 'opening' ? (sameDay || STATE_LABELS[q.state] ? hhmm(q.time) : mdhm(q.time)) : '';
       const meta = `<div class="meta">${when}${when ? lag : lag.replace(/^ · /, '')}${stale}</div>`;
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
       // 有 K 線的卡片（加權）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K」
