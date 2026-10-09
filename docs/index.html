@@ -110,7 +110,8 @@
   .foot-left { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   /* 說明用的中性 badge（例如融資維持率的警戒線），放卡片右下角 */
   .foot .badge.warn { flex-shrink: 0; }
-  .foot .badge.note { flex-shrink: 0; color: var(--muted); }
+  .badge.note { color: var(--muted); }
+  .foot .badge.note { flex-shrink: 0; }
   .klabel { flex-shrink: 0; color: var(--muted); font-size: 9px; }
   .kchart { width: 100%; height: 30px; display: block; }
   .badge { min-width: 0; font-size: clamp(10px, 3.2vw, 12px); font-weight: 600; line-height: 1.5; padding: 0 3px; letter-spacing: -0.2px; border-radius: 999px; background: var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
@@ -732,6 +733,9 @@
       twii: turnoverBadge(byId.twii, profile),
       txf: basisBadge(byId.txf, byId.twii),
       tsm: adrBadge(byId.tsm),
+      // 給不熟美股的人看的白話註解
+      sox: '<span class="badge note">美國晶片股</span>',
+      nq: '<span class="badge note">科技風向球</span>',
     };
     // 插在某張卡片後面的卡片：加權後接我的持股；漲跌家數後接大盤均線；USD/TWD 後接產業成交比重（全寬）；美債後接台指VIX
     const after = {
