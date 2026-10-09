@@ -60,6 +60,7 @@
   /* 產業成交比重：全寬，兩欄四行 */
   .card.wide { grid-column: 1 / -1; max-height: 170px; gap: 4px; }
   .card.wide .head .meta { flex-shrink: 1; min-width: 0; }
+  .head-left { display: flex; align-items: center; gap: 4px; min-width: 0; }
   /* 先排左欄 1-4 名，再排右欄 5-8 名 */
   .secs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, auto); grid-auto-flow: column; gap: 5px 14px; }
   .sec-row { display: flex; justify-content: space-between; gap: 6px; font-size: 13px; white-space: nowrap; }
@@ -621,6 +622,7 @@
   // 大盤均線：每晚存的加權收盤（taiex_history.json）+ 即時指數當最新一天
   let taiexHistory = null;
   let vixHistory = null;
+  let sectorHistory = null;  // 每日收盤的產業成交比重
   let globalHistory = null;  // 費半、小納、韓股、日經的日收盤，月線 badge 用
   let tsmcWeight = null;  // 台積電市值佔大盤比重（%），拉雞盤判斷用
 
@@ -709,6 +711,32 @@
       </div>`;
   }
 
+  // 加權的月線乖離（%）：每晚存的收盤 + 即時指數當最新一天
+  function taiexBias(twii) {
+    const closes = taiexHistory?.closes;
+    if (!twii?.price || !closes?.length) return null;
+    const day = new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10);
+    const series = [...closes.filter((c) => c.date < day).map((c) => c.close), twii.price].slice(-20);
+    if (series.length < 20) return null;
+    return (twii.price / (series.reduce((a, b) => a + b, 0) / 20) - 1) * 100;
+  }
+
+  // 產業成交比重的 badge，要累積 20 個交易日的收盤比重（sector_history.json，2026/10 起每晚存）才會出現。
+  // 金融接棒：金融保險比重達自己 20 日平均的 1.8 倍，且大盤月線乖離 ≥ +5%（過熱時才爆量補漲，常被當成末段訊號）
+  // 資金過度集中：半導體比重達自己 20 日平均的 1.3 倍
+  // 門檻是暫定值，資料滿一個月後再用實際分布校準
+  function sectorBadge(s, twii) {
+    if (!s?.shares) return '';
+    const day = new Date(s.time + 8 * 3600000).toISOString().slice(0, 10);
+    const past = (sectorHistory?.days ?? []).filter((d) => d.date < day).slice(-20);
+    if (past.length < 20) return '';
+    const avg = (name) => past.reduce((sum, d) => sum + (d.shares[name] ?? 0), 0) / past.length;
+    const ratio = (name) => (avg(name) > 0 ? (s.shares[name] ?? 0) / avg(name) : 0);
+    if (ratio('金融保險') >= 1.8 && taiexBias(twii) >= 5) return '<span class="badge warn">金融接棒</span>';
+    if (ratio('半導體') >= 1.3) return '<span class="badge warn">資金過度集中</span>';
+    return '';
+  }
+
   function maHtml(twii) {
     const closes = taiexHistory?.closes;
     if (!twii?.price || !closes?.length) return '';
@@ -745,7 +773,7 @@
   };
 
   // 產業成交比重：全寬卡片，兩欄四行，長條以 100% 為滿格（長度＝實際比重）
-  function sectorsHtml(s) {
+  function sectorsHtml(s, twii) {
     if (!s?.top?.length) return '';
     // 盤中（台股交易日 09:00-13:30）資料落後 5 分鐘以上才標「慢X分」，收盤後不標
     const tw = new Date(Date.now() + 8 * 3600000);
@@ -768,7 +796,7 @@
       </div>`).join('');
     return `
       <div class="card wide">
-        <div class="head"><div class="name">產業成交比重</div>
+        <div class="head"><div class="head-left"><div class="name">產業成交比重</div>${sectorBadge(s, twii)}</div>
           <div class="meta">電子 ${fmt(s.electronics, 1)}% · ${when}${s.stale ? ' · <span class="lag">舊資料</span>' : ''}</div></div>
         <div class="secs">${cells}</div>
       </div>`;
@@ -822,7 +850,7 @@
     const after = {
       twii: holdingsHtml(data.holdings, byId.twii),
       breadth: maHtml(byId.twii),
-      usdtwd: sectorsHtml(data.sectors),
+      usdtwd: sectorsHtml(data.sectors, byId.twii),
       us10y: vixHtml(data.vix, byId.twii),
     };
     const cardFor = (q) => {
@@ -883,6 +911,7 @@
       const vixReq = getJson('vix_history.json');
       const weightReq = getJson('tsmc_weight.json');
       const globalReq = getJson('global_history.json');
+      const sectorReq = getJson('sector_history.json');
       const res = await fetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
@@ -896,6 +925,7 @@
       vixHistory = (await vixReq) ?? vixHistory;
       tsmcWeight = (await weightReq) ?? tsmcWeight;
       globalHistory = (await globalReq) ?? globalHistory;
+      sectorHistory = (await sectorReq) ?? sectorHistory;
       render(data, pickMargin(data.margin, await marginReq), await profileReq);
       $status.className = '';
       $status.textContent = `更新 ${hhmm(data.updated)} (GMT+8)`;

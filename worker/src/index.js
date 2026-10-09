@@ -357,6 +357,8 @@ async function fetchSectors(origin, ctx) {
         .sort((a, b) => b.value - a.value)
         .slice(0, 8)
         .map((r) => ({ name: r.name, share: (r.value / total) * 100 })),
+      // Every industry's share, for the 金融接棒 / 資金過度集中 badges.
+      shares: Object.fromEntries(industries.map((r) => [r.name, Math.round((r.value / total) * 10000) / 100])),
     };
 
     const store = (k, ttl) => cache.put(k, new Response(JSON.stringify(out), {
