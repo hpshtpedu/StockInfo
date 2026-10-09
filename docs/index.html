@@ -63,7 +63,6 @@
   /* 分類標題：橫跨兩欄 */
   .section { grid-column: 1 / -1; margin: 6px 2px 0; font-size: 12px; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 6px; }
   .section::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
-  .chg.trend { font-size: 12px; font-weight: 600; white-space: normal; }
   .head-left { display: flex; align-items: center; gap: 4px; min-width: 0; }
   /* 先排左欄 1-4 名，再排右欄 5-8 名 */
   .secs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, auto); grid-auto-flow: column; gap: 5px 14px; }
@@ -463,10 +462,11 @@
         : netOiChange(q.price - q.change, q.price);
       change = `<div class="cmp"><span class="txt">較前日</span> <span class="${cdir}">${text}</span></div>`;
     }
-    // 散戶多空比是反向指標：一面倒做多＝過熱（橘），一面倒做空＝軋空燃料（綠）
+    // 散戶多空比是反向指標（2026/4-10 回測，各約 10% 的日子）：≥ +30% 極度偏多＝FOMO（橘），之後 5 日
+    // 平均 +0.1%（全部日子 +1.6%）；< 0 散戶轉淨空＝燃料充足（綠），隔天上漲 79%、5 日平均 +3.7%
     const badge = q.unit !== 'ratio' ? futuresSpotBadge(q, inst)
-      : q.price > 20 ? '<span class="badge warn latin">FOMO</span>'
-      : q.price < -20 ? '<span class="badge fuel">燃料充足</span>' : '';
+      : q.price >= 30 ? '<span class="badge warn latin">FOMO</span>'
+      : q.price < 0 ? '<span class="badge fuel">燃料充足</span>' : '';
     return `
       <div class="card">
         <div class="head"><div class="name">${q.name}</div>${badge}</div>
@@ -556,30 +556,22 @@
     return !q?.price || closes.length < 5 ? null : (q.price / closes.at(-5) - 1) * 100;
   }
 
-  // 國際風向：6 個訊號各 +1/0/-1 等權加總。費半、小納、韓股、日經站上月線 +1、跌破 -1；
-  // 美債 5 日降 20bp 以上 +1、升 20bp 以上 -1；台幣 5 日升值 1% 以上 +1、貶值 1% 以上 -1。
-  // 回測近一年：≥ +4 偏多（37% 的日子，隔天台股上漲 66%），≤ -4 偏空（19%，上漲 44%）；
-  // 只對隔天有預測力，5 日後三組差不多
-  function globalTrendHtml(byId) {
-    const sig = (v) => (v == null ? null : v > 0 ? 1 : v < 0 ? -1 : 0);
-    const items = [
-      ['費半', sig(monthLineGap(byId.sox))],
-      ['小納', sig(monthLineGap(byId.nq))],
-      ['韓', sig(monthLineGap(byId.kospi))],
-      ['日', sig(monthLineGap(byId.nikkei))],
-      ['債', (() => { const bp = yield5Bp(byId.us10y); return bp == null ? null : bp <= -20 ? 1 : bp >= 20 ? -1 : 0; })()],
-      ['匯', (() => { const m = twd5Move(byId.usdtwd); return m == null ? null : m <= -1 ? 1 : m >= 1 ? -1 : 0; })()],
-    ];
-    if (items.some(([, v]) => v == null)) return '';
-    const score = items.reduce((sum, [, v]) => sum + v, 0);
-    const [label, dir] = score >= 4 ? ['偏多', 'up'] : score <= -4 ? ['偏空', 'down'] : ['中性', ''];
-    const chips = items.map(([name, v]) => `<span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${name}${v > 0 ? '↑' : v < 0 ? '↓' : '·'}</span>`).join(' ');
+  // 正二操作燈（00685L 今天適不適合加碼）：大盤月線乖離 ≥ +8% 禁止追高（過熱優先）；費半跌破月線暫緩加碼；
+  // 否則可加碼。近一年回測：費半站上月線，隔天台股上漲 65%；跌破 45%（p = 0.004）。
+  // 國際風向的其他訊號（小納、韓、日、美債、台幣）回測都沒有在費半之外多提供資訊，所以不用
+  function leverageLightHtml(byId) {
+    const sox = monthLineGap(byId.sox);
+    const bias = taiexBias(byId.twii);
+    if (sox == null || bias == null) return '';
+    const [label, dir] = bias >= 8 ? ['禁止追高', 'heat'] : sox < 0 ? ['暫緩加碼', 'down'] : ['可加碼', 'up'];
+    const sign = (v) => (v > 0 ? '+' : '');
     return `
       <div class="card">
-        <div class="name">國際風向</div>
-        <div class="price ${dir}">${label} ${score > 0 ? '+' : ''}${score}</div>
-        <div class="chg trend">${chips}</div>
-        <div class="meta">6 項訊號 · 滿分 ±6</div>
+        <div class="name">正二操作燈</div>
+        <div class="price ${dir}">${label}</div>
+        <div class="chg"><span class="txt">費半月線</span> <span class="${sox > 0 ? 'up' : 'down'}">${sign(sox)}${fmt(sox, 1)}%</span></div>
+        <div class="cmp"><span class="txt">大盤乖離</span> <span class="${bias >= 8 ? 'heat' : ''}">${sign(bias)}${fmt(bias, 1)}%</span></div>
+        <div class="meta">00685L 加碼參考</div>
       </div>`;
   }
 
@@ -927,15 +919,17 @@
       sox: section('國際市場'),
       foreignOi: section('台股盤後') + vixHtml(data.vix, byId.twii),
     };
-    // 插在某張卡片後面的卡片：加權後接我的持股；漲跌家數後接大盤均線；USD/TWD 後接產業成交比重（全寬）；
-    // 美債後接國際風向；散戶多空比後接八大行庫
+    // 插在某張卡片後面的卡片：加權後接我的持股；漲跌家數後接大盤均線、正二操作燈、產業成交比重（全寬）；
+    // 散戶多空比後接八大行庫
     const after = {
       twii: holdingsHtml(data.holdings, byId.twii),
-      breadth: maHtml(byId.twii),
-      usdtwd: sectorsHtml(data.sectors, byId.twii),
-      us10y: globalTrendHtml(byId),
+      breadth: maHtml(byId.twii) + leverageLightHtml(byId) + sectorsHtml(data.sectors, byId.twii),
       retailRatio: govBanksHtml(),
     };
+    // USD/TWD 是國際外匯報價，排到國際市場最後（美債後面）
+    const quotes = data.quotes.filter((q) => q.id !== 'usdtwd');
+    const fx = data.quotes.find((q) => q.id === 'usdtwd');
+    if (fx) quotes.splice(quotes.findIndex((q) => q.id === 'us10y') + 1, 0, fx);
     const cardFor = (q) => {
       if (q.error) {
         return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`;
@@ -979,7 +973,7 @@
         </div>`;
     };
     $list.innerHTML = calendarHtml(data.institutional, instHistory)
-      + data.quotes.map((q) => (before[q.id] ?? '') + cardFor(q) + (after[q.id] ?? '')).join('')
+      + quotes.map((q) => (before[q.id] ?? '') + cardFor(q) + (after[q.id] ?? '')).join('')
       + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
   }
 
