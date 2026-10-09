@@ -352,8 +352,7 @@
     if (!sign) return '';
     const n = Math.abs(streak);
     // 當日新資料：「連N買」紅、「連N賣」綠，「外資」維持標題色
-    const tail = sign ? `連${n}${sign > 0 ? '買' : '賣'}` : '';
-    const tailDir = sign > 0 ? 'up' : 'down';
+    const tail = `連${n}${sign > 0 ? '買' : '賣'}`;
     return `<span>外資${fresh ? `<span class="${sign > 0 ? 'up' : 'down'}">${tail}</span>` : tail}</span>`;
   }
 
@@ -402,7 +401,8 @@
     const fresh = instFresh && last.date === instDate;
     const dir = last.net > 0 ? 'up' : 'down';
     const [, mm, dd] = last.date.split('-').map(Number);
-    const tail = `連${n}${sign > 0 ? '買' : '賣'}`;
+    const tail = sign ? `連${n}${sign > 0 ? '買' : '賣'}` : '';
+    const tailDir = sign > 0 ? 'up' : 'down';
     return `
       <div class="inst-box gov${fresh ? ' fresh' : ''}">
         <div class="inst-title"><span>八大公股行庫買賣超 ${mm}/${dd}（億元）</span><span>${fresh ? `<span class="${tailDir}">${tail}</span>` : tail}</span></div>
