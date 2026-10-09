@@ -25,6 +25,13 @@ def main():
     if old.get('fetched') == today:
         print('already fetched today')
         return 0
+    # Market holidays have nothing new: skip unless today's TAIEX close is in (taiex_history.py runs
+    # earlier in the same job), without asking anyone.
+    taiex = OUT.parent / 'taiex_history.json'
+    closes = json.loads(taiex.read_text(encoding='utf-8'))['closes'] if taiex.exists() else []
+    if not closes or closes[-1]['date'] != today:
+        print('no TAIEX close for today (holiday or not out yet): skip')
+        return 0
     # Record the attempt first, so a failed or empty fetch also counts as today's one request.
     old['fetched'] = today
     OUT.write_text(json.dumps(old) + '\n', encoding='utf-8')
