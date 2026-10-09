@@ -507,9 +507,13 @@
     return `<span class="badge${cls}">估${money(estimate)}</span>`;
   }
 
-  // 漲跌家數：指數漲、下跌家數卻較多時標「拉雞盤」
-  function breadthHtml(q, twii) {
-    const pulled = twii?.change > 0 && q.down > q.up;
+  // 漲跌家數：「拉雞盤」＝加權漲，但扣掉台積電後指數其實沒漲，且下跌家數較多。
+  // 台積電貢獻點數 ≈ 昨收指數 × 台積電市值比重（期交所，每晚更新）× 台積電漲跌幅
+  function breadthHtml(q, twii, tw2330) {
+    const weight = tsmcWeight?.weight;
+    const tsmcPoints = weight && tw2330?.changePct != null && twii?.prev
+      ? twii.prev * (weight / 100) * (tw2330.changePct / 100) : null;
+    const pulled = twii?.change > 0 && tsmcPoints != null && twii.change - tsmcPoints <= 0 && q.down > q.up;
     const badge = pulled ? '<span class="badge warn">拉雞盤</span>' : '';
     return `
       <div class="card">
@@ -558,6 +562,7 @@
   // 大盤均線：每晚存的加權收盤（taiex_history.json）+ 即時指數當最新一天
   let taiexHistory = null;
   let vixHistory = null;
+  let tsmcWeight = null;  // 台積電市值佔大盤比重（%），拉雞盤判斷用
 
   // 台指 VIX：每晚累積的歷史（vix_history.json）+ Worker 抓到的最新收盤。
   // 百分位看位置、5 日變化看方向；百分位 ≥90 且當天回落 → 「高檔回落」（今年兩次底部的訊號）
@@ -723,7 +728,7 @@
         return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`;
       }
       if (q.kind === 'daily') return dailyHtml(q);
-      if (q.kind === 'breadth') return breadthHtml(q, byId.twii);
+      if (q.kind === 'breadth') return breadthHtml(q, byId.twii, data.holdings?.find((h) => h.code === '2330'));
       const dir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
       const sign = q.change > 0 ? '+' : '';
       const ageMin = Math.round((Date.now() - q.time) / 60000);
@@ -774,6 +779,7 @@
       const historyReq = getJson('institutional.json');
       const taiexReq = getJson('taiex_history.json');
       const vixReq = getJson('vix_history.json');
+      const weightReq = getJson('tsmc_weight.json');
       const res = await fetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
@@ -785,6 +791,7 @@
       instHistory = (await historyReq) ?? instHistory;
       taiexHistory = (await taiexReq) ?? taiexHistory;
       vixHistory = (await vixReq) ?? vixHistory;
+      tsmcWeight = (await weightReq) ?? tsmcWeight;
       render(data, pickMargin(data.margin, await marginReq), await profileReq);
       $status.className = '';
       $status.textContent = `更新 ${hhmm(data.updated)} (GMT+8)`;

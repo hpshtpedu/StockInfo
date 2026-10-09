@@ -34,6 +34,8 @@ jobs:
         continue-on-error: true
       - run: python scripts/vix_history.py
         continue-on-error: true
+      - run: python scripts/tsmc_weight.py
+        continue-on-error: true
       - run: pip install holidays
         continue-on-error: true
       - run: python scripts/build_events.py
@@ -42,7 +44,7 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
       - name: Commit if changed
         run: |
-          FILES="docs/margin.json docs/volume_profile.json docs/events.json docs/institutional.json docs/taiex_history.json docs/vix_history.json"
+          FILES="docs/margin.json docs/volume_profile.json docs/events.json docs/institutional.json docs/taiex_history.json docs/vix_history.json docs/tsmc_weight.json"
           if git diff --quiet $FILES; then
             echo "no change"
             exit 0
