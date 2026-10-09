@@ -881,14 +881,14 @@
   const MARKET_OF = { twii: 'tw', txf: 'tw', breadth: 'tw', kospi: 'kr', nikkei: 'jp', sox: 'us', tsm: 'us', nq: 'us', us10y: 'us', brent: 'us' };
   const HOLIDAY_LABEL = { kr: '韓股休市', jp: '日股休市', us: '美股休市' };
 
+  // 今天（該市場當地日期）休市：週末或國定假日
   function isMarketHoliday(market) {
     const twToday = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
-    if (market === 'tw') {
-      const d = new Date(twToday + 'T00:00:00Z');
-      return d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && holidays.has(twToday);
-    }
     // 美股用美東當地日期；日、韓跟台灣同一天
     const day = market === 'us' ? new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date()) : twToday;
+    const weekday = new Date(day + 'T00:00:00Z').getUTCDay();
+    if (weekday === 0 || weekday === 6) return true;
+    if (market === 'tw') return holidays.has(day);
     return (econEvents[day] ?? []).some((e) => e.label.startsWith(HOLIDAY_LABEL[market]));
   }
 
