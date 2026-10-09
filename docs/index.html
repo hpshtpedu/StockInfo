@@ -330,14 +330,23 @@
   let instHistory = null;
 
   // 外資連買/連賣天數：GitHub Actions 每晚記錄的歷史 + Worker 抓到的最新一天
-  function foreignStreak(inst, history, fresh) {
+  // 外資連續買（正）或賣（負）超的天數
+  function foreignStreakDays(inst, history) {
+    if (!inst?.date) return 0;
     const byDate = new Map((history?.days ?? []).map((d) => [d.date, d.foreign]));
     byDate.set(inst.date, inst.foreign);
     const values = [...byDate.entries()].filter(([d]) => d <= inst.date).sort().map(([, v]) => v);
     const sign = Math.sign(values.at(-1) ?? 0);
-    if (!sign) return '';
     let n = 0;
-    for (let i = values.length - 1; i >= 0 && Math.sign(values[i]) === sign; i--) n++;
+    for (let i = values.length - 1; i >= 0 && sign && Math.sign(values[i]) === sign; i--) n++;
+    return sign * n;
+  }
+
+  function foreignStreak(inst, history, fresh) {
+    const streak = foreignStreakDays(inst, history);
+    const sign = Math.sign(streak);
+    if (!sign) return '';
+    const n = Math.abs(streak);
     // 當日新資料：「連N買」紅、「連N賣」綠，「外資」維持標題色
     const tail = `連${n}${sign > 0 ? '買' : '賣'}`;
     return `<span>外資${fresh ? `<span class="${sign > 0 ? 'up' : 'down'}">${tail}</span>` : tail}</span>`;
@@ -482,6 +491,19 @@
     const ma = series.reduce((a, b) => a + b, 0) / 20;
     const gap = (q.price / ma - 1) * 100;
     return `<span class="badge ${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">月線${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</span>`;
+  }
+
+  // USD/TWD：5 個交易日的變動（每晚存的日收盤 + 即時報價）。台幣貶超過 1% 且外資連賣 3 天以上＝資金外流；
+  // 反向＝資金回流；只有匯率大動、外資沒同方向＝台幣急貶/急升（灰）；其他不顯示
+  function usdtwdBadge(q, inst, history) {
+    const closes = (globalHistory?.usdtwd ?? []).map((c) => c.close);
+    if (!q?.price || closes.length < 5) return '';
+    const move = (q.price / closes.at(-5) - 1) * 100;  // 正＝美元漲＝台幣貶
+    if (Math.abs(move) < 1) return '';
+    const streak = foreignStreakDays(inst, history);
+    if (move > 0 && streak <= -3) return '<span class="badge warn">資金外流</span>';
+    if (move < 0 && streak >= 3) return '<span class="badge buy">資金回流</span>';
+    return `<span class="badge note">台幣急${move > 0 ? '貶' : '升'}</span>`;
   }
 
   function adrBadge(tsm) {
@@ -747,6 +769,7 @@
       twii: turnoverBadge(byId.twii, profile),
       txf: basisBadge(byId.txf, byId.twii),
       tsm: adrBadge(byId.tsm),
+      usdtwd: usdtwdBadge(byId.usdtwd, data.institutional, instHistory),
       sox: monthLineBadge(byId.sox),
       nq: monthLineBadge(byId.nq),
       kospi: monthLineBadge(byId.kospi),

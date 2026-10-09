@@ -1,4 +1,4 @@
-"""Recent daily closes of SOX, NQ, KOSPI and Nikkei for their 月線 (20-day MA) badges;
+"""Recent daily closes of SOX, NQ, KOSPI and Nikkei (月線 badges) and USD/TWD (5-day move);
 writes docs/global_history.json.
 
 Yahoo daily bars, two requests per symbol, 3 s apart. Only finished sessions are kept: the
@@ -16,7 +16,7 @@ import urllib.request
 OUT = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'global_history.json'
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
 KEEP = 30
-SYMBOLS = {'sox': '^SOX', 'nq': 'NQ=F', 'kospi': '^KS11', 'nikkei': '^N225'}
+SYMBOLS = {'sox': '^SOX', 'nq': 'NQ=F', 'kospi': '^KS11', 'nikkei': '^N225', 'usdtwd': 'TWD=X'}
 
 
 def get_json(url):
@@ -40,7 +40,9 @@ def closes(symbol):
         bars = bars[:match[-1] + 1]
     else:
         bars = [(t, c) for t, c in bars if t < start]
-        if prev is not None:
+        # FX trades around the clock, so Yahoo's "previous close" is not any daily bar's close;
+        # appending it would count a day twice.
+        if prev is not None and not symbol.endswith('=X'):
             bars.append((start - 1, prev))
     return [{'date': dt.datetime.fromtimestamp(t + off, dt.timezone.utc).date().isoformat(), 'close': round(c, 3)}
             for t, c in bars][-KEEP:]
