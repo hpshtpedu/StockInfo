@@ -83,14 +83,19 @@ export default {
 
 async function buildQuotes(origin, ctx) {
   twHolidays = new Set((await fetchHolidays(origin, ctx).catch(() => [])).map((h) => h.date ?? h));
-  const tw = fetchYahooTw();
+  // On a TW market holiday or weekend, once the previous night session has closed (05:00) nothing
+  // on Yahoo TW changes until the next trading day, so the batch and breadth are fetched hourly.
+  const twNow = new Date(Date.now() + 8 * 3600 * 1000);
+  const quiet = twMarketClosedToday() && twNow.getUTCHours() >= 5;
+  const day = twNow.toISOString().slice(0, 10);
+  const tw = quiet ? cached(origin, ctx, `/_tw_quiet/${day}`, () => 3600, fetchYahooTw) : fetchYahooTw();
   const chips = fetchChips(origin, ctx);
   const pick = (promise, id) => promise.then((m) => m[id] ?? Promise.reject(new Error(`${id} no data`)));
   const jobs = {
     ...Object.fromEntries(Object.entries(YAHOO).map(([id, cfg]) => [id, fetchYahoo(cfg)])),
     twii: pick(tw, 'twii'),
     txf: pick(tw, 'txf').catch(() => fetchTaifex()),
-    breadth: fetchBreadth(),
+    breadth: quiet ? cached(origin, ctx, `/_breadth_quiet/${day}`, () => 3600, fetchBreadth) : fetchBreadth(),
     foreignOi: pick(chips, 'foreignOi'),
     retailRatio: pick(chips, 'retailRatio'),
   };
