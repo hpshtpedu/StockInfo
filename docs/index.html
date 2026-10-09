@@ -392,9 +392,11 @@
     const sign = Math.sign(big.at(-1)?.net ?? 0);
     let n = 0;
     for (let i = big.length - 1; i >= 0 && Math.sign(big[i].net) === sign; i--) n++;
-    // 護盤：大盤收跌的日子官股買超 150 億以上（近 60 日 4 次，約 7%）
+    // 護盤：大盤收跌的日子，官股買超佔當天成交金額 1.9% 以上（成交金額是 volume_profile.json 的
+    // 一般交易時段總額，百萬元）。用比例而非固定金額，市場變大變小都適用；近 60 日 5 次，約 8%
+    const turnover = volumeProfile?.totals?.[last.date];
     const taiexPct = taiexChangePct(last.date, null);
-    const rescue = last.net >= 150 && taiexPct != null && taiexPct < 0
+    const rescue = turnover && (last.net * 100) / turnover >= 1.9 && taiexPct != null && taiexPct < 0
       ? ' <span class="badge buy">護盤</span>' : '';
     const fresh = instFresh && last.date === instDate;
     const dir = last.net > 0 ? 'up' : 'down';
@@ -653,6 +655,7 @@
   // 大盤均線：每晚存的加權收盤（taiex_history.json）+ 即時指數當最新一天
   let taiexHistory = null;
   let vixHistory = null;
+  let volumeProfile = null;  // 每日成交金額（totals），護盤判斷用
   let govBanks = null;  // 八大公股行庫每日買賣超
   let sectorHistory = null;  // 每日收盤的產業成交比重
   let globalHistory = null;  // 費半、小納、韓股、日經的日收盤，月線 badge 用
@@ -960,6 +963,7 @@
       globalHistory = (await globalReq) ?? globalHistory;
       sectorHistory = (await sectorReq) ?? sectorHistory;
       govBanks = (await govReq) ?? govBanks;
+      volumeProfile = (await profileReq) ?? volumeProfile;
       render(data, pickMargin(data.margin, await marginReq), await profileReq);
       $status.className = '';
       $status.textContent = `更新 ${hhmm(data.updated)} (GMT+8)`;
