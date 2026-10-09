@@ -156,14 +156,8 @@
   .cal .inst .v { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
   /* 非當日（盤中、隔天早上前）的舊資料：整塊轉灰 */
   .cal .inst.stale .v { color: var(--muted); font-weight: 600; }
-  /* 八大行庫：三大法人下面一行，左標籤、中金額、右連買賣 */
-  .cal .inst-gov { display: grid; grid-template-columns: 2fr 1fr 1fr; align-items: baseline; text-align: center; border-top: 1px solid var(--line); padding: 3px 0 4px; font-variant-numeric: tabular-nums; }
-  .cal .inst-gov .k { color: var(--muted); font-size: 11px; }
-  .cal .inst-gov b { font-size: 14px; }
-  .cal .inst-gov span:last-child { font-size: 12px; font-weight: 600; }
-  .cal .inst-gov.stale b, .cal .inst-gov.stale span:last-child { color: var(--muted); }
-  .cal .inst-box.fresh .inst-gov { border-color: var(--text); }
-  .cal .inst-box.fresh .inst-gov .k { color: var(--text); }
+  /* 八大行庫：跟三大法人同樣的框，內容只有一欄合計，置中 */
+  .cal .inst-box.gov .inst { grid-template-columns: 1fr; }
   /* 當日新資料：標題和欄位名稱用一般白字；舊資料維持灰色 */
   .cal .inst-box.fresh .inst-title, .cal .inst-box.fresh .inst .k { color: var(--text); }
   .cal .inst-box.fresh, .cal .inst-box.fresh .inst-title, .cal .inst-box.fresh .inst-title > span:nth-child(2) { border-color: var(--text); }
@@ -381,27 +375,27 @@
       <div class="inst-box${fresh ? ' fresh' : ''}">
         <div class="inst-title"><span>三大法人買賣超 ${m}/${d}（億元）</span>${foreignStreak(inst, history, fresh) || '<span></span>'}</div>
         <div class="inst${fresh ? '' : ' stale'}">${header}${values}</div>
-        ${govBanksRow(inst.date, fresh)}
-      </div>`;
+      </div>
+      ${govBanksBox(inst.date, fresh)}`;
   }
 
-  // 八大公股行庫買賣超（HiStock，每晚抓一次）：跟三大法人同一天才用當日樣式，否則灰色並標日期。
-  // 含公股券商的自營與客戶下單，不完全等於國家隊
-  function govBanksRow(instDate, fresh) {
+  // 八大公股行庫買賣超（HiStock，每晚抓一次），跟三大法人同樣的框：跟三大法人同一天且在新鮮時段才用白字，
+  // 否則灰色。含公股券商的自營與客戶下單，不完全等於國家隊
+  function govBanksBox(instDate, instFresh) {
     const days = govBanks?.days ?? [];
     const last = days.at(-1);
     if (!last) return '';
     const sign = Math.sign(last.net);
     let n = 0;
     for (let i = days.length - 1; i >= 0 && Math.sign(days[i].net) === sign; i--) n++;
-    const same = last.date === instDate;
+    const fresh = instFresh && last.date === instDate;
     const dir = last.net > 0 ? 'up' : 'down';
     const [, mm, dd] = last.date.split('-').map(Number);
-    const streak = n >= 2 ? `連${n}${sign > 0 ? '買' : '賣'}` : '';
-    return `<div class="inst-gov${same && fresh ? '' : ' stale'}">
-        <span class="k">八大行庫${same ? '' : ` ${mm}/${dd}`}</span>
-        <b class="${dir}">${last.net > 0 ? '+' : ''}${fmt(last.net, 1)}</b>
-        <span class="${dir}">${streak}</span>
+    const tail = `連${n}${sign > 0 ? '買' : '賣'}`;
+    return `
+      <div class="inst-box gov${fresh ? ' fresh' : ''}">
+        <div class="inst-title"><span>八大公股行庫買賣超 ${mm}/${dd}（億元）</span><span>${fresh ? `<span class="${dir}">${tail}</span>` : tail}</span></div>
+        <div class="inst${fresh ? '' : ' stale'}"><div class="k">合計</div><div class="v ${dir}">${last.net > 0 ? '+' : ''}${fmt(last.net, 1)}</div></div>
       </div>`;
   }
 
