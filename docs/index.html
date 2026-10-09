@@ -563,14 +563,15 @@
     return !q?.price || closes.length < 5 ? null : (q.price / closes.at(-5) - 1) * 100;
   }
 
-  // 正二操作燈（00685L 今天適不適合加碼）：大盤月線乖離 ≥ +8% 禁止追高（過熱優先）；費半跌破月線按兵不動；
-  // 否則可加碼。近一年回測：費半站上月線，隔天台股上漲 65%；跌破 45%（p = 0.004）。
+  // 正二操作燈（00685L 今天適不適合加碼）：大盤月線乖離 ≥ +8%（過熱）或費半跌破月線（轉弱）→ 按兵不動，
+  // 最下面一行寫原因（兩種動作相同，但恢復的條件不同）；否則可加碼。近一年回測：費半站上月線，隔天台股上漲 65%；跌破 45%（p = 0.004）。
   // 國際風向的其他訊號（小納、韓、日、美債、台幣）回測都沒有在費半之外多提供資訊，所以不用
   function leverageLightHtml(byId) {
     const sox = monthLineGap(byId.sox);
     const bias = taiexBias(byId.twii);
     if (sox == null || bias == null) return '';
-    const [label, dir] = bias >= 8 ? ['禁止追高', 'heat'] : sox < 0 ? ['按兵不動', 'down'] : ['可加碼', 'up'];
+    const reasons = [bias >= 8 && '大盤過熱', sox < 0 && '費半轉弱'].filter(Boolean);
+    const [label, dir] = reasons.length ? ['按兵不動', ''] : ['可加碼', 'up'];
     const sign = (v) => (v > 0 ? '+' : '');
     return `
       <div class="card">
@@ -578,7 +579,7 @@
         <div class="price ${dir}">${label}</div>
         <div class="chg"><span class="txt">費半月線</span> <span class="${sox > 0 ? 'up' : 'down'}">${sign(sox)}${fmt(sox, 1)}%</span></div>
         <div class="cmp"><span class="txt">大盤乖離</span> <span class="${bias >= 8 ? 'heat' : ''}">${sign(bias)}${fmt(bias, 1)}%</span></div>
-        <div class="meta">正二加碼參考</div>
+        <div class="meta">${reasons.length ? `原因：${reasons.join('、')}` : '正二加碼參考'}</div>
       </div>`;
   }
 
