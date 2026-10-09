@@ -471,6 +471,19 @@
 
   // 價差 = 台指期 - 加權指數
   // TSM ADR 溢價率：ADR 換算成台幣每股（1 ADR = 5 股）÷ 2330 − 1；溢價紅、折價綠
+  // 國際指數的月線（20 日均線）距離：每晚存的日收盤（global_history.json）+ 即時報價當最新一天。
+  // 檔案落後一天時，用報價的昨收補上
+  function monthLineBadge(q) {
+    const closes = (globalHistory?.[q?.id] ?? []).map((c) => c.close);
+    if (!q?.price || !closes.length) return '';
+    if (q.prev != null && Math.abs(closes.at(-1) - q.prev) > Math.abs(q.prev) * 1e-6) closes.push(q.prev);
+    const series = [...closes, q.price].slice(-20);
+    if (series.length < 20) return '';
+    const ma = series.reduce((a, b) => a + b, 0) / 20;
+    const gap = (q.price / ma - 1) * 100;
+    return `<span class="badge ${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">月線${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</span>`;
+  }
+
   function adrBadge(tsm) {
     const p = tsm?.adrPremium;
     if (p == null) return '';
@@ -564,6 +577,7 @@
   // 大盤均線：每晚存的加權收盤（taiex_history.json）+ 即時指數當最新一天
   let taiexHistory = null;
   let vixHistory = null;
+  let globalHistory = null;  // 費半、小納、韓股、日經的日收盤，月線 badge 用
   let tsmcWeight = null;  // 台積電市值佔大盤比重（%），拉雞盤判斷用
 
   // 台指 VIX：每晚累積的歷史（vix_history.json）+ Worker 抓到的最新收盤。
@@ -733,9 +747,10 @@
       twii: turnoverBadge(byId.twii, profile),
       txf: basisBadge(byId.txf, byId.twii),
       tsm: adrBadge(byId.tsm),
-      // 給不熟美股的人看的白話註解
-      sox: '<span class="badge note">美國晶片股</span>',
-      nq: '<span class="badge note">科技風向球</span>',
+      sox: monthLineBadge(byId.sox),
+      nq: monthLineBadge(byId.nq),
+      kospi: monthLineBadge(byId.kospi),
+      nikkei: monthLineBadge(byId.nikkei),
     };
     // 插在某張卡片後面的卡片：加權後接我的持股；漲跌家數後接大盤均線；USD/TWD 後接產業成交比重（全寬）；美債後接台指VIX
     const after = {
@@ -801,6 +816,7 @@
       const taiexReq = getJson('taiex_history.json');
       const vixReq = getJson('vix_history.json');
       const weightReq = getJson('tsmc_weight.json');
+      const globalReq = getJson('global_history.json');
       const res = await fetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
@@ -813,6 +829,7 @@
       taiexHistory = (await taiexReq) ?? taiexHistory;
       vixHistory = (await vixReq) ?? vixHistory;
       tsmcWeight = (await weightReq) ?? tsmcWeight;
+      globalHistory = (await globalReq) ?? globalHistory;
       render(data, pickMargin(data.margin, await marginReq), await profileReq);
       $status.className = '';
       $status.textContent = `更新 ${hhmm(data.updated)} (GMT+8)`;
