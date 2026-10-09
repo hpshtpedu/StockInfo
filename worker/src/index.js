@@ -10,7 +10,7 @@ const YAHOO = {
   // Yahoo's trading period ignores the TSE lunch break (11:30-12:30 JST = 02:30-03:30 UTC).
   nikkei: { name: '日經 Nikkei', symbol: '^N225', digits: 2, delayMin: 15, breaksUtc: [[150, 210]] },
   tsm: { name: 'TSM', symbol: 'TSM', digits: 2 },
-  brent: { name: 'Brent 原油', symbol: 'BZ=F', digits: 2, delayMin: 10 },
+  brent: { name: '布蘭特原油', symbol: 'BZ=F', digits: 2, delayMin: 10 },
   usdtwd: { name: 'USD/TWD', symbol: 'TWD=X', digits: 3 },
   nq: { name: '小納 NQ', symbol: 'NQ=F', digits: 2, delayMin: 10 },
   us10y: { name: '美債 10Y', symbol: '^TNX', digits: 3, unit: 'yield' },
