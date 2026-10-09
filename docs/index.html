@@ -40,7 +40,9 @@
   }
   h1 { font-size: 20px; margin: 0; white-space: nowrap; }
   h1 { line-height: 1.2; }
-  #source { color: var(--muted); font-size: 11px; line-height: 1.35; }
+  /* 換行時第二行對齊「來源：」後面的文字（「來源：」是 3 個全形字）*/
+  #source { color: var(--muted); font-size: 11px; line-height: 1.35; padding-left: 3em; text-indent: -3em; }
+  #source span { white-space: nowrap; }  /* 來源名稱不從中間斷開 */
   .right { color: var(--muted); font-size: 11px; line-height: 1.35; text-align: right; white-space: nowrap; }
   #status.err { color: var(--warn); }
   main { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-width: 560px; margin: 0 auto; }
@@ -188,7 +190,7 @@
 <header>
   <div>
     <h1>股市大局觀</h1>
-    <div id="source">來源：Yahoo、富果、證交所、期交所、HiStock</div>
+    <div id="source">來源：<span>Yahoo、</span><span>富果、</span><span>證交所、</span><span>期交所、</span><span>HiStock</span></div>
   </div>
   <div class="right">
     <div id="status">載入中…</div>
