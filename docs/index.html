@@ -593,14 +593,14 @@
     const sign = (v) => (v > 0 ? '+' : '');
     // VIX 超過 40（今年兩次底部都在 40 以上）→ 紅色「買進訊號」，優先；
     // 單日跳升 3 點以上（有人急著買保護）→ 橘色「急升」；
-    // 加權漲 0.5% 以上、VIX 卻也漲 1 點以上（漲勢中有人買保護，常是後繼無力）→ 橘色「邊漲邊怕」
+    // 加權漲 0.5% 以上、VIX 卻也漲 1 點以上（漲勢中有人買保護，常是後繼無力）→ 橘色「大盤漲得心虛」
     const taiexPct = taiexChangePct(lastDate, twii);
     const badge = last > 40
       ? '<span class="badge buy">買進訊號</span>'
       : change >= 3
         ? '<span class="badge warn">急升</span>'
         : taiexPct >= 0.5 && change >= 1
-          ? '<span class="badge warn">邊漲邊怕</span>'
+          ? '<span class="badge warn">大盤漲得心虛</span>'
           : '';
     const [, mm, dd] = lastDate.split('-').map(Number);
     return `
