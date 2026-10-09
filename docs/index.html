@@ -417,9 +417,20 @@
   // 也用來補 Worker 缺的「前一日維持率」
   function pickMargin(w, f) {
     if (!w) return f;
-    if (!f || w.date > f.date) return { ...w, prev: w.prev ?? f?.ratio ?? null };
-    if (w.date === f.date) return { ...w, prev: w.prev ?? f.prev ?? null };
+    if (!f || w.date > f.date) return { ...w, prev: w.prev ?? f?.ratio ?? null, history: f?.history };
+    if (w.date === f.date) return { ...w, prev: w.prev ?? f.prev ?? null, history: f.history };
     return f;
+  }
+
+  // 融資連續增加/減少的天數（margin.json 的每日增減，Worker 較新的那天補在最後）；2 天以上才顯示
+  function marginStreakBadge(m) {
+    const days = (m.history ?? []).filter((h) => h.date < m.date).map((h) => h.balanceChange);
+    days.push(m.balanceChange);
+    const sign = Math.sign(days[days.length - 1]);
+    let n = 0;
+    while (n < days.length && sign && Math.sign(days[days.length - 1 - n]) === sign) n++;
+    if (n < 2) return '';
+    return `<span class="badge ${sign > 0 ? 'up' : 'down'}">連${n}${n === days.length ? '+' : ''}${sign > 0 ? '增' : '減'}</span>`;
   }
 
   // 上市融資維持率
@@ -507,7 +518,7 @@
     const dir = c > 0 ? 'up' : c < 0 ? 'down' : '';
     return `
       <div class="card">
-        <div class="name">上市融資增減</div>
+        <div class="head"><div class="name">上市融資增減</div>${marginStreakBadge(m)}</div>
         <div class="price ${dir}">${c > 0 ? '+' : ''}${fmt(c, 1)}<small> 億</small></div>
         <div class="chg">${segments(`餘額${fmt(m.balance, 0)}億`)}</div>
         <div class="meta">${mm}/${dd} 盤後</div>

@@ -3,6 +3,7 @@
 ratio = sum(margin lots * 1000 * close) / total margin amount, over listed stocks.
 Run daily after TWSE publishes margin data (~21:00 Taipei). Stdlib only.
 """
+import datetime as dt
 import json
 import pathlib
 import sys
@@ -10,6 +11,7 @@ import time
 import urllib.request
 
 OUT = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'margin.json'
+HISTORY = 15  # days of balance changes kept for the 連N增/減 badge
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
 
 
@@ -29,6 +31,25 @@ def num(s):
 
 def table(report, title_part):
     return next(t for t in report['tables'] if title_part in t.get('title', ''))
+
+
+# Daily balance changes before `date`, oldest first, from the small summary report.
+def backfill(date):
+    out = []
+    day = dt.date.fromisoformat(date)
+    for _ in range(HISTORY * 2):  # calendar days; weekends and holidays have no report
+        if len(out) >= HISTORY - 1:
+            break
+        day -= dt.timedelta(days=1)
+        if day.weekday() >= 5:
+            continue
+        time.sleep(3)
+        report = get_json(f'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date={day:%Y%m%d}&selectType=MS&response=json')
+        if report.get('stat') != 'OK':
+            continue
+        row = next(r for r in table(report, '信用交易統計')['data'] if r[0].startswith('融資金額'))
+        out.append({'date': day.isoformat(), 'balanceChange': round((num(row[5]) - num(row[4])) * 1000 / 1e8, 2)})
+    return out[::-1]
 
 
 # TWSE website reports (not the OpenAPI, which lags by up to a day).
@@ -66,6 +87,10 @@ def main():
         result['prev'] = old.get('prev')
     elif old.get('ratio') is not None:
         result['prev'] = old['ratio']
+
+    # Daily balance changes, oldest first; the first run backfills the previous days.
+    history = [h for h in old.get('history', []) if h['date'] < date] or backfill(date)
+    result['history'] = (history + [{'date': date, 'balanceChange': result['balanceChange']}])[-HISTORY:]
 
     OUT.write_text(json.dumps(result, ensure_ascii=False) + '\n', encoding='utf-8')
     print(result)
