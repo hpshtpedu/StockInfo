@@ -567,7 +567,18 @@
 
   // 台指 VIX：每晚累積的歷史（vix_history.json）+ Worker 抓到的最新收盤。
   // 百分位看位置、5 日變化看方向；百分位 ≥90 且當天回落 → 「高檔回落」（今年兩次底部的訊號）
-  function vixHtml(vix) {
+  // 加權在某一天的漲跌幅（%）：每晚的歷史收盤，今天則用即時指數
+  function taiexChangePct(date, twii) {
+    const byDate = new Map((taiexHistory?.closes ?? []).map((c) => [c.date, c.close]));
+    if (twii?.price && new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10) === date) {
+      return twii.changePct;
+    }
+    const dates = [...byDate.keys()].sort();
+    const i = dates.indexOf(date);
+    return i > 0 ? (byDate.get(date) / byDate.get(dates[i - 1]) - 1) * 100 : null;
+  }
+
+  function vixHtml(vix, twii) {
     const byDate = new Map((vixHistory?.closes ?? []).map((c) => [c.date, c.close]));
     for (const c of vix?.closes ?? []) byDate.set(c.date, c.close);
     const series = [...byDate.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
@@ -581,12 +592,16 @@
     const dir = (v) => (v > 0 ? 'heat' : v < 0 ? 'cool' : '');
     const sign = (v) => (v > 0 ? '+' : '');
     // VIX 超過 40（今年兩次底部都在 40 以上）→ 紅色「買進訊號」，優先；
-    // 單日跳升 3 點以上（有人急著買保護）→ 橘色「急升」；其他時候不顯示
+    // 單日跳升 3 點以上（有人急著買保護）→ 橘色「急升」；
+    // 加權漲 0.5% 以上、VIX 卻也漲 1 點以上（漲勢中有人買保護，常是後繼無力）→ 橘色「價漲波升」
+    const taiexPct = taiexChangePct(lastDate, twii);
     const badge = last > 40
       ? '<span class="badge buy">買進訊號</span>'
       : change >= 3
         ? '<span class="badge warn">急升</span>'
-        : '';
+        : taiexPct >= 0.5 && change >= 1
+          ? '<span class="badge warn">價漲波升</span>'
+          : '';
     const [, mm, dd] = lastDate.split('-').map(Number);
     return `
       <div class="card">
@@ -723,7 +738,7 @@
       twii: holdingsHtml(data.holdings, byId.twii),
       breadth: maHtml(byId.twii),
       usdtwd: sectorsHtml(data.sectors),
-      us10y: vixHtml(data.vix),
+      us10y: vixHtml(data.vix, byId.twii),
     };
     const cardFor = (q) => {
       if (q.error) {
