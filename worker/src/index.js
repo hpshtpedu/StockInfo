@@ -557,7 +557,13 @@ async function keepSessionQuote(origin, ctx, q) {
   }
   const last = await caches.default.match(key);
   if (last) return { ...(await last.json()), state: 'closed' };
-  return { ...q, change: null, changePct: null };  // nothing remembered: don't show a fake change
+  // Nothing remembered. Between the 13:45 day close and the 15:00 night open Yahoo compares the
+  // close with that day's settlement (a few points, not the day's change), so hide it then.
+  // After the 05:00 night close the change vs the day settlement is the night session's change.
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);
+  const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+  if (mins >= 13 * 60 + 45 && mins < 15 * 60) return { ...q, change: null, changePct: null };
+  return q;
 }
 
 // 1-minute bars -> 15-minute [open, high, low, close] for the 09:00-13:30 session (18 slots,
