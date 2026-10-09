@@ -78,6 +78,8 @@
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
+  /* 全英文大寫的 badge 看起來比中文大，縮小約 10% 讓視覺一致 */
+  .badge.latin { font-size: clamp(9px, 2.9vw, 11px); line-height: 1.65; }  /* 行高放大，badge 高度不變 */
   .badge.fuel { background: var(--down); color: var(--bg); }
   .badge.buy { background: var(--up); color: var(--bg); }
   .heat { color: var(--warn); }
@@ -409,7 +411,7 @@
     }
     // 散戶多空比是反向指標：一面倒做多＝過熱（橘），一面倒做空＝軋空燃料（綠）
     const badge = q.unit !== 'ratio' ? ''
-      : q.price > 20 ? '<span class="badge warn">FOMO</span>'
+      : q.price > 20 ? '<span class="badge warn latin">FOMO</span>'
       : q.price < -20 ? '<span class="badge fuel">燃料充足</span>' : '';
     return `
       <div class="card">
