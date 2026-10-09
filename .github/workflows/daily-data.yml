@@ -40,6 +40,8 @@ jobs:
         continue-on-error: true
       - run: python scripts/sector_history.py
         continue-on-error: true
+      - run: python scripts/gov_banks.py
+        continue-on-error: true
       - run: pip install holidays
         continue-on-error: true
       - run: python scripts/build_events.py
@@ -48,7 +50,7 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
       - name: Commit if changed
         run: |
-          FILES="docs/margin.json docs/volume_profile.json docs/events.json docs/institutional.json docs/taiex_history.json docs/vix_history.json docs/tsmc_weight.json docs/global_history.json docs/sector_history.json"
+          FILES="docs/margin.json docs/volume_profile.json docs/events.json docs/institutional.json docs/taiex_history.json docs/vix_history.json docs/tsmc_weight.json docs/global_history.json docs/sector_history.json docs/gov_banks.json"
           if git diff --quiet $FILES; then
             echo "no change"
             exit 0
