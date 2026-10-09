@@ -475,6 +475,7 @@ async function fetchYahoo({ name, symbol, digits, unit, delayMin, breaksUtc }) {
     changePct: prev ? ((price - prev) / prev) * 100 : null,
     time: meta.regularMarketTime * 1000,
     state: marketState(meta, breaksUtc),
+    sessionStart: (meta.currentTradingPeriod?.regular?.start ?? 0) * 1000,
   };
 }
 
