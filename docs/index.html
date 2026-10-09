@@ -635,11 +635,35 @@
       </div>`;
   }
 
+  // 各卡片所屬市場，用行事曆的休市日判斷「休市」或「收盤」
+  const MARKET_OF = { twii: 'tw', txf: 'tw', breadth: 'tw', kospi: 'kr', nikkei: 'jp', sox: 'us', tsm: 'us', nq: 'us', us10y: 'us', brent: 'us' };
+  const HOLIDAY_LABEL = { kr: '韓股休市', jp: '日股休市', us: '美股休市' };
+
+  function isMarketHoliday(market) {
+    const twToday = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+    if (market === 'tw') {
+      const d = new Date(twToday + 'T00:00:00Z');
+      return d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && holidays.has(twToday);
+    }
+    // 美股用美東當地日期；日、韓跟台灣同一天
+    const day = market === 'us' ? new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date()) : twToday;
+    return (econEvents[day] ?? []).some((e) => e.label.startsWith(HOLIDAY_LABEL[market]));
+  }
+
+  // Worker 只能用交易時段猜：假日時 Yahoo 的時段跳到下一天（判成收盤），開盤初期延遲報價還沒出現（判成休市）。
+  // 以行事曆為準：今天是該市場休市日才顯示「休市」，否則一律「收盤」
+  function effectiveState(q) {
+    const market = MARKET_OF[q.id];
+    if (!market || (q.state !== 'closed' && q.state !== 'holiday')) return q.state;
+    return isMarketHoliday(market) ? 'holiday' : 'closed';
+  }
+
   function render(data, margin, profile) {
     announcements = data.announcements ?? null;
     if (data.holidays?.length) {
       holidays = new Map(data.holidays.map((h) => (typeof h === 'string' ? [h, ''] : [h.date, h.name])));
     }
+    for (const q of data.quotes) q.state = effectiveState(q);
     const byId = Object.fromEntries(data.quotes.map((q) => [q.id, q]));
     const badges = {
       twii: turnoverBadge(byId.twii, profile),
