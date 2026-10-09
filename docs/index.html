@@ -575,19 +575,18 @@
     const [lastDate, last] = series.at(-1);
     const prev = series.at(-2)[1];
     const fiveAgo = series.at(-6)[1];
-    const window = series.slice(-250).map(([, v]) => v);
-    const pct = Math.round((window.filter((v) => v <= last).length / window.length) * 100);
     const change = last - prev;
     const trend = last - fiveAgo;
     // VIX 上升是警訊，不用漲跌的紅綠：升溫橘、降溫藍
     const dir = (v) => (v > 0 ? 'heat' : v < 0 ? 'cool' : '');
     const sign = (v) => (v > 0 ? '+' : '');
-    // VIX 超過 40（今年兩次底部都在 40 以上）→ 紅色「買進訊號」，優先於其他狀態
+    // VIX 超過 40（今年兩次底部都在 40 以上）→ 紅色「買進訊號」，優先；
+    // 單日跳升 3 點以上（有人急著買保護）→ 橘色「急升」；其他時候不顯示
     const badge = last > 40
       ? '<span class="badge buy">買進訊號</span>'
-      : pct >= 90 && change < 0
-        ? '<span class="badge warn">高檔回落</span>'
-        : `<span class="badge">第${pct}百分位</span>`;
+      : change >= 3
+        ? '<span class="badge warn">急升</span>'
+        : '';
     const [, mm, dd] = lastDate.split('-').map(Number);
     return `
       <div class="card">
