@@ -396,7 +396,8 @@
     // 一般交易時段總額，百萬元）。用比例而非固定金額，市場變大變小都適用；近 60 日 5 次，約 8%
     const turnover = volumeProfile?.totals?.[last.date];
     const taiexPct = taiexChangePct(last.date, null);
-    const rescue = turnover && (last.net * 100) / turnover >= 1.9 && taiexPct != null && taiexPct < 0
+    const sharePct = turnover ? ((last.net * 100) / turnover) * 100 : 0;  // 億→百萬，再換成 %
+    const rescue = sharePct >= 1.9 && taiexPct != null && taiexPct < 0
       ? ' <span class="badge buy">護盤</span>' : '';
     const fresh = instFresh && last.date === instDate;
     const dir = last.net > 0 ? 'up' : 'down';
