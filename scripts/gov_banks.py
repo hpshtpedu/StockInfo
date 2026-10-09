@@ -1,7 +1,8 @@
 """八大公股行庫 daily net buy/sell (億元) from HiStock; writes docs/gov_banks.json.
 
 Source: histock.tw/stock/broker8.aspx (allowed by its robots.txt). The page embeds ~6 months of
-daily totals, so one request a day is enough; a second run on the same day is skipped.
+daily totals, so one request a day is enough: the attempt date is recorded and any later run on
+the same day (the nightly job runs twice, and also on script pushes) is skipped.
 HiStock sums the trades at the government banks' brokerages: it includes their own and their
 clients' trades, so it is not purely "national team" buying.
 """
@@ -21,9 +22,12 @@ TW = dt.timezone(dt.timedelta(hours=8))
 def main():
     old = json.loads(OUT.read_text(encoding='utf-8')) if OUT.exists() else {'days': []}
     today = dt.datetime.now(TW).date().isoformat()
-    if old['days'] and old['days'][-1]['date'] == today:
-        print('already have today')
+    if old.get('fetched') == today:
+        print('already fetched today')
         return 0
+    # Record the attempt first, so a failed or empty fetch also counts as today's one request.
+    old['fetched'] = today
+    OUT.write_text(json.dumps(old) + '\n', encoding='utf-8')
 
     req = urllib.request.Request('https://histock.tw/stock/broker8.aspx', headers={'User-Agent': UA})
     with urllib.request.urlopen(req, timeout=60) as res:
@@ -39,7 +43,7 @@ def main():
     if not days:
         print('HiStock: no data')
         return 0
-    OUT.write_text(json.dumps({'days': days[-KEEP:]}) + '\n', encoding='utf-8')
+    OUT.write_text(json.dumps({'fetched': today, 'days': days[-KEEP:]}) + '\n', encoding='utf-8')
     print(days[-3:])
     return 0
 
