@@ -78,6 +78,7 @@
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
+  .badge.fuel { background: var(--down); color: var(--bg); }
   .badge.buy { background: var(--up); color: var(--bg); }
   .heat { color: var(--warn); }
   .cool { color: #5b8fd6; }
@@ -406,9 +407,13 @@
         : netOiChange(q.price - q.change, q.price);
       change = `<div class="cmp"><span class="txt">較前日</span> <span class="${cdir}">${text}</span></div>`;
     }
+    // 散戶多空比是反向指標：一面倒做多＝過熱（橘），一面倒做空＝軋空燃料（綠）
+    const badge = q.unit !== 'ratio' ? ''
+      : q.price > 20 ? '<span class="badge warn">FOMO</span>'
+      : q.price < -20 ? '<span class="badge fuel">燃料充足</span>' : '';
     return `
       <div class="card">
-        <div class="name">${q.name}</div>
+        <div class="head"><div class="name">${q.name}</div>${badge}</div>
         <div class="price ${dir}">${value}</div>
         <div class="chg">${segments(q.detail)}</div>
         ${change}
