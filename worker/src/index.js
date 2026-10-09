@@ -49,6 +49,15 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 // Per-isolate fallback when an upstream call fails.
 const lastGood = {};
 
+// TWSE holidays ("YYYY-MM-DD"), refreshed at the start of each build. The cache TTL helpers treat
+// them like weekends, so nothing TW-only is refetched on a day with no new data.
+let twHolidays = new Set();
+
+function twMarketClosedToday() {
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);
+  return tw.getUTCDay() === 0 || tw.getUTCDay() === 6 || twHolidays.has(tw.toISOString().slice(0, 10));
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -73,6 +82,7 @@ export default {
 };
 
 async function buildQuotes(origin, ctx) {
+  twHolidays = new Set((await fetchHolidays(origin, ctx).catch(() => [])).map((h) => h.date ?? h));
   const tw = fetchYahooTw();
   const chips = fetchChips(origin, ctx);
   const pick = (promise, id) => promise.then((m) => m[id] ?? Promise.reject(new Error(`${id} no data`)));
@@ -314,13 +324,12 @@ async function fetchMargin(origin, ctx) {
 function sectorsTtl(dataTime) {
   const tw = new Date(Date.now() + 8 * 3600 * 1000);
   const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
-  const weekday = tw.getUTCDay() >= 1 && tw.getUTCDay() <= 5;
   const CLOSE = 13 * 60 + 33;
-  if (!weekday || mins < 9 * 60) return 6 * 3600;
+  if (twMarketClosedToday() || mins < 9 * 60) return 6 * 3600;
   if (mins < CLOSE) return Math.max(60, Math.min(1800, (CLOSE - mins) * 60));
   const data = new Date(dataTime + 8 * 3600 * 1000);
   const today = data.getUTCDate() === tw.getUTCDate();
-  if (!today) return 1800;  // market holiday: the page still shows the last session
+  if (!today) return 1800;  // no snapshot for today yet (e.g. Fugle late after the open)
   return data.getUTCHours() * 60 + data.getUTCMinutes() >= 13 * 60 + 30 ? 6 * 3600 : 300;
 }
 
@@ -420,8 +429,8 @@ function dailyTtl(dataDate, publishHour, retrySeconds = 300) {
   const today = tw.toISOString().slice(0, 10).replace(/-/g, '');
   const secondsUntil = (dayOffset, hour) =>
     Math.round(Math.max(60, (Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate() + dayOffset, hour) - tw.getTime()) / 1000));
-  const weekend = tw.getUTCDay() === 0 || tw.getUTCDay() === 6;
-  if (dataDate === today || weekend) return secondsUntil(1, publishHour);
+  // Weekends and TWSE holidays bring nothing new: check again at the next day's publish hour.
+  if (dataDate === today || twMarketClosedToday()) return secondsUntil(1, publishHour);
   if (tw.getUTCHours() < publishHour) return secondsUntil(0, publishHour);
   return retrySeconds;
 }
