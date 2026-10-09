@@ -620,7 +620,7 @@
     const dataToday = key(utcDate(data.getUTCFullYear(), data.getUTCMonth() + 1, data.getUTCDate())) === key(today);
     const closed = !dataToday || data.getUTCHours() * 60 + data.getUTCMinutes() >= 810;
     const when = closed
-      ? `${data.getUTCHours() * 60 + data.getUTCMinutes() >= 810 ? '13:30' : hhmm(s.time)} · 收盤`
+      ? `${data.getUTCHours() * 60 + data.getUTCMinutes() >= 810 ? '13:30' : hhmm(s.time)} · ${isMarketHoliday('tw') ? '休市' : '收盤'}`
       : hhmm(s.time) + lag;
     const cells = s.top.map((r) => `
       <div class="sec">
