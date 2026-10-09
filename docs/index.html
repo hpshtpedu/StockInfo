@@ -80,7 +80,7 @@
   .badge.warn { background: var(--warn); color: var(--bg); }
   /* 全英文大寫的 badge 看起來比中文大，縮小約 10% 讓視覺一致 */
   .badge.latin { font-size: clamp(9px, 2.9vw, 11px); line-height: 1.65; }  /* 行高放大，badge 高度不變 */
-  .badge.fuel { background: var(--down); color: var(--bg); }
+  .badge.fuel, .badge.sell { background: var(--down); color: var(--bg); }
   .badge.buy { background: var(--up); color: var(--bg); }
   .heat { color: var(--warn); }
   .cool { color: #5b8fd6; }
@@ -405,7 +405,18 @@
     return `${side}${grew ? '增' : '減'}${lots(cur - prev)}`;
   }
 
-  function dailyHtml(q) {
+  // 外資期現同向：同一天現貨賣超 300 億以上、台指淨 OI 又減少 2,000 口以上＝期現雙空；反向＝期現雙多。
+  // 門檻約為各自日變動的中位數，盤整時的小額買賣不算
+  function futuresSpotBadge(q, inst) {
+    if (q.change == null || !inst?.date || !q.time) return '';
+    const day = new Date(q.time + 8 * 3600000).toISOString().slice(0, 10);
+    if (inst.date !== day) return '';
+    if (inst.foreign <= -300 && q.change <= -2000) return '<span class="badge sell">期現雙空</span>';
+    if (inst.foreign >= 300 && q.change >= 2000) return '<span class="badge buy">期現雙多</span>';
+    return '';
+  }
+
+  function dailyHtml(q, inst) {
     const dir = q.price > 0 ? 'up' : q.price < 0 ? 'down' : '';
     const sign = q.price > 0 ? '+' : '';
     const value = q.unit === 'ratio' ? `${sign}${fmt(q.price, q.digits)}%` : `${sign}${fmt(q.price, q.digits)}<small> 口</small>`;
@@ -420,7 +431,7 @@
       change = `<div class="cmp"><span class="txt">較前日</span> <span class="${cdir}">${text}</span></div>`;
     }
     // 散戶多空比是反向指標：一面倒做多＝過熱（橘），一面倒做空＝軋空燃料（綠）
-    const badge = q.unit !== 'ratio' ? ''
+    const badge = q.unit !== 'ratio' ? futuresSpotBadge(q, inst)
       : q.price > 20 ? '<span class="badge warn latin">FOMO</span>'
       : q.price < -20 ? '<span class="badge fuel">燃料充足</span>' : '';
     return `
@@ -480,13 +491,24 @@
 
   // 價差 = 台指期 - 加權指數
   // TSM ADR 溢價率：ADR 換算成台幣每股（1 ADR = 5 股）÷ 2330 − 1；溢價紅、折價綠
-  // 國際指數的月線（20 日均線）距離：每晚存的日收盤（global_history.json）+ 即時報價當最新一天。
-  // 檔案落後一天時，用報價的昨收補上
-  function monthLineBadge(q) {
+  // 每晚存的日收盤（global_history.json）+ 即時報價當最新一天；檔案落後一天時用報價的昨收補上
+  function dailySeries(q) {
     const closes = (globalHistory?.[q?.id] ?? []).map((c) => c.close);
-    if (!q?.price || !closes.length) return '';
+    if (!q?.price || !closes.length) return [];
     if (q.prev != null && Math.abs(closes.at(-1) - q.prev) > Math.abs(q.prev) * 1e-6) closes.push(q.prev);
-    const series = [...closes, q.price].slice(-20);
+    return [...closes, q.price];
+  }
+
+  // 美債 10Y：5 個交易日殖利率上升 20bp 以上＝殖利率急升（壓抑科技股評價）
+  function us10yBadge(q) {
+    const series = dailySeries(q);
+    if (series.length < 6) return '';
+    return (series.at(-1) - series.at(-6)) * 100 >= 20 ? '<span class="badge warn">殖利率急升</span>' : '';
+  }
+
+  // 國際指數的月線（20 日均線）距離
+  function monthLineBadge(q) {
+    const series = dailySeries(q).slice(-20);
     if (series.length < 20) return '';
     const ma = series.reduce((a, b) => a + b, 0) / 20;
     const gap = (q.price / ma - 1) * 100;
@@ -769,6 +791,7 @@
       twii: turnoverBadge(byId.twii, profile),
       txf: basisBadge(byId.txf, byId.twii),
       tsm: adrBadge(byId.tsm),
+      us10y: us10yBadge(byId.us10y),
       usdtwd: usdtwdBadge(byId.usdtwd, data.institutional, instHistory),
       sox: monthLineBadge(byId.sox),
       nq: monthLineBadge(byId.nq),
@@ -786,7 +809,7 @@
       if (q.error) {
         return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`;
       }
-      if (q.kind === 'daily') return dailyHtml(q);
+      if (q.kind === 'daily') return dailyHtml(q, data.institutional);
       if (q.kind === 'breadth') return breadthHtml(q, byId.twii, data.holdings?.find((h) => h.code === '2330'));
       const dir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
       const sign = q.change > 0 ? '+' : '';

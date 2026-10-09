@@ -1,4 +1,4 @@
-"""Recent daily closes of SOX, NQ, KOSPI and Nikkei (月線 badges) and USD/TWD (5-day move);
+"""Recent daily closes of SOX, NQ, KOSPI and Nikkei (月線 badges), USD/TWD and US 10Y (5-day moves);
 writes docs/global_history.json.
 
 Yahoo daily bars, two requests per symbol, 3 s apart. Only finished sessions are kept: the
@@ -16,7 +16,7 @@ import urllib.request
 OUT = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'global_history.json'
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
 KEEP = 30
-SYMBOLS = {'sox': '^SOX', 'nq': 'NQ=F', 'kospi': '^KS11', 'nikkei': '^N225', 'usdtwd': 'TWD=X'}
+SYMBOLS = {'sox': '^SOX', 'nq': 'NQ=F', 'kospi': '^KS11', 'nikkei': '^N225', 'usdtwd': 'TWD=X', 'us10y': '^TNX'}
 
 
 def get_json(url):
