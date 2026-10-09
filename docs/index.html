@@ -60,6 +60,10 @@
   /* 產業成交比重：全寬，兩欄四行 */
   .card.wide { grid-column: 1 / -1; max-height: 170px; gap: 4px; }
   .card.wide .head .meta { flex-shrink: 1; min-width: 0; }
+  /* 分類標題：橫跨兩欄 */
+  .section { grid-column: 1 / -1; margin: 6px 2px 0; font-size: 12px; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .section::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
+  .chg.trend { font-size: 12px; font-weight: 600; white-space: normal; }
   .head-left { display: flex; align-items: center; gap: 4px; min-width: 0; }
   /* 先排左欄 1-4 名，再排右欄 5-8 名 */
   .secs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, auto); grid-auto-flow: column; gap: 5px 14px; }
@@ -156,9 +160,6 @@
   .cal .inst .v { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
   /* 非當日（盤中、隔天早上前）的舊資料：整塊轉灰 */
   .cal .inst.stale .v { color: var(--muted); font-weight: 600; }
-  /* 八大行庫：跟三大法人同樣的框，內容只有「合計 +136.1」一行，置中 */
-  .cal .inst-box.gov .inst { display: flex; justify-content: center; align-items: baseline; gap: 6px; }
-  .cal .inst-box.gov .inst .k { font-size: 14px; }  /* 跟金額同字級，同一行才不會一大一小 */
   /* 當日新資料：標題和欄位名稱用一般白字；舊資料維持灰色 */
   .cal .inst-box.fresh .inst-title, .cal .inst-box.fresh .inst .k { color: var(--text); }
   .cal .inst-box.fresh, .cal .inst-box.fresh .inst-title, .cal .inst-box.fresh .inst-title > span:nth-child(2) { border-color: var(--text); }
@@ -376,13 +377,11 @@
       <div class="inst-box${fresh ? ' fresh' : ''}">
         <div class="inst-title"><span>三大法人買賣超 ${m}/${d}（億元）</span>${foreignStreak(inst, history, fresh) || '<span></span>'}</div>
         <div class="inst${fresh ? '' : ' stale'}">${header}${values}</div>
-      </div>
-      ${govBanksBox(inst.date, fresh)}`;
+      </div>`;
   }
 
-  // 八大公股行庫買賣超（HiStock，每晚抓一次），跟三大法人同樣的框：跟三大法人同一天且在新鮮時段才用白字，
-  // 否則灰色。含公股券商的自營與客戶下單，不完全等於國家隊
-  function govBanksBox(instDate, instFresh) {
+  // 八大公股行庫買賣超（HiStock，每晚抓一次）。含公股券商的自營與客戶下單，不完全等於國家隊
+  function govBanksHtml() {
     const days = govBanks?.days ?? [];
     const last = days.at(-1);
     if (!last) return '';
@@ -396,17 +395,16 @@
     const turnover = volumeProfile?.totals?.[last.date];
     const taiexPct = taiexChangePct(last.date, null);
     const sharePct = turnover ? ((last.net * 100) / turnover) * 100 : 0;  // 億→百萬，再換成 %
-    const rescue = sharePct >= 1.9 && taiexPct != null && taiexPct < 0
-      ? ' <span class="badge buy">護盤</span>' : '';
-    const fresh = instFresh && last.date === instDate;
+    const badge = sharePct >= 1.9 && taiexPct != null && taiexPct < 0 ? '<span class="badge buy">護盤</span>' : '';
     const dir = last.net > 0 ? 'up' : 'down';
     const [, mm, dd] = last.date.split('-').map(Number);
-    const tail = sign ? `連${n}${sign > 0 ? '買' : '賣'}` : '';
-    const tailDir = sign > 0 ? 'up' : 'down';
+    const streak = sign ? `<span class="${sign > 0 ? 'up' : 'down'}">連${n}${sign > 0 ? '買' : '賣'}</span>` : '&nbsp;';
     return `
-      <div class="inst-box gov${fresh ? ' fresh' : ''}">
-        <div class="inst-title"><span>八大公股行庫買賣超 ${mm}/${dd}（億元）</span><span>${fresh ? `<span class="${tailDir}">${tail}</span>` : tail}</span></div>
-        <div class="inst${fresh ? '' : ' stale'}"><div class="k">合計</div><div class="v ${dir}">${last.net > 0 ? '+' : ''}${fmt(last.net, 1)}</div>${rescue}</div>
+      <div class="card">
+        <div class="head"><div class="name">八大行庫</div>${badge}</div>
+        <div class="price ${dir}">${last.net > 0 ? '+' : ''}${fmt(last.net, 1)}<small> 億</small></div>
+        <div class="chg">${streak}</div>
+        <div class="meta">${mm}/${dd} 盤後</div>
       </div>`;
   }
 
@@ -535,28 +533,68 @@
   }
 
   // 美債 10Y：5 個交易日殖利率上升 20bp 以上＝殖利率急升（壓抑科技股評價）
-  function us10yBadge(q) {
+  // 5 個交易日的殖利率變動（bp）
+  function yield5Bp(q) {
     const series = dailySeries(q);
-    if (series.length < 6) return '';
-    return (series.at(-1) - series.at(-6)) * 100 >= 20 ? '<span class="badge warn">殖利率急升</span>' : '';
+    return series.length < 6 ? null : (series.at(-1) - series.at(-6)) * 100;
+  }
+
+  function us10yBadge(q) {
+    return yield5Bp(q) >= 20 ? '<span class="badge warn">殖利率急升</span>' : '';
+  }
+
+  // 月線（20 日均線）距離（%）
+  function monthLineGap(q) {
+    const series = dailySeries(q).slice(-20);
+    if (series.length < 20) return null;
+    return (q.price / (series.reduce((a, b) => a + b, 0) / 20) - 1) * 100;
+  }
+
+  // USD/TWD 5 個交易日的變動（%），正＝美元漲＝台幣貶（外匯日線對不上昨收，不補昨收）
+  function twd5Move(q) {
+    const closes = (globalHistory?.usdtwd ?? []).map((c) => c.close);
+    return !q?.price || closes.length < 5 ? null : (q.price / closes.at(-5) - 1) * 100;
+  }
+
+  // 國際風向：6 個訊號各 +1/0/-1 等權加總。費半、小納、韓股、日經站上月線 +1、跌破 -1；
+  // 美債 5 日降 20bp 以上 +1、升 20bp 以上 -1；台幣 5 日升值 1% 以上 +1、貶值 1% 以上 -1。
+  // 回測近一年：≥ +4 偏多（37% 的日子，隔天台股上漲 66%），≤ -4 偏空（19%，上漲 44%）；
+  // 只對隔天有預測力，5 日後三組差不多
+  function globalTrendHtml(byId) {
+    const sig = (v) => (v == null ? null : v > 0 ? 1 : v < 0 ? -1 : 0);
+    const items = [
+      ['費半', sig(monthLineGap(byId.sox))],
+      ['小納', sig(monthLineGap(byId.nq))],
+      ['韓', sig(monthLineGap(byId.kospi))],
+      ['日', sig(monthLineGap(byId.nikkei))],
+      ['債', (() => { const bp = yield5Bp(byId.us10y); return bp == null ? null : bp <= -20 ? 1 : bp >= 20 ? -1 : 0; })()],
+      ['匯', (() => { const m = twd5Move(byId.usdtwd); return m == null ? null : m <= -1 ? 1 : m >= 1 ? -1 : 0; })()],
+    ];
+    if (items.some(([, v]) => v == null)) return '';
+    const score = items.reduce((sum, [, v]) => sum + v, 0);
+    const [label, dir] = score >= 4 ? ['偏多', 'up'] : score <= -4 ? ['偏空', 'down'] : ['中性', ''];
+    const chips = items.map(([name, v]) => `<span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${name}${v > 0 ? '↑' : v < 0 ? '↓' : '·'}</span>`).join(' ');
+    return `
+      <div class="card">
+        <div class="name">國際風向</div>
+        <div class="price ${dir}">${label} ${score > 0 ? '+' : ''}${score}</div>
+        <div class="chg trend">${chips}</div>
+        <div class="meta">6 項訊號 · 滿分 ±6</div>
+      </div>`;
   }
 
   // 國際指數的月線（20 日均線）距離
   function monthLineBadge(q) {
-    const series = dailySeries(q).slice(-20);
-    if (series.length < 20) return '';
-    const ma = series.reduce((a, b) => a + b, 0) / 20;
-    const gap = (q.price / ma - 1) * 100;
+    const gap = monthLineGap(q);
+    if (gap == null) return '';
     return `<span class="badge ${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">月線${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</span>`;
   }
 
   // USD/TWD：5 個交易日的變動（每晚存的日收盤 + 即時報價）。台幣貶超過 1% 且外資連賣 3 天以上＝資金外流；
   // 反向＝資金回流；只有匯率大動、外資沒同方向＝台幣急貶/急升（灰）；其他不顯示
   function usdtwdBadge(q, inst, history) {
-    const closes = (globalHistory?.usdtwd ?? []).map((c) => c.close);
-    if (!q?.price || closes.length < 5) return '';
-    const move = (q.price / closes.at(-5) - 1) * 100;  // 正＝美元漲＝台幣貶
-    if (Math.abs(move) < 1) return '';
+    const move = twd5Move(q);
+    if (move == null || Math.abs(move) < 1) return '';
     const streak = foreignStreakDays(inst, history);
     if (move > 0 && streak <= -3) return '<span class="badge warn">資金外流</span>';
     if (move < 0 && streak >= 3) return '<span class="badge buy">資金回流</span>';
@@ -882,12 +920,21 @@
       kospi: monthLineBadge(byId.kospi),
       nikkei: monthLineBadge(byId.nikkei),
     };
-    // 插在某張卡片後面的卡片：加權後接我的持股；漲跌家數後接大盤均線；USD/TWD 後接產業成交比重（全寬）；美債後接台指VIX
+    // 分類：台股盤中（加權起）、國際市場（費半起）、台股盤後（台指VIX 起）
+    const section = (title) => `<div class="section">${title}</div>`;
+    const before = {
+      twii: section('台股盤中'),
+      sox: section('國際市場'),
+      foreignOi: section('台股盤後') + vixHtml(data.vix, byId.twii),
+    };
+    // 插在某張卡片後面的卡片：加權後接我的持股；漲跌家數後接大盤均線；USD/TWD 後接產業成交比重（全寬）；
+    // 美債後接國際風向；散戶多空比後接八大行庫
     const after = {
       twii: holdingsHtml(data.holdings, byId.twii),
       breadth: maHtml(byId.twii),
       usdtwd: sectorsHtml(data.sectors, byId.twii),
-      us10y: vixHtml(data.vix, byId.twii),
+      us10y: globalTrendHtml(byId),
+      retailRatio: govBanksHtml(),
     };
     const cardFor = (q) => {
       if (q.error) {
@@ -932,7 +979,7 @@
         </div>`;
     };
     $list.innerHTML = calendarHtml(data.institutional, instHistory)
-      + data.quotes.map((q) => cardFor(q) + (after[q.id] ?? '')).join('')
+      + data.quotes.map((q) => (before[q.id] ?? '') + cardFor(q) + (after[q.id] ?? '')).join('')
       + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
   }
 
