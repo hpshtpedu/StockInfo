@@ -84,11 +84,16 @@
   .ma-row { display: flex; justify-content: space-between; gap: 6px; font-size: clamp(11.5px, 3.4vw, 13px); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .ma-row .k { font-size: inherit; }
   /* 我的持股：代號靠左、價格靠右（紅綠表示漲跌）；限制寬度，PC 上才不會拉得太開 */
-  .holds { display: flex; flex-direction: column; gap: 2px; width: 100%; max-width: 11em; }
-  .hold-row { display: grid; grid-template-columns: auto 1fr; gap: 8px; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .hold-row b { text-align: right; }
+  /* 四檔共用一個格線：股號欄以最長的為準，價格緊接在後並靠右對齊；漲跌幅放最右邊、小一號 */
+  .holds { display: grid; grid-template-columns: auto auto 1fr; column-gap: 8px; row-gap: 2px;
+    font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .hold-row { display: contents; }
   .hold-row .k { color: var(--text); }
+  .hold-row b { text-align: right; }
   .hold-row .ext { display: none; text-align: right; }
+  .hold-row .pct { text-align: right; font-size: 11px; font-weight: 600; align-self: center; }
+  /* 太窄的手機放不下就不顯示漲跌幅 */
+  @media (max-width: 359px) { .holds { grid-template-columns: auto auto; } .hold-row .pct { display: none; } }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
   .badge.vol-high { background: #d9c44a; color: var(--bg); }
@@ -145,9 +150,9 @@
   /* 放在最後，才能覆蓋上面的基本尺寸 */
   /* PC／平板橫放（寬度 ≥ 600px）：持股多顯示漲跌和漲跌幅、K 線放大，卡片才不會太空 */
   @media (min-width: 600px) {
-    .holds { max-width: none; }
-    .hold-row { grid-template-columns: auto 1fr 4.5em 4.8em; }
+    .holds { grid-template-columns: auto auto 1fr auto; }
     .hold-row .ext { display: block; }
+    .hold-row .pct { font-size: inherit; min-width: 4.8em; }
     /* 加權的 15 分 K 在 PC 上放大，卡片高度上限跟著放寬 */
     .kchart { height: 40px; }
     .card:not(.cal) { max-height: 176px; }
@@ -564,7 +569,7 @@
       const digits = h.price >= 1000 ? 0 : 2;
       // 漲跌、漲跌幅只在寬螢幕（PC）顯示
       return `<div class="hold-row"><span class="k">${h.code}</span><b class="${dir}">${fmt(h.price, digits)}</b>`
-        + `<span class="ext ${dir}">${sign}${fmt(h.change, digits)}</span><span class="ext ${dir}">${sign}${fmt(h.changePct, 2)}%</span></div>`;
+        + `<span class="ext ${dir}">${sign}${fmt(h.change, digits)}</span><span class="pct ${dir}">${sign}${fmt(h.changePct, 2)}%</span></div>`;
     }).join('');
     return `
       <div class="card">
