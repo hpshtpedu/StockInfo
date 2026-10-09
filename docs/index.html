@@ -399,16 +399,13 @@
     const rescue = sharePct >= 1.9 && taiexPct != null && taiexPct < 0;
     const dir = last.net > 0 ? 'up' : 'down';
     const [, mm, dd] = last.date.split('-').map(Number);
-    const streak = sign ? `連${n}${sign > 0 ? '買' : '賣'}` : '';
-    // 右上角：平常放連買/賣；護盤日改放「護盤」，連買/賣移到下面那行
-    const badge = rescue ? '<span class="badge buy">護盤</span>'
-      : streak ? `<span class="badge ${sign > 0 ? 'up' : 'down'}">${streak}</span>` : '';
-    const share = turnover ? `佔成交 ${fmt(sharePct, 1)}%` : '&nbsp;';
+    const streak = sign ? `<span class="${sign > 0 ? 'up' : 'down'}">連${n}${sign > 0 ? '買' : '賣'}</span>` : '&nbsp;';
+    const badge = rescue ? '<span class="badge buy">護盤</span>' : '';
     return `
       <div class="card">
         <div class="head"><div class="name">八大行庫買賣超</div>${badge}</div>
         <div class="price ${dir}">${last.net > 0 ? '+' : ''}${fmt(last.net, 1)}<small> 億</small></div>
-        <div class="chg">${share}${rescue && streak ? ` · ${streak}` : ''}</div>
+        <div class="chg">${streak}</div>
         <div class="meta">${mm}/${dd} 盤後</div>
       </div>`;
   }
