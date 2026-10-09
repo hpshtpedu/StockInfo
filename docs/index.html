@@ -158,6 +158,7 @@
   .cal .inst.stale .v { color: var(--muted); font-weight: 600; }
   /* 八大行庫：跟三大法人同樣的框，內容只有「合計 +136.1」一行，置中 */
   .cal .inst-box.gov .inst { display: flex; justify-content: center; align-items: baseline; gap: 6px; }
+  .cal .inst-box.gov .inst .k { font-size: 14px; }  /* 跟金額同字級，同一行才不會一大一小 */
   /* 當日新資料：標題和欄位名稱用一般白字；舊資料維持灰色 */
   .cal .inst-box.fresh .inst-title, .cal .inst-box.fresh .inst .k { color: var(--text); }
   .cal .inst-box.fresh, .cal .inst-box.fresh .inst-title, .cal .inst-box.fresh .inst-title > span:nth-child(2) { border-color: var(--text); }
