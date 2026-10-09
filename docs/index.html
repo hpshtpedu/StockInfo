@@ -673,8 +673,23 @@
   }
 
   // 我的持股：代號、價格、漲跌幅
+  // 正二磨損：00685L 近 20 個交易日的實際漲跌，減掉「加權同期漲跌 × 2」（百分點）。
+  // 震盪盤每天重新槓桿會吃掉報酬；近一年約 10% 的日子 ≤ -3%，這時才警示
+  function leverageDecay(list, twii) {
+    const etf = list.find((h) => h.code === '00685L');
+    if (!etf?.price || !twii?.price) return null;
+    const idx = new Map((taiexHistory?.closes ?? []).map((c) => [c.date, c.close]));
+    const day = new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10);
+    const common = (globalHistory?.etf00685l ?? []).filter((c) => c.date < day && idx.has(c.date));
+    if (common.length < 20) return null;
+    const base = common.at(-20);
+    return ((etf.price / base.close - 1) - 2 * (twii.price / idx.get(base.date) - 1)) * 100;
+  }
+
   function holdingsHtml(list, twii) {
     if (!list?.length) return '';
+    const decay = leverageDecay(list, twii);
+    const badge = decay != null && decay <= -3 ? `<span class="badge warn">正二磨損${fmt(-decay, 1)}%</span>` : '';
     const rows = list.map((h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
       const sign = h.change > 0 ? '+' : '';
@@ -685,7 +700,7 @@
     }).join('');
     return `
       <div class="card">
-        <div class="name">我的持股</div>
+        <div class="head"><div class="name">我的持股</div>${badge}</div>
         <div class="holds">${rows}</div>
         <div class="meta">${timeState(list[0].time, twii?.state)}</div>
       </div>`;
