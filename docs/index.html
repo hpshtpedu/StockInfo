@@ -507,13 +507,14 @@
     return `<span class="badge${cls}">估${money(estimate)}</span>`;
   }
 
-  // 漲跌家數：「拉雞盤」＝加權漲，但扣掉台積電後指數其實沒漲，且下跌家數較多。
+  // 漲跌家數：「拉雞盤」＝台積電漲 1% 以上硬扛、加權漲，但扣掉台積電後指數其實沒漲，且下跌家數較多。
+  // （台積電漲不到 1% 的牛皮盤不算）
   // 台積電貢獻點數 ≈ 昨收指數 × 台積電市值比重（期交所，每晚更新）× 台積電漲跌幅
   function breadthHtml(q, twii, tw2330) {
     const weight = tsmcWeight?.weight;
     const tsmcPoints = weight && tw2330?.changePct != null && twii?.prev
       ? twii.prev * (weight / 100) * (tw2330.changePct / 100) : null;
-    const pulled = twii?.change > 0 && tsmcPoints != null && twii.change - tsmcPoints <= 0 && q.down > q.up;
+    const pulled = twii?.change > 0 && tw2330?.changePct >= 1 && tsmcPoints != null && twii.change - tsmcPoints <= 0 && q.down > q.up;
     const badge = pulled ? '<span class="badge warn">拉雞盤</span>' : '';
     return `
       <div class="card">
