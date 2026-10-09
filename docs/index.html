@@ -699,6 +699,8 @@
   // Worker 只能用交易時段猜：假日時 Yahoo 的時段跳到下一天（判成收盤），開盤初期延遲報價還沒出現（判成休市）。
   // 以行事曆為準：今天是休市日才顯示「休市」；不是的話，開盤後還沒拿到資料是「開盤 · 慢X分」，其餘為「收盤」
   function effectiveState(q) {
+    // Yahoo 的 USD/TWD 是國際參考報價，台灣休市日也算開盤；台北匯市沒交易，直接標休市
+    if (q.id === 'usdtwd' && isMarketHoliday('tw')) return 'holiday';
     const market = MARKET_OF[q.id];
     if (!market || (q.state !== 'closed' && q.state !== 'holiday')) return q.state;
     if (isMarketHoliday(market)) return 'holiday';
