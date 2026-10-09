@@ -34,7 +34,7 @@
   }
   header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;  /* 右邊的更新時間貼齊上緣，不跟著兩行標題垂直置中 */
     justify-content: space-between;
     gap: 8px;
     max-width: 560px;
@@ -45,7 +45,7 @@
   /* 換行時第二行對齊「來源：」後面的文字（「來源：」是 3 個全形字）*/
   #source { color: var(--muted); font-size: 11px; line-height: 1.35; padding-left: 3em; text-indent: -3em; }
   #source span { white-space: nowrap; }  /* 來源名稱不從中間斷開 */
-  .right { color: var(--muted); font-size: 11px; line-height: 1.35; text-align: right; white-space: nowrap; }
+  .right { color: var(--muted); font-size: 11px; line-height: 1.35; text-align: right; white-space: nowrap; padding-top: 2px; }
   #status.err { color: var(--warn); }
   main { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-width: 560px; margin: 0 auto; }
   .card {
