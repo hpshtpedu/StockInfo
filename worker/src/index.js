@@ -132,7 +132,7 @@ async function buildQuotes(origin, ctx) {
   const vix = await fetchVix(origin, ctx).catch(() => null);
   const holdings = (await Promise.all(['tw2330', 'tw0056', 'tw00878', 'tw00685L'].map(async (id) => {
     const q = await pick(tw, id).catch(() => null);
-    return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time };
+    return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, vwap: q.vwap };
   }))).filter(Boolean);
   return { updated: Date.now(), quotes, holidays, institutional, sectors, margin, announcements, vix, holdings };
 }
@@ -555,6 +555,14 @@ async function fetchYahooTw() {
       const recent = out[id].time && Date.now() - out[id].time < 10 * 60 * 1000;
       const hour = new Date(Date.now() + 8 * 3600 * 1000).getUTCHours();
       out[id].state = !recent ? 'closed' : hour >= 15 || hour < 5 ? 'night' : 'open';
+    }
+    // Holdings: the session's volume-weighted average price from the minute bars (for 正二風向球's
+    // "wait until it is back at or below the average" rule).
+    if (id.startsWith('tw')) {
+      const q = chart.indicators?.quote?.[0] ?? {};
+      let pv = 0, vol = 0;
+      (q.close ?? []).forEach((p, i) => { const v = q.volume?.[i]; if (p && v) { pv += p * v; vol += v; } });
+      if (vol) out[id].vwap = pv / vol;
     }
     // TAIEX per-minute volume is turnover in NT$ millions; the sum is today's cumulative turnover.
     if (id === 'twii') {

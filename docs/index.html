@@ -90,6 +90,7 @@
   .badge.warn { background: var(--warn); color: var(--bg); }
   /* 全英文大寫的 badge 看起來比中文大，縮小約 10% 讓視覺一致 */
   .badge.latin { font-size: clamp(9px, 2.9vw, 11px); line-height: 1.65; }  /* 行高放大，badge 高度不變 */
+  .badge.wait { color: var(--warn); }  /* 等待時機：常見的狀態，橘字不填底 */
   .badge.fuel, .badge.sell { background: var(--down); color: var(--bg); }
   .badge.buy { background: var(--up); color: var(--bg); }
   .heat { color: var(--warn); }
@@ -544,22 +545,36 @@
 
   // 正二風向球（00685L 今天適不適合加碼）：大盤月線乖離 ≥ +8% → 禁止追高（橘，過熱優先，醒目壓住 FOMO；
   // 意思是不要追，不是該賣：近一年乖離 ≥ +8% 後 20 日平均仍 +7.9%）；費半跌破月線 → 按兵不動；否則可加碼。
-  // 最下面一行寫原因。兩行數字平常白色，只有觸發燈號的那一項上色（費半跌破月線綠、大盤過熱橘）。近一年回測：費半站上月線，隔天台股上漲 65%；跌破 45%（p = 0.004）。
+  // 最下面一行寫原因。兩行數字平常白色，只有觸發燈號的那一項上色（費半跌破月線綠、大盤過熱橘）。
+  // 「可加碼」時再加個人紀律（未回測）：台股交易日 09:30 前、或 00685L 現價高於當日成交均價 → 右上角
+  // 「等待時機」badge，最下面一行寫要等什麼；收盤後與休市日不檢查。
+  function leverageTiming(holdings) {
+    const tw = new Date(Date.now() + 8 * 3600000);
+    const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+    if (isMarketHoliday('tw') || mins >= 13 * 60 + 30) return null;
+    if (mins < 9 * 60 + 30) return '09:30 後再看';
+    const etf = holdings?.find((h) => h.code === '00685L');
+    if (etf?.vwap && etf.price > etf.vwap) return `等回均價 ${fmt(etf.vwap, 2)} 以下`;
+    return null;
+  }
+
+  // 近一年回測：費半站上月線，隔天台股上漲 65%；跌破 45%（p = 0.004）。
   // 國際風向的其他訊號（小納、韓、日、美債、台幣）回測都沒有在費半之外多提供資訊，所以不用
-  function leverageLightHtml(byId) {
+  function leverageLightHtml(byId, holdings) {
     const sox = monthLineGap(byId.sox);
     const bias = taiexBias(byId.twii);
     if (sox == null || bias == null) return '';
     const reasons = [bias >= 8 && '大盤過熱', sox < 0 && '費半轉弱'].filter(Boolean);
     const [label, dir] = bias >= 8 ? ['禁止追高', 'heat'] : reasons.length ? ['按兵不動', ''] : ['可加碼', 'up'];
     const sign = (v) => (v > 0 ? '+' : '');
+    const wait = label === '可加碼' ? leverageTiming(holdings) : null;
     return `
       <div class="card">
-        <div class="name">正二風向球</div>
+        <div class="head"><div class="name">正二風向球</div>${wait ? '<span class="badge wait">等待時機</span>' : ''}</div>
         <div class="price ${dir}">${label}</div>
         <div class="chg"><span class="txt">費半月線</span> <span class="${sox < 0 ? 'down' : ''}">${sign(sox)}${fmt(sox, 1)}%</span></div>
         <div class="cmp"><span class="txt">大盤乖離</span> <span class="${bias >= 8 ? 'heat' : ''}">${sign(bias)}${fmt(bias, 1)}%</span></div>
-        <div class="meta">${reasons.length ? `原因：${reasons.join('、')}` : '正二加碼參考'}</div>
+        <div class="meta">${reasons.length ? `原因：${reasons.join('、')}` : wait ?? '正二加碼參考'}</div>
       </div>`;
   }
 
@@ -911,7 +926,7 @@
     // 散戶多空比後接八大行庫
     const after = {
       twii: holdingsHtml(data.holdings, byId.twii),
-      breadth: maHtml(byId.twii) + leverageLightHtml(byId) + sectorsHtml(data.sectors, byId.twii),
+      breadth: maHtml(byId.twii) + leverageLightHtml(byId, data.holdings) + sectorsHtml(data.sectors, byId.twii),
       retailRatio: govBanksHtml(),
     };
     // USD/TWD 是國際外匯報價，排到國際市場最後（美債後面）
