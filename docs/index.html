@@ -808,19 +808,21 @@
     return (twii.price / (series.reduce((a, b) => a + b, 0) / 20) - 1) * 100;
   }
 
-  // 產業成交比重的 badge，要累積 20 個交易日的收盤比重（sector_history.json，2026/10 起每晚存）才會出現。
-  // 金融接棒：金融保險比重達自己 20 日平均的 1.8 倍，且大盤月線乖離 ≥ +5%（過熱時才爆量補漲，常被當成末段訊號）
-  // 資金過度集中：半導體比重達自己 20 日平均的 1.3 倍
-  // 門檻是暫定值，資料滿一個月後再用實際分布校準
-  function sectorBadge(s, twii) {
-    if (!s?.shares) return '';
-    const day = new Date(s.time + 8 * 3600000).toISOString().slice(0, 10);
-    const past = (sectorHistory?.days ?? []).filter((d) => d.date < day).slice(-20);
-    if (past.length < 20) return '';
-    const avg = (name) => past.reduce((sum, d) => sum + (d.shares[name] ?? 0), 0) / past.length;
-    const ratio = (name) => (avg(name) > 0 ? (s.shares[name] ?? 0) / avg(name) : 0);
-    if (ratio('金融保險') >= 1.8 && taiexBias(twii) >= 5) return '<span class="badge warn">金融接棒</span>';
-    if (ratio('半導體') >= 1.3) return '<span class="badge warn">資金過度集中</span>';
+  // 產業成交比重的 badge：用證交所 BFIAMU 的收盤比重（sector_history.json，每晚更新並往回補到 2025 年初），
+  // 最新一個交易日對比前 20 日平均。富果的即時比重口徑不同，不拿來比。
+  // 金融接棒：金融保險比重 ≥ 20 日平均的 1.4 倍；資金過度集中：半導體比重 ≥ 20 日平均的 1.15 倍。
+  // 門檻是 2026/8-10 共 26 個交易日的前 10%，還沒驗證對後市的預測力；歷史補滿一年後再回測校準
+  function sectorBadge() {
+    const days = sectorHistory?.days ?? [];
+    if (days.length < 21) return '';
+    const last = days.at(-1).shares;
+    const past = days.slice(-21, -1);
+    const ratio = (name) => {
+      const avg = past.reduce((sum, d) => sum + (d.shares[name] ?? 0), 0) / past.length;
+      return avg > 0 ? (last[name] ?? 0) / avg : 0;
+    };
+    if (ratio('金融保險') >= 1.4) return '<span class="badge warn">金融接棒</span>';
+    if (ratio('半導體') >= 1.15) return '<span class="badge warn">資金過度集中</span>';
     return '';
   }
 
@@ -881,7 +883,7 @@
       </div>`).join('');
     return `
       <div class="card wide">
-        <div class="head"><div class="head-left"><div class="name">產業成交比重</div>${sectorBadge(s, twii)}</div>
+        <div class="head"><div class="head-left"><div class="name">產業成交比重</div>${sectorBadge()}</div>
           <div class="meta">電子 ${fmt(s.electronics, 1)}% · ${when}${s.stale ? ' · <span class="lag">舊資料</span>' : ''}</div></div>
         <div class="secs">${cells}</div>
       </div>`;
