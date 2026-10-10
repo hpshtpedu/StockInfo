@@ -152,22 +152,23 @@
   .cal .next b { color: inherit; font-weight: 400; }
   .cal .ev { color: var(--text); font-weight: 600; }
   .cal .next .ev { color: inherit; font-weight: 400; }
-  /* 三大法人：外框一個，標題列與數字區之間橫線、標題與連買連賣之間直線，數字欄不分隔 */
-  .cal .inst-box { margin-top: 6px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-  .cal .inst-title { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; color: var(--muted);
+  /* 三大法人：台股盤後第一張全寬卡片，卡片外框即表格外框；標題列與數字區之間橫線、標題與連買連賣之間直線 */
+  .card.inst-box { padding: 0; gap: 0; overflow: hidden; }
+  .card.inst-box > :last-child { margin-top: 0; }
+  .inst-title { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; color: var(--muted);
     font-size: 13px; border-bottom: 1px solid var(--line); }
   /* 標題橫跨前三欄置中（中心正好在「投信」上方），連買連賣對齊「合計」 */
-  .cal .inst-title > span { padding: 3px 2px; white-space: nowrap; }
-  .cal .inst-title > span:first-child { grid-column: 1 / span 3; }
-  .cal .inst-title > span:nth-child(2) { font-weight: 600; border-left: 1px solid var(--line); }
-  .cal .inst { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; padding: 3px 0 4px; }
-  .cal .inst .k { color: var(--muted); font-size: 11px; }
-  .cal .inst .v { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .inst-title > span { padding: 3px 2px; white-space: nowrap; }
+  .inst-title > span:first-child { grid-column: 1 / span 3; }
+  .inst-title > span:nth-child(2) { font-weight: 600; border-left: 1px solid var(--line); }
+  .inst { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; padding: 3px 0 4px; }
+  .inst .k { color: var(--muted); font-size: 11px; }
+  .inst .v { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
   /* 非當日（盤中、隔天早上前）的舊資料：整塊轉灰 */
-  .cal .inst.stale .v { color: var(--muted); font-weight: 600; }
+  .inst.stale .v { color: var(--muted); font-weight: 600; }
   /* 當日新資料：標題和欄位名稱用一般白字；舊資料維持灰色 */
-  .cal .inst-box.fresh .inst-title, .cal .inst-box.fresh .inst .k { color: var(--text); }
-  .cal .inst-box.fresh, .cal .inst-box.fresh .inst-title, .cal .inst-box.fresh .inst-title > span:nth-child(2) { border-color: var(--text); }
+  .inst-box.fresh .inst-title, .inst-box.fresh .inst .k { color: var(--text); }
+  .inst-box.fresh, .inst-box.fresh .inst-title, .inst-box.fresh .inst-title > span:nth-child(2) { border-color: var(--text); }
   /* 放在最後，才能覆蓋上面的基本尺寸 */
   /* PC／平板橫放（寬度 ≥ 600px）：持股多顯示漲跌和漲跌幅、K 線放大，卡片才不會太空 */
   @media (min-width: 600px) {
@@ -379,7 +380,7 @@
       return `<div class="v ${dir}">${v > 0 ? '+' : ''}${fmt(v, 1)}</div>`;
     }).join('');
     return `
-      <div class="inst-box${fresh ? ' fresh' : ''}">
+      <div class="card wide inst-box${fresh ? ' fresh' : ''}">
         <div class="inst-title"><span>三大法人買賣超 ${m}/${d}（億元）</span>${foreignStreak(inst, history, fresh) || '<span></span>'}</div>
         <div class="inst${fresh ? '' : ' stale'}">${header}${values}</div>
       </div>`;
@@ -414,7 +415,7 @@
       </div>`;
   }
 
-  function calendarHtml(inst, history) {
+  function calendarHtml() {
     const tw = new Date(Date.now() + 8 * 3600 * 1000);
     const today = utcDate(tw.getUTCFullYear(), tw.getUTCMonth() + 1, tw.getUTCDate());
     // 只列明天，沒有事件就不顯示（週一的事件等到週日才出現）
@@ -425,7 +426,6 @@
       <div class="card cal">
         <div class="today"><span class="ico">📅</span><span>${dayLine('今日', today, dayEvents(today))}</span></div>
         ${nextHtml}
-        ${institutionalHtml(inst, history)}
       </div>`;
   }
 
@@ -921,12 +921,12 @@
       kospi: monthLineBadge(byId.kospi),
       nikkei: monthLineBadge(byId.nikkei),
     };
-    // 分類：台股盤中（加權起）、國際市場（費半起）、台股盤後（台指VIX 起）
+    // 分類：台股盤中（加權起）、國際市場（費半起）、台股盤後（三大法人全寬卡片、台指VIX 起）
     const section = (title) => `<div class="section">${title}</div>`;
     const before = {
       twii: section('台股盤中'),
       sox: section('國際市場'),
-      foreignOi: section('台股盤後') + vixHtml(data.vix, byId.twii),
+      foreignOi: section('台股盤後') + institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii),
     };
     // 插在某張卡片後面的卡片：加權後接我的持股；漲跌家數後接大盤均線、正二風向球、產業成交比重（全寬）；
     // 散戶多空比後接八大行庫
@@ -981,7 +981,7 @@
           ${body}
         </div>`;
     };
-    $list.innerHTML = calendarHtml(data.institutional, instHistory)
+    $list.innerHTML = calendarHtml()
       + quotes.map((q) => (before[q.id] ?? '') + cardFor(q) + (after[q.id] ?? '')).join('')
       + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
   }
