@@ -78,6 +78,8 @@
   /* 名稱優先完整顯示，空間不夠時截斷 badge */
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
+  /* 標題長的卡片（國際市場、外資台指淨OI）badge 小一號，其他卡片有餘裕就放大 */
+  .compact .badge { font-size: clamp(10.5px, 3.5vw, 14px); }
   .badge.warn { background: var(--warn); color: var(--bg); }
   .badge.wait { color: var(--warn); }  /* 等待時機：常見的狀態，橘字不填底 */
   .badge.fuel, .badge.sell { background: var(--down); color: var(--bg); }
@@ -114,7 +116,7 @@
   .foot .badge.note { flex-shrink: 0; }
   .klabel { flex-shrink: 0; color: var(--muted); font-size: 11px; }
   .kchart { width: 100%; height: 30px; display: block; }
-  .badge { min-width: 0; font-size: clamp(10.5px, 3.5vw, 14px); font-weight: 600; line-height: 1.5; padding: 0 5px; letter-spacing: -0.2px; border-radius: 999px; background: #363c48; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  .badge { min-width: 0; font-size: clamp(11px, 3.9vw, 15.5px); font-weight: 600; line-height: 1.5; padding: 0 5px; letter-spacing: -0.2px; border-radius: 999px; background: #363c48; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .chg { font-size: clamp(11.5px, 3.4vw, 13px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price small { font-size: 13px; font-weight: 600; }
   .price.tight { font-size: clamp(16px, 4.6vw, 22px); }
@@ -447,7 +449,7 @@
     const badge = q.unit !== 'ratio' ? futuresSpotBadge(q, inst)
       : q.price < 0 ? '<span class="badge fuel">燃料充足</span>' : '';
     return `
-      <div class="card">
+      <div class="card${q.unit !== 'ratio' ? ' compact' : ''}">
         <div class="head"><div class="name">${q.name}</div>${badge}</div>
         <div class="price ${dir}">${value}</div>
         <div class="chg">${segments(q.detail)}</div>
@@ -828,6 +830,8 @@
   }
 
   // 各卡片所屬市場，用行事曆的休市日判斷「休市」或「收盤」
+  // 國際市場的卡片：標題長，badge 用小一號（.compact）
+  const INTL = new Set(['sox', 'tsm', 'nq', 'kospi', 'nikkei', 'brent', 'us10y', 'usdtwd']);
   const MARKET_OF = { twii: 'tw', txf: 'tw', breadth: 'tw', kospi: 'kr', nikkei: 'jp', sox: 'us', tsm: 'us', nq: 'us', us10y: 'us', brent: 'us' };
   const HOLIDAY_LABEL = { kr: '韓股休市', jp: '日股休市', us: '美股休市' };
 
@@ -925,7 +929,7 @@
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
            ${meta}`;
       return `
-        <div class="card${chart ? ' has-k' : ''}">
+        <div class="card${chart ? ' has-k' : ''}${INTL.has(q.id) ? ' compact' : ''}">
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
           <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}</div>
           ${body}
