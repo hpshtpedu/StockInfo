@@ -152,23 +152,12 @@
   .cal .next b { color: inherit; font-weight: 400; }
   .cal .ev { color: var(--text); font-weight: 600; }
   .cal .next .ev { color: inherit; font-weight: 400; }
-  /* 三大法人：台股盤後第一張全寬卡片，卡片外框即表格外框；標題列與數字區之間橫線、標題與連買連賣之間直線 */
-  .card.inst-box { padding: 0; gap: 0; overflow: hidden; }
-  .card.inst-box > :last-child { margin-top: 0; }
-  .inst-title { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; color: var(--muted);
-    font-size: 13px; border-bottom: 1px solid var(--line); }
-  /* 標題橫跨前三欄置中（中心正好在「投信」上方），連買連賣對齊「合計」 */
-  .inst-title > span { padding: 3px 2px; white-space: nowrap; }
-  .inst-title > span:first-child { grid-column: 1 / span 3; }
-  .inst-title > span:nth-child(2) { font-weight: 600; border-left: 1px solid var(--line); }
-  .inst { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; padding: 3px 0 4px; }
-  .inst .k { color: var(--muted); font-size: 11px; }
-  .inst .v { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  /* 非當日（盤中、隔天早上前）的舊資料：整塊轉灰 */
-  .inst.stale .v { color: var(--muted); font-weight: 600; }
-  /* 當日新資料：標題和欄位名稱用一般白字；舊資料維持灰色 */
-  .inst-box.fresh .inst-title, .inst-box.fresh .inst .k { color: var(--text); }
-  .inst-box.fresh, .inst-box.fresh .inst-title, .inst-box.fresh .inst-title > span:nth-child(2) { border-color: var(--text); }
+  /* 三大法人：台股盤後第一張全寬卡片，四欄（外資、投信、自營商、合計） */
+  .inst { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; margin: 4px 0 2px; }
+  .inst .k { color: var(--muted); font-size: 12px; }
+  .inst .v { font-size: clamp(15px, 4.6vw, 20px); font-weight: 700; font-variant-numeric: tabular-nums; }
+  /* 非當日（盤中、隔天早上前）的舊資料：數字轉灰，不搶當日資料的鋒頭 */
+  .inst.stale .v { color: var(--muted); }
   /* 放在最後，才能覆蓋上面的基本尺寸 */
   /* PC／平板橫放（寬度 ≥ 600px）：持股多顯示漲跌和漲跌幅、K 線放大，卡片才不會太空 */
   @media (min-width: 600px) {
@@ -355,14 +344,13 @@
     return sign * n;
   }
 
+  // 外資連買/賣 badge：當日新資料紅（買）綠（賣），舊資料灰
   function foreignStreak(inst, history, fresh) {
     const streak = foreignStreakDays(inst, history);
     const sign = Math.sign(streak);
     if (!sign) return '';
-    const n = Math.abs(streak);
-    // 當日新資料：「連N買」紅、「連N賣」綠，「外資」維持標題色
-    const tail = `連${n}${sign > 0 ? '買' : '賣'}`;
-    return `<span>外資${fresh ? `<span class="${sign > 0 ? 'up' : 'down'}">${tail}</span>` : tail}</span>`;
+    const cls = fresh ? (sign > 0 ? ' up' : ' down') : '';
+    return `<span class="badge${cls}">外資連${Math.abs(streak)}${sign > 0 ? '買' : '賣'}</span>`;
   }
 
   // 三大法人買賣超：一直顯示；當日 15:10 到下個交易日 08:00 是新資料（彩色），其餘時間整塊轉灰
@@ -382,9 +370,10 @@
       return `<div class="v ${dir}">${v > 0 ? '+' : ''}${fmt(v, 1)}</div>`;
     }).join('');
     return `
-      <div class="card wide inst-box${fresh ? ' fresh' : ''}">
-        <div class="inst-title"><span>三大法人買賣超 ${m}/${d}（億元）</span>${foreignStreak(inst, history, fresh) || '<span></span>'}</div>
+      <div class="card wide">
+        <div class="head"><div class="name">三大法人買賣超</div>${foreignStreak(inst, history, fresh)}</div>
         <div class="inst${fresh ? '' : ' stale'}">${header}${values}</div>
+        <div class="meta">${m}/${d} 盤後 · 億元</div>
       </div>`;
   }
 
