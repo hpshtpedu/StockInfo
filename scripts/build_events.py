@@ -229,6 +229,30 @@ def market_holidays(today, until):
     return out
 
 
+TW_HOLIDAY_SHORT = {
+    '中華民國開國紀念日': '元旦',
+    '和平紀念日': '228',
+    '孔子誕辰紀念日': '教師節',
+    '臺灣光復暨金門古寧頭大捷紀念日': '光復節',
+    '（補假）': '補假',
+}
+
+
+def tw_holidays(today, until):
+    """Taiwan's national holidays, weekends included (e.g. 國慶日 on a Saturday). No network.
+    The page shows them only on days the TWSE isn't already listed as closed."""
+    import holidays  # pip install holidays
+
+    out = []
+    for day, name in sorted(holidays.country_holidays('TW', years=range(today.year, until.year + 1),
+                                                      language='zh_TW').items()):
+        if today <= day <= until:
+            for full, short in TW_HOLIDAY_SHORT.items():
+                name = name.replace(full, short)
+            out.append({'src': 'tw_holidays', 'date': day.isoformat(), 'time': '', 'label': name})
+    return out
+
+
 PT = ZoneInfo('America/Los_Angeles')
 MONTHS = {m: i for i, m in enumerate(
     ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'], 1)}
@@ -273,7 +297,7 @@ def main():
     old = json.loads(OUT.read_text(encoding='utf-8')) if OUT.exists() else []
     events, failed = [], []
     sources = (('fred', fred), ('fomc', fomc), ('ism', ism), ('tw_stocks', tw_stocks),
-               ('market_holidays', market_holidays), ('nvidia', nvidia))
+               ('market_holidays', market_holidays), ('tw_holidays', tw_holidays), ('nvidia', nvidia))
     for name, fn in sources:
         try:
             got = fn(today, until)

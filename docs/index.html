@@ -318,6 +318,8 @@
       ...settlements(t),
     ].map((text) => ({ text, settle: true, us: text.startsWith('美股') }));
     for (const e of econEvents[key(t)] ?? []) {
+      // 台灣國定假日：台股已標休市的日子就不重複（例如國慶日補假），週末或照常開市的日子才列出
+      if (e.src === 'tw_holidays' && holiday) continue;
       items.push({ text: e.label, settle: false, us: US_SOURCES.has(e.src) || e.label.startsWith('美股') });
     }
     // 當天抓到的公告（Worker 提供）：營收換成帶年增/月增的版本，另外加上配息公告
