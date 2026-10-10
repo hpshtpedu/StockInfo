@@ -1,3 +1,5 @@
 node_modules/
 .wrangler/
 .dev.vars
+# MacroMicro exports for local analysis only (not ours to redistribute)
+mm_data/
