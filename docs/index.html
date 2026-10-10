@@ -42,9 +42,8 @@
   }
   h1 { font-size: 20px; margin: 0; white-space: nowrap; }
   h1 { line-height: 1.2; }
-  /* 換行時第二行對齊「來源：」後面的文字（「來源：」是 3 個全形字）*/
-  #source { color: var(--muted); font-size: 11px; line-height: 1.35; padding-left: 3em; text-indent: -3em; }
-  #source span { white-space: nowrap; }  /* 來源名稱不從中間斷開 */
+  /* 資料來源：頁尾一整行，置中 */
+  #source { max-width: 560px; margin: 14px auto 4px; color: var(--muted); font-size: 11px; text-align: center; }
   .right { color: var(--muted); font-size: 11px; line-height: 1.35; text-align: right; white-space: nowrap; padding-top: 2px; }
   #status.err { color: var(--warn); }
   main { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-width: 560px; margin: 0 auto; }
@@ -167,7 +166,6 @@
 <header>
   <div>
     <h1>股市大局觀</h1>
-    <div id="source">來源：<span>Yahoo、</span><span>證交所、</span><span>期交所、</span><span>HiStock</span></div>
   </div>
   <div class="right">
     <div id="status">載入中…</div>
@@ -175,6 +173,7 @@
   </div>
 </header>
 <main id="list"></main>
+<footer id="source">資料來源：Yahoo、證交所、期交所、HiStock</footer>
 <script>
   const API = 'https://stockinfo-quotes.hpshtpedu.workers.dev/quotes';
   const POLL_MS = 120 * 1000;
