@@ -703,7 +703,6 @@
   let vixHistory = null;
   let volumeProfile = null;  // 每日成交金額（totals），護盤判斷用
   let govBanks = null;  // 八大公股行庫每日買賣超
-  let sectorHistory = null;  // 每日收盤的產業成交比重
   let globalHistory = null;  // 費半、小納、韓股、日經的日收盤，月線 badge 用
   let tsmcWeight = null;  // 台積電市值佔大盤比重（%），拉雞盤判斷用
 
@@ -808,24 +807,6 @@
     return (twii.price / (series.reduce((a, b) => a + b, 0) / 20) - 1) * 100;
   }
 
-  // 產業成交比重的 badge：用證交所 BFIAMU 的收盤比重（sector_history.json，每晚更新並往回補到 2025 年初），
-  // 最新一個交易日對比前 20 日平均。富果的即時比重口徑不同，不拿來比。
-  // 金融接棒：金融保險比重 ≥ 20 日平均的 1.4 倍；資金過度集中：半導體比重 ≥ 20 日平均的 1.15 倍。
-  // 門檻是 2026/8-10 共 26 個交易日的前 10%，還沒驗證對後市的預測力；歷史補滿一年後再回測校準
-  function sectorBadge() {
-    const days = sectorHistory?.days ?? [];
-    if (days.length < 21) return '';
-    const last = days.at(-1).shares;
-    const past = days.slice(-21, -1);
-    const ratio = (name) => {
-      const avg = past.reduce((sum, d) => sum + (d.shares[name] ?? 0), 0) / past.length;
-      return avg > 0 ? (last[name] ?? 0) / avg : 0;
-    };
-    if (ratio('金融保險') >= 1.4) return '<span class="badge warn">金融接棒</span>';
-    if (ratio('半導體') >= 1.15) return '<span class="badge warn">資金過度集中</span>';
-    return '';
-  }
-
   function maHtml(twii) {
     const closes = taiexHistory?.closes;
     if (!twii?.price || !closes?.length) return '';
@@ -883,7 +864,7 @@
       </div>`).join('');
     return `
       <div class="card wide">
-        <div class="head"><div class="head-left"><div class="name">產業成交比重</div>${sectorBadge()}</div>
+        <div class="head"><div class="head-left"><div class="name">產業成交比重</div></div>
           <div class="meta">電子 ${fmt(s.electronics, 1)}% · ${when}${s.stale ? ' · <span class="lag">舊資料</span>' : ''}</div></div>
         <div class="secs">${cells}</div>
       </div>`;
@@ -1009,7 +990,6 @@
       const vixReq = getJson('vix_history.json');
       const weightReq = getJson('tsmc_weight.json');
       const globalReq = getJson('global_history.json');
-      const sectorReq = getJson('sector_history.json');
       const govReq = getJson('gov_banks.json');
       const res = await fetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1024,7 +1004,6 @@
       vixHistory = (await vixReq) ?? vixHistory;
       tsmcWeight = (await weightReq) ?? tsmcWeight;
       globalHistory = (await globalReq) ?? globalHistory;
-      sectorHistory = (await sectorReq) ?? sectorHistory;
       govBanks = (await govReq) ?? govBanks;
       volumeProfile = (await profileReq) ?? volumeProfile;
       render(data, pickMargin(data.margin, await marginReq), await profileReq);
