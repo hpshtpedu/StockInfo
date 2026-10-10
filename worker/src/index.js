@@ -132,7 +132,7 @@ async function buildQuotes(origin, ctx) {
   const vix = await fetchVix(origin, ctx).catch(() => null);
   const holdings = (await Promise.all(['tw2330', 'tw0056', 'tw00878', 'tw00685L'].map(async (id) => {
     const q = await pick(tw, id).catch(() => null);
-    return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, vwap: q.vwap };
+    return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, vwap: q.vwap, auction: q.auction };
   }))).filter(Boolean);
   return { updated: Date.now(), quotes, holidays, institutional, sectors, margin, announcements, vix, holdings };
 }
@@ -519,6 +519,11 @@ function marketState(meta, breaksUtc = []) {
   return 'open';
 }
 
+// TWSE tick size for a stock price.
+function tickSize(p) {
+  return p < 10 ? 0.01 : p < 50 ? 0.05 : p < 100 ? 0.1 : p < 500 ? 0.5 : p < 1000 ? 1 : 5;
+}
+
 // Yahoo Taiwan works from Cloudflare egress, unlike TAIFEX MIS. Returns { id: quote }.
 async function fetchYahooTw() {
   const symbols = encodeURIComponent(JSON.stringify(Object.values(YAHOO_TW).map((c) => c.symbol)));
@@ -563,6 +568,14 @@ async function fetchYahooTw() {
       let pv = 0, vol = 0;
       (q.close ?? []).forEach((p, i) => { const v = q.volume?.[i]; if (p && v) { pv += p * v; vol += v; } });
       if (vol) out[id].vwap = pv / vol;
+      // Closing call auction (13:25-13:30): the 13:30 bar against the last continuous trade, in ticks.
+      const ts = chart.timestamp ?? [];
+      const last = ts.length - 1;
+      const hhmm = (t) => new Date((t + 8 * 3600) * 1000).toISOString().slice(11, 16);
+      if (last > 0 && hhmm(ts[last]) === '13:30' && q.close?.[last] && q.close?.[last - 1]) {
+        const before = q.close[last - 1];
+        out[id].auction = { ticks: Math.round((q.close[last] - before) / tickSize(before)), volume: q.volume?.[last] ?? 0 };
+      }
     }
     // TAIEX per-minute volume is turnover in NT$ millions; the sum is today's cumulative turnover.
     if (id === 'twii') {

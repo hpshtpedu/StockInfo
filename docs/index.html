@@ -564,7 +564,10 @@
     const sox = monthLineGap(byId.sox);
     const bias = taiexBias(byId.twii);
     if (sox == null || bias == null) return '';
-    const reasons = [bias >= 8 && '大盤過熱', sox < 0 && '費半轉弱'].filter(Boolean);
+    // 正二磨損（近 20 日比大盤 × 2 少 3% 以上）也是按兵不動的原因：之後 5 日 00685L 平均 -0.4%（全部 +2.6%）；
+    // 複利加速（多 1% 以上）不改燈號，只在最下面一行提示
+    const decay = leverageDecay(holdings ?? [], byId.twii);
+    const reasons = [bias >= 8 && '大盤過熱', sox < 0 && '費半轉弱', decay != null && decay <= -3 && '正二磨損'].filter(Boolean);
     const [label, dir] = bias >= 8 ? ['禁止追高', 'heat'] : reasons.length ? ['按兵不動', ''] : ['可加碼', 'up'];
     const sign = (v) => (v > 0 ? '+' : '');
     const wait = label === '可加碼' ? leverageTiming(holdings) : null;
@@ -574,7 +577,7 @@
         <div class="price ${dir}">${label}</div>
         <div class="chg"><span class="txt">費半月線</span> <span class="${sox < 0 ? 'down' : ''}">${sign(sox)}${fmt(sox, 1)}%</span></div>
         <div class="cmp"><span class="txt">大盤乖離</span> <span class="${bias >= 8 ? 'heat' : ''}">${sign(bias)}${fmt(bias, 1)}%</span></div>
-        <div class="meta">${reasons.length ? `原因：${reasons.join('、')}` : wait ?? '正二加碼參考'}</div>
+        <div class="meta">${reasons.length ? `原因：${reasons.join('、')}` : wait ?? (decay >= 1 ? '複利加速中' : '正二加碼參考')}</div>
       </div>`;
   }
 
@@ -760,10 +763,10 @@
 
   function holdingsHtml(list, twii) {
     if (!list?.length) return '';
-    const decay = leverageDecay(list, twii);
-    const badge = decay == null ? ''
-      : decay <= -3 ? `<span class="badge warn">正二磨損${fmt(-decay, 1)}%</span>`
-      : decay >= 1 ? `<span class="badge buy">複利加速+${fmt(decay, 1)}%</span>` : '';
+    // 台積電收盤集合競價（13:25-13:30）比盤中最後一筆漲 2 檔以上＝尾盤拉雞，跌 2 檔以上＝尾盤殺雞
+    const auction = list.find((h) => h.code === '2330')?.auction;
+    const badge = auction?.ticks >= 2 ? '<span class="badge buy">尾盤拉雞</span>'
+      : auction?.ticks <= -2 ? '<span class="badge sell">尾盤殺雞</span>' : '';
     const rows = list.map((h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
       const sign = h.change > 0 ? '+' : '';
