@@ -571,13 +571,18 @@
     const decay = leverageDecay(holdings ?? [], byId.twii);
     // 台股自身趨勢與急跌保護（未回測，空頭時的保險）：加權跌破季線＝台股轉弱；加權當天跌 2% 以上＝大盤急跌
     const quarter = taiexQuarterGap(byId.twii);
+    const retail = byId.retailRatio?.price ?? null;
     const reasons = [
       bias >= 8 && '大盤過熱',
       sox < 0 && '費半轉弱',
       quarter != null && quarter < 0 && '台股轉弱',
       byId.twii?.changePct <= -2 && '大盤急跌',
       decay != null && decay <= -3 && '正二磨損',
+      // 散戶多空比 ≥ +30%（FOMO）：之後 10 日 00685L 平均 +1.2%（全部 +5.5%；4-10 月、樣本少，待一年資料再驗證）
+      retail != null && retail >= 30 && '散戶過熱',
     ].filter(Boolean);
+    // 散戶轉淨空（燃料充足）：之後 10 日平均 +12.5%，可加碼時在最下面一行提示
+    const fuel = retail != null && retail < 0;
     // 複利加速只在加權近 20 日上漲時才算好事（單邊下跌時，每日兩倍也會比「累計 × 2」虧得少）
     const boosting = decay >= 1 && taiexReturn20(byId.twii) > 0;
     const [label, dir] = bias >= 8 ? ['禁止追高', 'heat'] : reasons.length ? ['按兵不動', ''] : ['可加碼', 'up'];
@@ -589,7 +594,7 @@
         <div class="price ${dir}">${label}</div>
         <div class="chg"><span class="txt">費半月線</span> <span class="${sox < 0 ? 'down' : ''}">${sign(sox)}${fmt(sox, 1)}%</span></div>
         <div class="cmp"><span class="txt">大盤乖離</span> <span class="${bias >= 8 ? 'heat' : ''}">${sign(bias)}${fmt(bias, 1)}%</span></div>
-        <div class="meta">${reasons.length ? `原因：${reasons.join('、')}` : wait ?? (boosting ? '複利加速中' : '正二加碼參考')}</div>
+        <div class="meta">${reasons.length ? `原因：${reasons.join('、')}` : wait ?? (fuel ? '散戶轉空，加碼好時機' : boosting ? '複利加速中' : '正二加碼參考')}</div>
       </div>`;
   }
 
