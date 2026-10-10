@@ -30,7 +30,7 @@ const YAHOO_TW = {
 const BREADTH = { breadth: { name: '漲跌家數(上市)' } };
 
 const CHIPS = {
-  foreignOi: { name: '外資台指淨OI' },
+  foreignOi: { name: '外資淨OI' },
   retailRatio: { name: '小台散戶多空比' },
 };
 

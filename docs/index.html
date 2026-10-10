@@ -78,8 +78,6 @@
   /* 名稱優先完整顯示，空間不夠時截斷 badge */
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
-  /* 標題特別長的卡片（外資台指淨OI）badge 小一號，其他卡片都用大 badge */
-  .compact .badge { font-size: clamp(10.5px, 3.5vw, 14px); }
   .badge.warn { background: var(--warn); color: var(--bg); }
   .badge.wait { color: var(--warn); }  /* 等待時機：常見的狀態，橘字不填底 */
   .badge.fuel, .badge.sell { background: var(--down); color: var(--bg); }
@@ -449,7 +447,7 @@
     const badge = q.unit !== 'ratio' ? futuresSpotBadge(q, inst)
       : q.price < 0 ? '<span class="badge fuel">燃料充足</span>' : '';
     return `
-      <div class="card${q.unit !== 'ratio' ? ' compact' : ''}">
+      <div class="card">
         <div class="head"><div class="name">${q.name}</div>${badge}</div>
         <div class="price ${dir}">${value}</div>
         <div class="chg">${segments(q.detail)}</div>
