@@ -152,10 +152,6 @@
   .cal .next b { color: inherit; font-weight: 400; }
   .cal .ev { color: var(--text); font-weight: 600; }
   .cal .next .ev { color: inherit; font-weight: 400; }
-  /* 三大法人：台股盤後第一張全寬卡片，四欄（外資、投信、自營商、合計） */
-  .inst { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; margin: 4px 0 2px; }
-  .inst .k { color: var(--muted); font-size: 12px; }
-  .inst .v { font-size: clamp(15px, 4.6vw, 20px); font-weight: 700; font-variant-numeric: tabular-nums; }
   /* 放在最後，才能覆蓋上面的基本尺寸 */
   /* PC／平板橫放（寬度 ≥ 600px）：持股多顯示漲跌和漲跌幅、K 線放大，卡片才不會太空 */
   @media (min-width: 600px) {
@@ -355,17 +351,17 @@
     if (!inst?.date) return '';
     const [, m, d] = inst.date.split('-').map(Number);
 
-    const cols = [['外資', inst.foreign], ['投信', inst.trust], ['自營商', inst.dealer], ['合計', inst.total]];
-    const header = cols.map(([label]) => `<div class="k">${label}</div>`).join('');
-    const values = cols.map(([, v]) => {
-      const dir = v > 0 ? 'up' : v < 0 ? 'down' : '';
-      return `<div class="v ${dir}">${v > 0 ? '+' : ''}${fmt(v, 1)}</div>`;
-    }).join('');
+    // 合計當主數字，三大法人各自的買賣超一行小字
+    const dir = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : '');
+    const num = (v) => `${v > 0 ? '+' : ''}${fmt(v, 1)}`;
+    const parts = [['外資', inst.foreign], ['投信', inst.trust], ['自營商', inst.dealer]]
+      .map(([k, v]) => `<span class="txt">${k}</span> <span class="${dir(v)}">${num(v)}</span>`).join(' · ');
     return `
       <div class="card wide">
         <div class="head"><div class="name">三大法人買賣超</div>${foreignStreak(inst, history)}</div>
-        <div class="inst">${header}${values}</div>
-        <div class="meta">${m}/${d} 盤後 · 億元</div>
+        <div class="price ${dir(inst.total)}">${num(inst.total)}<small> 億</small></div>
+        <div class="chg">${parts}</div>
+        <div class="meta">${m}/${d} 盤後</div>
       </div>`;
   }
 
