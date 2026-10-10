@@ -3,3 +3,4 @@ node_modules/
 .dev.vars
 # MacroMicro exports for local analysis only (not ours to redistribute)
 mm_data/
+__pycache__/
