@@ -752,7 +752,10 @@
         <div class="head"><div class="name">台指VIX</div>${badge}</div>
         <div class="price">${fmt(last, 2)}</div>
         <div class="chg ${dir(change)}">${sign(change)}${fmt(change, 2)} (${sign(change)}${fmt((change / prev) * 100, 1)}%)</div>
-        <div class="cmp"><span class="txt">5日</span> <span class="${dir(trend)}">${trend > 0 ? '升溫' : '降溫'} ${sign(trend)}${fmt(trend, 2)}</span></div>
+        ${last > 40
+          // 買進訊號時把銀彈的用法寫在卡片上（2008 年 VIX 破 40 後台股又跌了約兩個月，所以要拆批、拉開間隔）
+          ? '<div class="cmp up">銀彈分3–4批，隔2週</div>'
+          : `<div class="cmp"><span class="txt">5日</span> <span class="${dir(trend)}">${trend > 0 ? '升溫' : '降溫'} ${sign(trend)}${fmt(trend, 2)}</span></div>`}
         <div class="meta">${mm}/${dd} 盤後</div>
       </div>`;
   }
