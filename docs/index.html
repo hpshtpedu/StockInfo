@@ -84,7 +84,7 @@
   .badge.buy { background: var(--up); color: var(--bg); }
   .heat { color: var(--warn); }
   .cool { color: #5b8fd6; }
-  .ma-row { display: flex; justify-content: space-between; gap: 6px; font-size: clamp(11.5px, 3.4vw, 13px); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ma-row { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; font-size: clamp(13px, 4.2vw, 16px); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .ma-row .k { font-size: inherit; }
   /* 我的持股：代號靠左、價格靠右（紅綠表示漲跌）；限制寬度，PC 上才不會拉得太開 */
   /* 四檔共用一個格線：股號欄以最長的為準，價格緊接在後並靠右對齊；漲跌幅放最右邊、小一號 */
@@ -130,6 +130,9 @@
   .txt { color: var(--text); }
   .cmp { font-size: clamp(12px, 3.5vw, 13.5px); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .cmp .txt, .chg .txt { font-weight: 400; }
+  /* 全寬卡片（三大法人）的明細行有整行寬度，字可以大一點；八大的連買/賣下面沒別的內容，也放大 */
+  .card.wide .chg { font-size: clamp(13px, 4vw, 15px); }
+  .chg.big { font-size: clamp(14px, 4.4vw, 17px); }
   .error { color: var(--warn); font-size: 12px; }
   .cal { grid-column: 1 / -1; font-size: 13px; gap: 3px; }
   /* 懸掛縮排：圖示獨立一欄，換行文字對齊「今」；明日行用隱形圖示佔位，跟「今」對齊 */
@@ -380,7 +383,7 @@
       <div class="card">
         <div class="head"><div class="name">八大行庫買賣超</div>${badge}</div>
         <div class="price ${dir}">${last.net > 0 ? '+' : ''}${fmt(last.net, 1)}<small> 億</small></div>
-        <div class="chg">${streak}</div>
+        <div class="chg big">${streak}</div>
         <div class="meta">${mm}/${dd} 盤後</div>
       </div>`;
   }
