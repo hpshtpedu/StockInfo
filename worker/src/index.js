@@ -572,8 +572,11 @@ async function fetchYahooTw() {
       const ts = chart.timestamp ?? [];
       const last = ts.length - 1;
       const hhmm = (t) => new Date((t + 8 * 3600) * 1000).toISOString().slice(11, 16);
-      if (last > 0 && hhmm(ts[last]) === '13:30' && q.close?.[last] && q.close?.[last - 1]) {
-        const before = q.close[last - 1];
+      // The auction minutes (13:26-13:29) have no trades, so look back for the last one that did.
+      let prev = last - 1;
+      while (prev >= 0 && !q.close?.[prev]) prev--;
+      if (prev >= 0 && hhmm(ts[last]) === '13:30' && q.close?.[last]) {
+        const before = q.close[prev];
         out[id].auction = { ticks: Math.round((q.close[last] - before) / tickSize(before)), volume: q.volume?.[last] ?? 0 };
       }
     }
