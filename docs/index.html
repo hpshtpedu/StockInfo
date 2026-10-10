@@ -547,7 +547,8 @@
   // 意思是不要追，不是該賣：近一年乖離 ≥ +8% 後 20 日平均仍 +7.9%）；費半跌破月線 → 按兵不動；否則可加碼。
   // 最下面一行寫原因。兩行數字平常白色，只有觸發燈號的那一項上色（費半跌破月線綠、大盤過熱橘）。
   // 「可加碼」時再加個人紀律（未回測）：台股交易日 09:30 前、或 00685L 現價高於當日成交均價 → 右上角
-  // 「等待時機」badge，最下面一行寫要等什麼；收盤後與休市日不檢查。
+  // 「等待時機」badge，最下面一行寫要等什麼；最近 5 分鐘仍在創當日新低（單邊下跌，均價以下也不接）也等；
+  // 收盤後與休市日不檢查。
   function leverageTiming(holdings) {
     const tw = new Date(Date.now() + 8 * 3600000);
     const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
@@ -555,6 +556,7 @@
     if (mins < 9 * 60 + 30) return '09:30 後再看';
     const etf = holdings?.find((h) => h.code === '00685L');
     if (etf?.vwap && etf.price > etf.vwap) return `等回均價 ${fmt(etf.vwap, 2)} 以下`;
+    if (etf?.newLow) return '等止跌（5 分鐘內仍創新低）';
     return null;
   }
 
@@ -567,7 +569,17 @@
     // 正二磨損（近 20 日比大盤 × 2 少 3% 以上）也是按兵不動的原因：之後 5 日 00685L 平均 -0.4%（全部 +2.6%）；
     // 複利加速（多 1% 以上）不改燈號，只在最下面一行提示
     const decay = leverageDecay(holdings ?? [], byId.twii);
-    const reasons = [bias >= 8 && '大盤過熱', sox < 0 && '費半轉弱', decay != null && decay <= -3 && '正二磨損'].filter(Boolean);
+    // 台股自身趨勢與急跌保護（未回測，空頭時的保險）：加權跌破季線＝台股轉弱；加權當天跌 2% 以上＝大盤急跌
+    const quarter = taiexQuarterGap(byId.twii);
+    const reasons = [
+      bias >= 8 && '大盤過熱',
+      sox < 0 && '費半轉弱',
+      quarter != null && quarter < 0 && '台股轉弱',
+      byId.twii?.changePct <= -2 && '大盤急跌',
+      decay != null && decay <= -3 && '正二磨損',
+    ].filter(Boolean);
+    // 複利加速只在加權近 20 日上漲時才算好事（單邊下跌時，每日兩倍也會比「累計 × 2」虧得少）
+    const boosting = decay >= 1 && taiexReturn20(byId.twii) > 0;
     const [label, dir] = bias >= 8 ? ['禁止追高', 'heat'] : reasons.length ? ['按兵不動', ''] : ['可加碼', 'up'];
     const sign = (v) => (v > 0 ? '+' : '');
     const wait = label === '可加碼' ? leverageTiming(holdings) : null;
@@ -577,7 +589,7 @@
         <div class="price ${dir}">${label}</div>
         <div class="chg"><span class="txt">費半月線</span> <span class="${sox < 0 ? 'down' : ''}">${sign(sox)}${fmt(sox, 1)}%</span></div>
         <div class="cmp"><span class="txt">大盤乖離</span> <span class="${bias >= 8 ? 'heat' : ''}">${sign(bias)}${fmt(bias, 1)}%</span></div>
-        <div class="meta">${reasons.length ? `原因：${reasons.join('、')}` : wait ?? (decay >= 1 ? '複利加速中' : '正二加碼參考')}</div>
+        <div class="meta">${reasons.length ? `原因：${reasons.join('、')}` : wait ?? (boosting ? '複利加速中' : '正二加碼參考')}</div>
       </div>`;
   }
 
@@ -781,6 +793,26 @@
         <div class="holds">${rows}</div>
         <div class="meta">${timeState(list[0].time, twii?.state)}</div>
       </div>`;
+  }
+
+  // 加權的收盤序列：每晚存的收盤 + 即時指數當最新一天
+  function taiexSeries(twii) {
+    const closes = taiexHistory?.closes;
+    if (!twii?.price || !closes?.length) return [];
+    const day = new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10);
+    return [...closes.filter((c) => c.date < day).map((c) => c.close), twii.price];
+  }
+
+  // 加權距季線（60 日均線）（%）
+  function taiexQuarterGap(twii) {
+    const s = taiexSeries(twii).slice(-60);
+    return s.length < 60 ? null : (twii.price / (s.reduce((a, b) => a + b, 0) / 60) - 1) * 100;
+  }
+
+  // 加權近 20 個交易日的漲跌（%）
+  function taiexReturn20(twii) {
+    const s = taiexSeries(twii);
+    return s.length < 21 ? null : (s.at(-1) / s.at(-21) - 1) * 100;
   }
 
   // 加權的月線乖離（%）：每晚存的收盤 + 即時指數當最新一天
