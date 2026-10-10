@@ -6,6 +6,18 @@
   "label": "韓股休市(韓文日)"
  },
  {
+  "src": "tw_holidays",
+  "date": "2026-10-09",
+  "time": "",
+  "label": "國慶日補假"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2026-10-10",
+  "time": "",
+  "label": "國慶日"
+ },
+ {
   "src": "market_holidays",
   "date": "2026-10-12",
   "time": "",
@@ -34,6 +46,18 @@
   "date": "2026-10-22",
   "time": "",
   "label": "0056除息1.72元"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2026-10-25",
+  "time": "",
+  "label": "光復節"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2026-10-26",
+  "time": "",
+  "label": "光復節補假"
  },
  {
   "src": "fomc",
@@ -174,6 +198,12 @@
   "label": "韓股休市(聖誕節)"
  },
  {
+  "src": "tw_holidays",
+  "date": "2026-12-25",
+  "time": "",
+  "label": "行憲紀念日"
+ },
+ {
   "src": "market_holidays",
   "date": "2026-12-31",
   "time": "",
@@ -208,6 +238,12 @@
   "date": "2027-01-01",
   "time": "",
   "label": "韓股休市(元旦)"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-01-01",
+  "time": "",
+  "label": "元旦"
  },
  {
   "src": "ism",
@@ -256,5 +292,23 @@
   "date": "2027-02-03",
   "time": "23:00",
   "label": "ISM服務業PMI"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-04",
+  "time": "",
+  "label": "農曆除夕"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-05",
+  "time": "",
+  "label": "農曆除夕"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-06",
+  "time": "",
+  "label": "春節"
  }
 ]
