@@ -51,10 +51,10 @@
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 12px;
-    padding: 8px 7px;
+    padding: 7px 8px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
     min-width: 0;
     overflow: hidden;
   }
@@ -112,9 +112,9 @@
   .foot .badge.warn { flex-shrink: 0; }
   .badge.note { color: var(--muted); }
   .foot .badge.note { flex-shrink: 0; }
-  .klabel { flex-shrink: 0; color: var(--muted); font-size: 9px; }
+  .klabel { flex-shrink: 0; color: var(--muted); font-size: 11px; }
   .kchart { width: 100%; height: 30px; display: block; }
-  .badge { min-width: 0; font-size: clamp(10px, 3.2vw, 12px); font-weight: 600; line-height: 1.5; padding: 0 3px; letter-spacing: -0.2px; border-radius: 999px; background: var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  .badge { min-width: 0; font-size: clamp(10.5px, 3.3vw, 13px); font-weight: 600; line-height: 1.5; padding: 0 5px; letter-spacing: -0.2px; border-radius: 999px; background: var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .chg { font-size: clamp(11.5px, 3.4vw, 13px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price small { font-size: 13px; font-weight: 600; }
   .price.tight { font-size: clamp(16px, 4.6vw, 22px); }
@@ -125,7 +125,7 @@
   .seg .k { color: var(--muted); font-weight: 400; margin-right: 2px; }
   .up { color: var(--up); }
   .down { color: var(--down); }
-  .meta { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta { color: var(--muted); font-size: clamp(11.5px, 3.3vw, 13px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lag { color: var(--warn); }
   .txt { color: var(--text); }
   .cmp { font-size: clamp(12px, 3.5vw, 13.5px); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
@@ -159,6 +159,7 @@
     .card { padding-left: 6px; padding-right: 6px; }
     .holds { column-gap: 5px; font-size: 13px; }
     .hold-row .pct { font-size: 10.5px; }
+    .badge { padding: 0 3px; }
   }
 </style>
 </head>
