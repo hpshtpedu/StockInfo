@@ -122,10 +122,9 @@ async function buildQuotes(origin, ctx) {
     tsm.adrPremium = ((tsm.price * usdtwd.price) / 5 / tw2330.price - 1) * 100;
   }
 
-  const [holidays, institutional, sectors, margin] = await Promise.all([
+  const [holidays, institutional, margin] = await Promise.all([
     fetchHolidays(origin, ctx).catch(() => []),
     fetchInstitutional(origin, ctx).catch(() => null),
-    fetchSectors(origin, ctx).catch(() => null),
     fetchMargin(origin, ctx).catch(() => null),
   ]);
   const announcements = await fetchAnnouncements(origin, ctx, holidays).catch(() => null);
@@ -134,7 +133,7 @@ async function buildQuotes(origin, ctx) {
     const q = await pick(tw, id).catch(() => null);
     return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, vwap: q.vwap, newLow: q.newLow, auction: q.auction };
   }))).filter(Boolean);
-  return { updated: Date.now(), quotes, holidays, institutional, sectors, margin, announcements, vix, holdings };
+  return { updated: Date.now(), quotes, holidays, institutional, margin, announcements, vix, holdings };
 }
 
 // TAIFEX 臺指選擇權波動率指數: daily 13:45 closes from TAIFEX's monthly files (a few hundred
@@ -322,68 +321,6 @@ async function fetchMargin(origin, ctx) {
   ctx.waitUntil(store(key, dailyTtl(ymd, 21, 900)));
   ctx.waitUntil(store(lastKey, 7 * 86400));
   return out;
-}
-
-// Every 30 min during the session, but expire right after the 13:30 close and retry every 5 min
-// until the closing snapshot is in; then hold until the next morning.
-function sectorsTtl(dataTime) {
-  const tw = new Date(Date.now() + 8 * 3600 * 1000);
-  const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
-  const CLOSE = 13 * 60 + 33;
-  if (twMarketClosedToday() || mins < 9 * 60) return 6 * 3600;
-  if (mins < CLOSE) return Math.max(60, Math.min(1800, (CLOSE - mins) * 60));
-  const data = new Date(dataTime + 8 * 3600 * 1000);
-  const today = data.getUTCDate() === tw.getUTCDate();
-  if (!today) return 1800;  // no snapshot for today yet (e.g. Fugle late after the open)
-  return data.getUTCHours() * 60 + data.getUTCMinutes() >= 13 * 60 + 30 ? 6 * 3600 : 300;
-}
-
-// Electronics = TWSE's eight electronic sub-industries.
-const ELECTRONICS = new Set(['IX0028', 'IX0029', 'IX0030', 'IX0031', 'IX0032', 'IX0033', 'IX0034', 'IX0035']);
-
-// Intraday turnover share by industry, from the TWSE industry indices embedded in Fugle's public
-// heat map page (robots.txt allows all). Cached 30 min in market hours, 6 h otherwise.
-async function fetchSectors(origin, ctx) {
-  const cache = caches.default;
-  const key = new Request(origin + '/_sectors');
-  const lastKey = new Request(origin + '/_sectors_last');
-  const cached = await cache.match(key);
-  if (cached) return cached.json();
-
-  try {
-    const res = await fetch('https://heatmap.fugle.tw/', { headers: { 'User-Agent': UA } });
-    if (!res.ok) throw new Error(`Fugle heatmap HTTP ${res.status}`);
-    const html = await res.text();
-    const head = html.match(/"heatmap":\{"date":"(\d{4})-(\d{2})-(\d{2})","time":"(\d{2})(\d{2})(\d{2})"/);
-    // Pick out only the ~33 index rows instead of parsing the whole page (Worker CPU limit).
-    const rows = [...html.matchAll(/"type":"INDEX","symbol":"(IX\d+)","name":"([^"]+)"[^{}]*?"tradeValue":(\d+)/g)]
-      .map(([, symbol, name, value]) => ({ symbol, name: name.replace(/類指數$|指數$/, ''), value: Number(value) }));
-    const total = rows.find((r) => r.symbol === 'IX0001')?.value;
-    if (!head || !total) throw new Error('Fugle heatmap: no data');
-
-    const industries = rows.filter((r) => r.symbol !== 'IX0001');
-    const electronics = industries.filter((r) => ELECTRONICS.has(r.symbol)).reduce((s, r) => s + r.value, 0);
-    const [, y, mo, d, h, mi, s] = head.map(Number);
-    const out = {
-      time: Date.UTC(y, mo - 1, d, h - 8, mi, s),
-      electronics: (electronics / total) * 100,
-      top: industries
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 8)
-        .map((r) => ({ name: r.name, share: (r.value / total) * 100 })),
-    };
-
-    const store = (k, ttl) => cache.put(k, new Response(JSON.stringify(out), {
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
-    }));
-    ctx.waitUntil(store(key, sectorsTtl(out.time)));
-    ctx.waitUntil(store(lastKey, 3 * 86400));
-    return out;
-  } catch (err) {
-    const last = await cache.match(lastKey);
-    if (!last) throw err;
-    return { ...(await last.json()), stale: true };
-  }
 }
 
 // TWSE 三大法人買賣金額 (BFI82U), latest trading day, in NT$ 億. Published ~15:00 Taipei.

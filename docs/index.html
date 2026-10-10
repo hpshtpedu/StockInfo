@@ -61,21 +61,13 @@
   }
   /* 行情卡片的框：內容出錯也只會被裁掉，不會把卡片撐大 */
   .card:not(.cal) { max-height: 160px; }
-  /* 產業成交比重：全寬，兩欄四行 */
+  /* 全寬卡片（三大法人） */
   .card.wide { grid-column: 1 / -1; max-height: 170px; gap: 4px; }
-  .card.wide .head .meta { flex-shrink: 1; min-width: 0; }
   /* 分類標題：橫跨兩欄 */
   /* 分類標題：扁平的深藍色條（紅綠橘已用於漲跌和警示，藍色不會被誤讀成訊號） */
   /* 左邊亮藍色在前 48px 內漸層融入較淺的深藍，後面整條同色 */
   .section { grid-column: 1 / -1; margin-top: 6px; padding: 5px 12px; border-radius: 8px; background: linear-gradient(90deg, #5b8fd6 0, #2b4166 48px, #2b4166 100%);
     color: #d6e4ff; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
-  .head-left { display: flex; align-items: center; gap: 4px; min-width: 0; }
-  /* 先排左欄 1-4 名，再排右欄 5-8 名 */
-  .secs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, auto); grid-auto-flow: column; gap: 5px 14px; }
-  .sec-row { display: flex; justify-content: space-between; gap: 6px; font-size: 13px; white-space: nowrap; }
-  .sec-row b { font-variant-numeric: tabular-nums; }
-  .sec-bar { height: 3px; margin-top: 2px; background: var(--line); border-radius: 2px; overflow: hidden; }
-  .sec-bar i { display: block; height: 100%; background: var(--warn); }
   /* 最後一行（時間）貼齊卡片底部，同一排的時間才會對齊 */
   .card:not(.cal) > :last-child { margin-top: auto; }
   /* 加權卡片（有 K 線）：漲跌幅要緊接在漲跌下面，不把最後一列推到底 */
@@ -175,7 +167,7 @@
 <header>
   <div>
     <h1>股市大局觀</h1>
-    <div id="source">來源：<span>Yahoo、</span><span>富果、</span><span>證交所、</span><span>期交所、</span><span>HiStock</span></div>
+    <div id="source">來源：<span>Yahoo、</span><span>證交所、</span><span>期交所、</span><span>HiStock</span></div>
   </div>
   <div class="right">
     <div id="status">載入中…</div>
@@ -832,44 +824,6 @@
       </div>`;
   }
 
-  // 證交所產業名稱 -> 簡稱（沒列到的照原名）
-  const SECTOR_SHORT_NAMES = {
-    '電腦及週邊設備': '電腦週邊', '電子零組件': '零組件', '通信網路': '網通', '電子通路': '通路',
-    '資訊服務': '資服', '金融保險': '金融', '生技醫療': '生技', '電機機械': '電機', '電器電纜': '電纜',
-    '紡織纖維': '紡織', '玻璃陶瓷': '玻陶', '建材營造': '營建', '觀光餐旅': '觀光', '貿易百貨': '百貨',
-    '油電燃氣': '油電', '綠能環保': '綠能', '數位雲端': '雲端', '居家生活': '居家',
-  };
-
-  // 產業成交比重：全寬卡片，兩欄四行，長條以 100% 為滿格（長度＝實際比重）
-  function sectorsHtml(s, twii) {
-    if (!s?.top?.length) return '';
-    // 盤中（台股交易日 09:00-13:30）資料落後 5 分鐘以上才標「慢X分」，收盤後不標
-    const tw = new Date(Date.now() + 8 * 3600000);
-    const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
-    const today = utcDate(tw.getUTCFullYear(), tw.getUTCMonth() + 1, tw.getUTCDate());
-    const ageMin = Math.round((Date.now() - s.time) / 60000);
-    const lag = isBusinessDay(today) && mins >= 540 && mins <= 810 && ageMin >= 5
-      ? ` · <span class="lag">慢${ageMin}分</span>` : '';
-    // 收盤後的快照（富果約 13:35）跟其他卡片一樣標成「13:30 · 收盤」；前一交易日的加日期
-    const data = new Date(s.time + 8 * 3600000);
-    const dataToday = key(utcDate(data.getUTCFullYear(), data.getUTCMonth() + 1, data.getUTCDate())) === key(today);
-    const closed = !dataToday || data.getUTCHours() * 60 + data.getUTCMinutes() >= 810;
-    const when = closed
-      ? (isMarketHoliday('tw') ? '休市' : `${data.getUTCHours() * 60 + data.getUTCMinutes() >= 810 ? '13:30' : hhmm(s.time)} · 收盤`)
-      : hhmm(s.time) + lag;
-    const cells = s.top.map((r) => `
-      <div class="sec">
-        <div class="sec-row"><span>${SECTOR_SHORT_NAMES[r.name] ?? r.name}</span><b>${fmt(r.share, 1)}%</b></div>
-        <div class="sec-bar"><i style="width:${Math.min(100, r.share)}%"></i></div>
-      </div>`).join('');
-    return `
-      <div class="card wide">
-        <div class="head"><div class="head-left"><div class="name">產業成交比重</div></div>
-          <div class="meta">電子 ${fmt(s.electronics, 1)}% · ${when}${s.stale ? ' · <span class="lag">舊資料</span>' : ''}</div></div>
-        <div class="secs">${cells}</div>
-      </div>`;
-  }
-
   // 各卡片所屬市場，用行事曆的休市日判斷「休市」或「收盤」
   const MARKET_OF = { twii: 'tw', txf: 'tw', breadth: 'tw', kospi: 'kr', nikkei: 'jp', sox: 'us', tsm: 'us', nq: 'us', us10y: 'us', brent: 'us' };
   const HOLIDAY_LABEL = { kr: '韓股休市', jp: '日股休市', us: '美股休市' };
@@ -921,11 +875,11 @@
       sox: section('國際市場'),
       foreignOi: section('台股盤後') + institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii),
     };
-    // 插在某張卡片後面的卡片：加權後接我的持股；漲跌家數後接大盤均線、正二風向球、產業成交比重（全寬）；
+    // 插在某張卡片後面的卡片：加權後接我的持股；漲跌家數後接大盤均線、正二風向球；
     // 散戶多空比後接八大行庫
     const after = {
       twii: holdingsHtml(data.holdings, byId.twii),
-      breadth: maHtml(byId.twii) + leverageLightHtml(byId, data.holdings, data.vix) + sectorsHtml(data.sectors, byId.twii),
+      breadth: maHtml(byId.twii) + leverageLightHtml(byId, data.holdings, data.vix),
       retailRatio: govBanksHtml(),
     };
     // USD/TWD 是國際外匯報價，排到國際市場最後（美債後面）
