@@ -44,6 +44,9 @@ const NAMES = Object.fromEntries(
 const CHIPS_RETRY_SECONDS = 600;  // retry every 10 min after 14:00 until the day's data is in
 const HOLIDAYS_CACHE_SECONDS = 86400;
 
+import S2T from './s2t.json';
+import { JIN10_URL, makeConverter, parseJin10 } from './jin10.js';
+
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
 // Per-isolate fallback when an upstream call fails.
@@ -130,11 +133,12 @@ async function buildQuotes(origin, ctx) {
   ]);
   const announcements = await fetchAnnouncements(origin, ctx, holidays).catch(() => null);
   const vix = await fetchVix(origin, ctx).catch(() => null);
+  const jin10 = await fetchJin10(origin, ctx).catch(() => null);
   const holdings = (await Promise.all(['tw2330', 'tw0056', 'tw00878', 'tw00685L'].map(async (id) => {
     const q = await pick(tw, id).catch(() => null);
     return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, auction: q.auction };
   }))).filter(Boolean);
-  return { updated: Date.now(), quotes, holidays, institutional, margin, announcements, vix, holdings };
+  return { updated: Date.now(), quotes, holidays, institutional, margin, announcements, vix, holdings, jin10 };
 }
 
 // TAIFEX 臺指選擇權波動率指數: daily 13:45 closes from TAIFEX's monthly files (a few hundred
@@ -181,6 +185,22 @@ async function cached(origin, ctx, path, ttlFor, compute) {
     headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttlFor(value)}` },
   })));
   return value;
+}
+
+// 金十「特朗普動態」最新 3 則標題（簡轉繁）。一小時最多抓一次；抓失敗也快取一小時，不會每 2 分鐘重試
+let toTw = null;
+async function fetchJin10(origin, ctx) {
+  return cached(origin, ctx, '/_jin10_v1', () => 3600, async () => {
+    try {
+      const res = await fetch(JIN10_URL, { headers: { 'User-Agent': UA } });
+      if (!res.ok) return { error: `HTTP ${res.status}`, items: [] };
+      toTw ??= makeConverter(S2T);
+      const items = parseJin10(await res.text()).slice(0, 3).map((x) => ({ ...x, title: toTw(x.title) }));
+      return { items };
+    } catch (err) {
+      return { error: String(err), items: [] };
+    }
+  });
 }
 
 async function mops(api, body) {
