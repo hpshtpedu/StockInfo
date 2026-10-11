@@ -86,21 +86,16 @@
   .cool { color: #5b8fd6; }
   .ma-row { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; font-size: clamp(13px, 4.2vw, 16px); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .ma-row .k { font-size: inherit; }
-  /* 我的持股：代號靠左、價格靠右（紅綠表示漲跌）；限制寬度，PC 上才不會拉得太開 */
-  /* 四檔共用一個格線：股號欄以最長的為準，價格緊接在後並靠右對齊；漲跌幅放最右邊、小一號 */
-  .holds { display: grid; grid-template-columns: auto auto 1fr; column-gap: 8px; row-gap: 2px;
-    font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .hold-row { display: contents; }
-  .hold-row .k { color: var(--text); }
-  .hold-row b { text-align: right; }
-  .hold-row .ext { display: none; text-align: right; }
-  .hold-row .pct { text-align: right; font-size: 11px; font-weight: 600; align-self: center; }
-  /* 太窄的手機放不下就不顯示漲跌幅 */
-  @media (max-width: 299px) {
-    /* 隱藏漲跌幅時改成兩欄（否則每檔只剩兩格會錯開），且欄位不撐開，價格緊接股號 */
-    .holds { grid-template-columns: auto auto; justify-content: start; }
-    .hold-row .pct { display: none; }
-  }
+  /* 我的持股：兩檔一組、點卡片切換；每檔一行代號、一行「價格 漲跌 漲跌幅」 */
+  .hold-card { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
+  .hold-card[data-g="0"] .g1, .hold-card[data-g="1"] .g0 { display: none; }
+  .hold { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .hold + .hold { margin-top: 2px; }
+  .hold .k { color: var(--muted); font-size: clamp(12px, 3.6vw, 14px); line-height: 1.2; }
+  .hold .q { display: flex; align-items: baseline; gap: 5px; font-weight: 700; font-size: clamp(14px, 4.4vw, 17px); line-height: 1.25; overflow: hidden; }
+  .hold .q span { font-size: 0.82em; font-weight: 600; }
+  .hold-foot { display: flex; justify-content: space-between; gap: 4px; }
+  .hold-foot .pg { flex-shrink: 0; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
   .badge.vol-high { background: #d9c44a; color: var(--bg); }
@@ -148,9 +143,6 @@
   /* 放在最後，才能覆蓋上面的基本尺寸 */
   /* PC／平板橫放（寬度 ≥ 600px）：持股多顯示漲跌和漲跌幅、K 線放大，卡片才不會太空 */
   @media (min-width: 600px) {
-    .holds { grid-template-columns: auto auto 1fr auto; }
-    .hold-row .ext { display: block; }
-    .hold-row .pct { font-size: inherit; min-width: 4.8em; }
     /* 加權的 15 分 K 在 PC 上放大，卡片高度上限跟著放寬 */
     .kchart { height: 40px; }
     .card:not(.cal) { max-height: 176px; }
@@ -160,8 +152,7 @@
     body { padding-left: 8px; padding-right: 8px; }
     main { gap: 4px; }
     .card { padding-left: 5px; padding-right: 5px; }
-    .holds { column-gap: 5px; font-size: 13px; }
-    .hold-row .pct { font-size: 10.5px; }
+    .hold .q { gap: 4px; }
     .badge { padding: 0 3px; }
   }
 </style>
@@ -756,27 +747,36 @@
 
   // 我的持股：代號、價格、漲跌幅
 
+  // 我的持股兩檔一組，點卡片切換（不自動輪播）；記住看到第幾組，每 2 分鐘重畫時不會跳回去
+  const HOLD_GROUPS = [['2330', '00685L'], ['0056', '00878']];
+  let holdGroup = 0;
+  try { holdGroup = Number(localStorage.getItem('holdGroup')) || 0; } catch {}
+
   function holdingsHtml(list, twii) {
     if (!list?.length) return '';
     // 台積電收盤集合競價（13:25-13:30）比盤中最後一筆漲 2 檔以上＝尾盤拉雞，跌 2 檔以上＝尾盤殺雞
     const auction = list.find((h) => h.code === '2330')?.auction;
     const badge = auction?.ticks >= 2 ? '<span class="badge buy">尾盤拉雞</span>'
       : auction?.ticks <= -2 ? '<span class="badge sell">尾盤殺雞</span>' : '';
-    const rows = list.map((h) => {
+    const groups = HOLD_GROUPS.map((codes) => list.filter((h) => codes.includes(h.code))).filter((g) => g.length);
+    if (holdGroup >= groups.length) holdGroup = 0;
+    const row = (h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
       const sign = h.change > 0 ? '+' : '';
       const digits = h.price >= 1000 ? 0 : 2;
-      // 漲跌、漲跌幅只在寬螢幕（PC）顯示
-      return `<div class="hold-row"><span class="k">${h.code}</span><b class="${dir}">${fmt(h.price, digits)}</b>`
-        + `<span class="ext ${dir}">${sign}${fmt(h.change, digits)}</span><span class="pct ${dir}">${sign}${fmt(h.changePct, 2)}%</span></div>`;
-    }).join('');
+      return `<div class="hold"><span class="k">${h.code}</span><div class="q ${dir}">${fmt(h.price, digits)}`
+        + `<span>${sign}${fmt(h.change, digits)}</span><span>${sign}${fmt(h.changePct, 2)}%</span></div></div>`;
+    };
+    const body = groups.map((g, i) => `<div class="g${i}">${g.map(row).join('')}</div>`).join('');
+    const pages = groups.length > 1 ? groups.map((_, i) => `<span class="pg g${i}">${i + 1}/${groups.length}</span>`).join('') : '';
     return `
-      <div class="card">
+      <div class="card${pages ? ' hold-card' : ''}" data-g="${holdGroup}">
         <div class="head"><div class="name">我的持股</div>${badge}</div>
-        <div class="holds">${rows}</div>
-        <div class="meta">${timeState(list[0].time, twii?.state)}</div>
+        ${body}
+        <div class="meta hold-foot"><span>${timeState(list[0].time, twii?.state)}</span>${pages}</div>
       </div>`;
   }
+
 
   // 加權的收盤序列：每晚存的收盤 + 即時指數當最新一天
   function taiexSeries(twii) {
@@ -984,6 +984,13 @@
   }
 
   // 手機切到背景就停止輪詢，回來時立刻更新
+  $list.addEventListener('click', (e) => {
+    const card = e.target.closest('.hold-card');
+    if (!card) return;
+    holdGroup = 1 - holdGroup;
+    card.dataset.g = holdGroup;
+    try { localStorage.setItem('holdGroup', holdGroup); } catch {}
+  });
   document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
   $list.innerHTML = calendarHtml();
   start();
