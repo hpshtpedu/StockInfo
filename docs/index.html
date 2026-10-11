@@ -85,20 +85,18 @@
   .cool { color: #5b8fd6; }
   .ma-row { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; font-size: clamp(13px, 4.2vw, 16px); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .ma-row .k { font-size: inherit; }
-  /* 我的持股：全寬卡片，左欄 2330、00685L，右欄 0056、00878；每檔一個淡底小方塊當視覺錨點 */
-  .holds { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6px; }
-  /* 每欄是一個三欄格線（subgrid 讓同欄兩檔共用欄寬）：價格靠右；漲跌、漲跌幅靠左，▼ 和數字開頭上下切齊 */
-  .hold-grp { display: grid; grid-template-columns: auto auto auto; column-gap: 6px; row-gap: 5px;
-    align-items: baseline; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .hold { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: baseline;
-    background: #20242c; border: 1px solid var(--line); border-radius: 8px; padding: 3px 6px 4px; }
-  .hold .q { display: contents; }
-  /* 股號用台指VIX「升溫」的橘色，獨佔一行 */
-  .hold .k { grid-column: 1 / -1; color: var(--warn); font-weight: 700; font-size: clamp(15px, 4.8vw, 19px); line-height: 1.15; }
-  /* 價格最大；漲跌（加 ▲▼）和漲跌幅小一號 */
-  .hold .q b { text-align: right; font-size: clamp(16px, 5vw, 21px); line-height: 1.2; }
-  .hold .q .c { text-align: left; font-size: clamp(12px, 3.6vw, 15px); font-weight: 600; }
-  .hold .q .p { text-align: left; font-size: clamp(12px, 3.6vw, 15px); font-weight: 600; }
+  /* 我的持股：全寬卡片，左欄 2330、00685L，右欄 0056、00878；每檔一個淡底小方塊當視覺錨點。
+     第一行：股號（橘）＋漲跌（▲▼，靠右）；第二行：價格＋（漲跌幅），跟其他卡片的寫法一致 */
+  .card.holdings { max-height: 200px; }
+  .holds { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 6px; }
+  .hold { display: flex; flex-direction: column; gap: 1px; background: #20242c; border: 1px solid var(--line); border-radius: 8px;
+    padding: 3px 7px 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .hold .top, .hold .q { display: flex; align-items: baseline; gap: 6px; }
+  .hold .top { justify-content: space-between; }
+  .hold .k { color: var(--warn); font-weight: 700; font-size: clamp(15px, 4.8vw, 19px); line-height: 1.15; }
+  .hold .c { font-size: clamp(13px, 4.2vw, 17px); font-weight: 600; }
+  .hold .q b { font-size: clamp(18px, 6vw, 24px); line-height: 1.15; }
+  .hold .q .p { font-size: clamp(12.5px, 3.9vw, 15.5px); font-weight: 600; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
   .badge.vol-high { background: #d9c44a; color: var(--bg); }
@@ -159,8 +157,7 @@
     body { padding-left: 8px; padding-right: 8px; }
     main { gap: 4px; }
     .card { padding-left: 5px; padding-right: 5px; }
-    .hold-grp { column-gap: 4px; }
-    .hold { padding-left: 4px; padding-right: 4px; }
+    .hold { padding-left: 5px; padding-right: 5px; }
     .badge { padding: 0 3px; }
   }
 </style>
@@ -710,12 +707,14 @@
       const sign = h.change > 0 ? '+' : '';
       const arrow = h.change > 0 ? '▲' : h.change < 0 ? '▼' : '';
       const digits = h.price >= 1000 ? 0 : 2;
-      return `<div class="hold"><span class="k">${h.code}</span><div class="q"><b class="${dir}">${fmt(h.price, digits)}</b>`
-        + `<span class="c ${dir}">${arrow}${fmt(Math.abs(h.change), digits)}</span><span class="p ${dir}">${sign}${fmt(h.changePct, 2)}%</span></div></div>`;
+      return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${fmt(Math.abs(h.change), digits)}</span></div>`
+        + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div></div>`;
     };
-    const body = groups.map((g) => `<div class="hold-grp">${g.map(row).join('')}</div>`).join('');
+    // 依欄排：左欄第一組、右欄第二組（格線逐列填，所以交錯排列）
+    const rows = Math.max(...groups.map((g) => g.length));
+    const body = Array.from({ length: rows }, (_, i) => groups.map((g) => (g[i] ? row(g[i]) : '<div></div>')).join('')).join('');
     return `
-      <div class="card wide">
+      <div class="card wide holdings">
         <div class="head"><div class="name">我的持股</div>${badge}</div>
         <div class="holds">${body}</div>
         <div class="meta">${timeState(list[0].time, twii?.state)}</div>
