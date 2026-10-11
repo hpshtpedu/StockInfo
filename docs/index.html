@@ -87,7 +87,8 @@
   .ma-row .k { font-size: inherit; }
   /* 我的持股：全寬卡片，左欄 2330、00685L，右欄 0056、00878；每檔一個淡底小方塊當視覺錨點。
      第一行：股號（橘）＋漲跌（▲▼，靠右且切齊）；第二行：價格＋（漲跌幅），跟其他卡片的寫法一致 */
-  .card.holdings { max-height: 200px; }
+  /* 選擇器多一層，才蓋得過 PC 版 media query 裡的 .card:not(.cal) 高度上限 */
+  .card.wide.holdings { max-height: 220px; }
   .holds { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 6px; }
   .hold { display: flex; flex-direction: column; gap: 1px; background: #20242c; border: 1px solid var(--line); border-radius: 8px;
     padding: 3px 7px 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
