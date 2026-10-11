@@ -132,7 +132,7 @@ async function buildQuotes(origin, ctx) {
   const vix = await fetchVix(origin, ctx).catch(() => null);
   const holdings = (await Promise.all(['tw2330', 'tw0056', 'tw00878', 'tw00685L'].map(async (id) => {
     const q = await pick(tw, id).catch(() => null);
-    return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, vwap: q.vwap, newLow: q.newLow, auction: q.auction };
+    return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, auction: q.auction };
   }))).filter(Boolean);
   return { updated: Date.now(), quotes, holidays, institutional, margin, announcements, vix, holdings };
 }
@@ -497,16 +497,9 @@ async function fetchYahooTw() {
       const hour = new Date(Date.now() + 8 * 3600 * 1000).getUTCHours();
       out[id].state = !recent ? 'closed' : hour >= 15 || hour < 5 ? 'night' : 'open';
     }
-    // Holdings: the session's volume-weighted average price from the minute bars (for 正二風向球's
-    // "wait until it is back at or below the average" rule).
+    // Holdings: TSMC's closing call auction (for the 尾盤拉雞/殺雞 badge).
     if (id.startsWith('tw')) {
       const q = chart.indicators?.quote?.[0] ?? {};
-      let pv = 0, vol = 0;
-      (q.close ?? []).forEach((p, i) => { const v = q.volume?.[i]; if (p && v) { pv += p * v; vol += v; } });
-      if (vol) out[id].vwap = pv / vol;
-      // Still falling: the session low was made within the last 5 traded minutes.
-      const lows = (q.low ?? []).filter((v) => v);
-      if (lows.length > 5) out[id].newLow = Math.min(...lows.slice(-5)) <= Math.min(...lows);
       // Closing call auction (13:25-13:30): the 13:30 bar against the last continuous trade, in ticks.
       const ts = chart.timestamp ?? [];
       const last = ts.length - 1;

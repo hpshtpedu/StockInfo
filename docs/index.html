@@ -79,7 +79,6 @@
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
-  .badge.wait { color: var(--warn); }  /* 等待時機：常見的狀態，橘字不填底 */
   .badge.fuel, .badge.sell { background: var(--down); color: var(--bg); }
   .badge.buy { background: var(--up); color: var(--bg); }
   .heat { color: var(--warn); }
@@ -87,8 +86,8 @@
   .ma-row { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; font-size: clamp(13px, 4.2vw, 16px); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .ma-row .k { font-size: inherit; }
   /* 我的持股：兩檔一組、點卡片切換；每檔一行代號、一行「價格 漲跌 漲跌幅」 */
-  .hold-card { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
-  .hold-card[data-g="0"] .g1, .hold-card[data-g="1"] .g0 { display: none; }
+  /* 全寬卡片，左欄 2330、00685L，右欄 0056、00878 */
+  .holds { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; }
   /* 每組是一個三欄格線：價格靠右；漲跌、漲跌幅靠左，▼ 和數字開頭上下切齊 */
   .hold-grp { display: grid; grid-template-columns: auto auto auto; justify-content: start; column-gap: 8px;
     align-items: baseline; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -100,8 +99,6 @@
   .hold .q b { text-align: right; font-size: clamp(16px, 5vw, 21px); line-height: 1.2; }
   .hold .q .c { text-align: left; font-size: clamp(12px, 3.6vw, 15px); font-weight: 600; }
   .hold .q .p { text-align: left; font-size: clamp(12px, 3.6vw, 15px); font-weight: 600; }
-  .hold-foot { display: flex; justify-content: space-between; gap: 4px; }
-  .hold-foot .pg { flex-shrink: 0; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
   .badge.vol-high { background: #d9c44a; color: var(--bg); }
@@ -117,8 +114,6 @@
   .kchart { width: 100%; height: 30px; display: block; }
   .badge { min-width: 0; font-size: clamp(11px, 3.9vw, 15.5px); font-weight: 600; line-height: 1.5; padding: 0 5px; letter-spacing: -0.2px; border-radius: 999px; background: #363c48; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .chg { font-size: clamp(11.5px, 3.4vw, 13px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* 正二風向球只留燈號（費半月線、加權季線的距離在費半、大盤均線卡片上看得到），放大置中填滿卡片 */
-  .light { flex: 1; display: flex; align-items: center; font-size: clamp(20px, 7.4vw, 32px); font-weight: 800; white-space: nowrap; }
   /* 拿掉明細行的卡片（台指VIX、外資淨OI、散戶多空比、融資維持率）：主數字放大，空間往上推 */
   .card.roomy { justify-content: space-between; }
   .card.roomy .price { font-size: clamp(20px, 6.6vw, 30px); }
@@ -530,53 +525,6 @@
     return !q?.price || closes.length < 5 ? null : (q.price / closes.at(-5) - 1) * 100;
   }
 
-  // 正二風向球（00685L 這 10 天適不適合加碼），依 2006-2026 回測（加權之後 10 / 20 日平均）：
-  //  加碼好時機：台指VIX ≥ 25 或散戶多空比 < 0（恐慌、散戶轉空時買）：+1.5% / +2.9%，2016 起 39% 的日子
-  //  可加碼：費半站上月線且加權站上季線：+0.5% / +1.0%
-  //  按兵不動：趨勢轉弱（費半破月線或加權破季線）且 VIX < 25、散戶沒轉空：0.0% / +0.3%
-  // 模擬每 10 天買一次：買進後 20 日平均 +1.94%（每期第一天買 +1.53%），只跳過 8% 的期數。
-  // 回測不支持而拿掉的：乖離過熱（過熱後 20 日 +7.9%）、大盤急跌、正二磨損、散戶過熱。
-  // 兩行數字平常白色，只有觸發燈號的那一項上色。
-  // 可加碼 / 加碼好時機時再加個人紀律（未回測）：台股交易日 09:30 前、00685L 現價高於當日成交均價、
-  // 或最近 5 分鐘仍創當日新低 → 右上角「等待時機」badge，最下面一行寫要等什麼；收盤後與休市日不檢查。
-  function leverageTiming(holdings) {
-    const tw = new Date(Date.now() + 8 * 3600000);
-    const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
-    if (isMarketHoliday('tw') || mins >= 13 * 60 + 30) return null;
-    if (mins < 9 * 60 + 30) return '09:30 後再看';
-    const etf = holdings?.find((h) => h.code === '00685L');
-    if (etf?.vwap && etf.price > etf.vwap) return `等回均價 ${fmt(etf.vwap, 2)} 以下`;
-    if (etf?.newLow) return '等止跌（5 分鐘內仍創新低）';
-    return null;
-  }
-
-  // 台指VIX 最新收盤（每晚的歷史 + Worker 抓到的最新幾天）
-  function latestVix(vix) {
-    const byDate = new Map((vixHistory?.closes ?? []).map((c) => [c.date, c.close]));
-    for (const c of vix?.closes ?? []) byDate.set(c.date, c.close);
-    const last = [...byDate.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).at(-1);
-    return last ? last[1] : null;
-  }
-
-  function leverageLightHtml(byId, holdings, vix) {
-    const sox = monthLineGap(byId.sox);
-    const quarter = taiexQuarterGap(byId.twii);
-    if (sox == null || quarter == null) return '';
-    const vixNow = latestVix(vix);
-    const retail = byId.retailRatio?.price ?? null;
-    const great = [vixNow != null && vixNow >= 25 && `VIX ${fmt(vixNow, 1)} 恐慌`, retail != null && retail < 0 && '散戶轉空'].filter(Boolean);
-    const weak = [sox < 0 && '費半轉弱', quarter < 0 && '台股轉弱'].filter(Boolean);
-    const [label, dir] = great.length ? ['加碼好時機', 'up'] : weak.length ? ['按兵不動', ''] : ['可加碼', 'up'];
-    const wait = label === '按兵不動' ? null : leverageTiming(holdings);
-    const meta = wait ?? (great.length ? great.join('、') : weak.length ? `原因：${weak.join('、')}` : '');  // 只在有提醒時才出現
-    return `
-      <div class="card">
-        <div class="head"><div class="name">正二風向球</div>${wait ? '<span class="badge wait">等待時機</span>' : ''}</div>
-        <div class="light ${dir}">${label}</div>
-        ${meta ? `<div class="meta">${meta}</div>` : ''}
-      </div>`;
-  }
-
   // 國際指數的月線（20 日均線）距離
   function monthLineBadge(q) {
     const gap = monthLineGap(q);
@@ -746,10 +694,8 @@
 
   // 我的持股：代號、價格、漲跌幅
 
-  // 我的持股兩檔一組，點卡片切換（不自動輪播）；記住看到第幾組，每 2 分鐘重畫時不會跳回去
+  // 我的持股：全寬卡片分兩欄（2330、00685L | 0056、00878）
   const HOLD_GROUPS = [['2330', '00685L'], ['0056', '00878']];
-  let holdGroup = 0;
-  try { holdGroup = Number(localStorage.getItem('holdGroup')) || 0; } catch {}
 
   function holdingsHtml(list, twii) {
     if (!list?.length) return '';
@@ -758,7 +704,6 @@
     const badge = auction?.ticks >= 2 ? '<span class="badge buy">尾盤拉雞</span>'
       : auction?.ticks <= -2 ? '<span class="badge sell">尾盤殺雞</span>' : '';
     const groups = HOLD_GROUPS.map((codes) => list.filter((h) => codes.includes(h.code))).filter((g) => g.length);
-    if (holdGroup >= groups.length) holdGroup = 0;
     const row = (h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
       const sign = h.change > 0 ? '+' : '';
@@ -767,13 +712,12 @@
       return `<div class="hold"><span class="k">${h.code}</span><div class="q"><b class="${dir}">${fmt(h.price, digits)}</b>`
         + `<span class="c ${dir}">${arrow}${fmt(Math.abs(h.change), digits)}</span><span class="p ${dir}">${sign}${fmt(h.changePct, 2)}%</span></div></div>`;
     };
-    const body = groups.map((g, i) => `<div class="hold-grp g${i}">${g.map(row).join('')}</div>`).join('');
-    const pages = groups.length > 1 ? groups.map((_, i) => `<span class="pg g${i}">${i + 1}/${groups.length}</span>`).join('') : '';
+    const body = groups.map((g) => `<div class="hold-grp">${g.map(row).join('')}</div>`).join('');
     return `
-      <div class="card${pages ? ' hold-card' : ''}" data-g="${holdGroup}">
+      <div class="card wide">
         <div class="head"><div class="name">我的持股</div>${badge}</div>
-        ${body}
-        <div class="meta hold-foot"><span>${timeState(list[0].time, twii?.state)}</span>${pages}</div>
+        <div class="holds">${body}</div>
+        <div class="meta">${timeState(list[0].time, twii?.state)}</div>
       </div>`;
   }
 
@@ -784,12 +728,6 @@
     if (!twii?.price || !closes?.length) return [];
     const day = new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10);
     return [...closes.filter((c) => c.date < day).map((c) => c.close), twii.price];
-  }
-
-  // 加權距季線（60 日均線）（%）
-  function taiexQuarterGap(twii) {
-    const s = taiexSeries(twii).slice(-60);
-    return s.length < 60 ? null : (twii.price / (s.reduce((a, b) => a + b, 0) / 60) - 1) * 100;
   }
 
   // 加權的月線乖離（%）：每晚存的收盤 + 即時指數當最新一天
@@ -878,11 +816,11 @@
       sox: section('國際市場'),
       foreignOi: section('台股盤後') + institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii),
     };
-    // 插在某張卡片後面的卡片：加權後接我的持股；漲跌家數後接大盤均線、正二風向球；
-    // 散戶多空比後接八大行庫
+    // 插在某張卡片後面的卡片：台指期後接我的持股（全寬，排在加權、台指期那一排下面）；
+    // 漲跌家數後接大盤均線；散戶多空比後接八大行庫
     const after = {
-      twii: holdingsHtml(data.holdings, byId.twii),
-      breadth: maHtml(byId.twii) + leverageLightHtml(byId, data.holdings, data.vix),
+      txf: holdingsHtml(data.holdings, byId.twii),
+      breadth: maHtml(byId.twii),
       retailRatio: govBanksHtml(),
     };
     // USD/TWD 是國際外匯報價，排到國際市場最後（美債後面）
@@ -984,13 +922,6 @@
   }
 
   // 手機切到背景就停止輪詢，回來時立刻更新
-  $list.addEventListener('click', (e) => {
-    const card = e.target.closest('.hold-card');
-    if (!card) return;
-    holdGroup = 1 - holdGroup;
-    card.dataset.g = holdGroup;
-    try { localStorage.setItem('holdGroup', holdGroup); } catch {}
-  });
   document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
   $list.innerHTML = calendarHtml();
   start();
