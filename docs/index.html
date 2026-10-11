@@ -707,7 +707,7 @@
       const sign = h.change > 0 ? '+' : '';
       const arrow = h.change > 0 ? '▲' : h.change < 0 ? '▼' : '';
       const digits = h.price >= 1000 ? 0 : 2;
-      return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${fmt(Math.abs(h.change), digits)}</span></div>`
+      return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${fmt(h.change == null ? null : Math.abs(h.change), digits)}</span></div>`
         + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div></div>`;
     };
     // 依欄排：左欄第一組、右欄第二組（格線逐列填，所以交錯排列）
