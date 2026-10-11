@@ -94,7 +94,7 @@
   .hold .top, .hold .q { display: flex; align-items: baseline; gap: 6px; }
   .hold .k { color: var(--warn); font-weight: 700; font-size: clamp(15px, 4.8vw, 19px); line-height: 1.15; }
   /* 漲跌靠方塊右邊，但固定寬度、內容靠左，四檔的 ▲▼ 落在同一個水平位置 */
-  .hold .c { margin-left: auto; min-width: 3.3em; text-align: left; font-size: clamp(13px, 4.2vw, 17px); font-weight: 600; }
+  .hold .c { margin-left: auto; min-width: 3.6em; text-align: left; font-size: clamp(13px, 4.2vw, 17px); font-weight: 600; }
   .hold .q b { font-size: clamp(18px, 6vw, 24px); line-height: 1.15; }
   .hold .q .p { font-size: clamp(12.5px, 3.9vw, 15.5px); font-weight: 600; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
@@ -705,7 +705,7 @@
     const row = (h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
       const sign = h.change > 0 ? '+' : '';
-      const arrow = h.change > 0 ? '▲' : h.change < 0 ? '▼' : '';
+      const arrow = h.change > 0 ? '▲ ' : h.change < 0 ? '▼ ' : '';  // 箭頭跟數字空一格
       const digits = h.price >= 1000 ? 0 : 2;
       return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${fmt(h.change == null ? null : Math.abs(h.change), digits)}</span></div>`
         + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div></div>`;
