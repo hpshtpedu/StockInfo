@@ -85,16 +85,16 @@
   .cool { color: #5b8fd6; }
   .ma-row { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; font-size: clamp(13px, 4.2vw, 16px); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .ma-row .k { font-size: inherit; }
-  /* 我的持股：兩檔一組、點卡片切換；每檔一行代號、一行「價格 漲跌 漲跌幅」 */
-  /* 全寬卡片，左欄 2330、00685L，右欄 0056、00878 */
-  .holds { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; }
-  /* 每組是一個三欄格線：價格靠右；漲跌、漲跌幅靠左，▼ 和數字開頭上下切齊 */
-  .hold-grp { display: grid; grid-template-columns: auto auto auto; justify-content: start; column-gap: 8px;
+  /* 我的持股：全寬卡片，左欄 2330、00685L，右欄 0056、00878；每檔一個淡底小方塊當視覺錨點 */
+  .holds { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6px; }
+  /* 每欄是一個三欄格線（subgrid 讓同欄兩檔共用欄寬）：價格靠右；漲跌、漲跌幅靠左，▼ 和數字開頭上下切齊 */
+  .hold-grp { display: grid; grid-template-columns: auto auto auto; column-gap: 6px; row-gap: 5px;
     align-items: baseline; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .hold, .hold .q { display: contents; }
-  /* 股號用台指VIX「升溫」的橘色，獨佔一行；兩檔之間空一行 */
+  .hold { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: baseline;
+    background: #20242c; border: 1px solid var(--line); border-radius: 8px; padding: 3px 6px 4px; }
+  .hold .q { display: contents; }
+  /* 股號用台指VIX「升溫」的橘色，獨佔一行 */
   .hold .k { grid-column: 1 / -1; color: var(--warn); font-weight: 700; font-size: clamp(15px, 4.8vw, 19px); line-height: 1.15; }
-  .hold + .hold .k { margin-top: 14px; }
   /* 價格最大；漲跌（加 ▲▼）和漲跌幅小一號 */
   .hold .q b { text-align: right; font-size: clamp(16px, 5vw, 21px); line-height: 1.2; }
   .hold .q .c { text-align: left; font-size: clamp(12px, 3.6vw, 15px); font-weight: 600; }
@@ -159,7 +159,8 @@
     body { padding-left: 8px; padding-right: 8px; }
     main { gap: 4px; }
     .card { padding-left: 5px; padding-right: 5px; }
-    .hold-grp { column-gap: 5px; }
+    .hold-grp { column-gap: 4px; }
+    .hold { padding-left: 4px; padding-right: 4px; }
     .badge { padding: 0 3px; }
   }
 </style>
