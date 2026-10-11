@@ -117,6 +117,8 @@
   .kchart { width: 100%; height: 30px; display: block; }
   .badge { min-width: 0; font-size: clamp(11px, 3.9vw, 15.5px); font-weight: 600; line-height: 1.5; padding: 0 5px; letter-spacing: -0.2px; border-radius: 999px; background: #363c48; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .chg { font-size: clamp(11.5px, 3.4vw, 13px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 正二風向球只留燈號（費半月線、加權季線的距離在費半、大盤均線卡片上看得到），放大置中填滿卡片 */
+  .light { flex: 1; display: flex; align-items: center; font-size: clamp(20px, 7.4vw, 32px); font-weight: 800; white-space: nowrap; }
   .price small { font-size: 13px; font-weight: 600; }
   .price.tight { font-size: clamp(16px, 4.6vw, 22px); }
   .seg + .seg { margin-left: 10px; }
@@ -569,15 +571,12 @@
     const great = [vixNow != null && vixNow >= 25 && `VIX ${fmt(vixNow, 1)} 恐慌`, retail != null && retail < 0 && '散戶轉空'].filter(Boolean);
     const weak = [sox < 0 && '費半轉弱', quarter < 0 && '台股轉弱'].filter(Boolean);
     const [label, dir] = great.length ? ['加碼好時機', 'up'] : weak.length ? ['按兵不動', ''] : ['可加碼', 'up'];
-    const sign = (v) => (v > 0 ? '+' : '');
     const wait = label === '按兵不動' ? null : leverageTiming(holdings);
     const meta = wait ?? (great.length ? great.join('、') : weak.length ? `原因：${weak.join('、')}` : '正二加碼參考');
     return `
       <div class="card">
         <div class="head"><div class="name">正二風向球</div>${wait ? '<span class="badge wait">等待時機</span>' : ''}</div>
-        <div class="price ${dir}">${label}</div>
-        <div class="chg"><span class="txt">費半月線</span> <span class="${sox < 0 ? 'down' : ''}">${sign(sox)}${fmt(sox, 1)}%</span></div>
-        <div class="cmp"><span class="txt">加權季線</span> <span class="${quarter < 0 ? 'down' : ''}">${sign(quarter)}${fmt(quarter, 1)}%</span></div>
+        <div class="light ${dir}">${label}</div>
         <div class="meta">${meta}</div>
       </div>`;
   }
