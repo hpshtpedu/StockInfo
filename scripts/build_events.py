@@ -226,6 +226,27 @@ def market_holidays(today, until):
             if day.weekday() < 5 and today <= day <= until:
                 label = f'{market}休市({holiday_zh(name, HOLIDAY_ZH_KR if market == "韓股" else None)})'
                 out.append({'src': 'market_holidays', 'date': day.isoformat(), 'time': '', 'label': label})
+    out += us_early_closes(today, until)
+    return out
+
+
+def us_early_closes(today, until):
+    """NYSE half days (close 13:00 New York): the day after Thanksgiving, and July 3 / Dec 24 when both
+    that day and the holiday after it fall on weekdays (otherwise the eve is itself the observed holiday,
+    or a weekend). Listed at the Taiwan date and time of the close, like the FOMC entries."""
+    ny, tw = ZoneInfo('America/New_York'), ZoneInfo('Asia/Taipei')
+    out = []
+    for y in range(today.year, until.year + 1):
+        nov1 = dt.date(y, 11, 1)
+        thanksgiving = nov1 + dt.timedelta(days=(3 - nov1.weekday()) % 7 + 21)
+        days = [thanksgiving + dt.timedelta(days=1)]
+        days += [dt.date(y, m, d) for m, d in ((7, 3), (12, 24))
+                 if dt.date(y, m, d).weekday() < 5 and (dt.date(y, m, d) + dt.timedelta(days=1)).weekday() < 5]
+        for day in days:
+            close = dt.datetime(day.year, day.month, day.day, 13, tzinfo=ny).astimezone(tw)
+            if today <= close.date() <= until:
+                out.append({'src': 'market_holidays', 'date': close.date().isoformat(), 'time': f'{close:%H:%M}',
+                            'label': '美股提前收盤'})
     return out
 
 
