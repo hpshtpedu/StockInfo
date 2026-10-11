@@ -96,7 +96,8 @@ async function buildQuotes(origin, ctx) {
     twii: pick(tw, 'twii'),
     txf: pick(tw, 'txf').catch(() => fetchTaifex()),
     breadth: quiet ? cached(origin, ctx, `/_breadth_quiet/${day}`, () => 3600, fetchBreadth) : fetchBreadth(),
-    foreignOi: pick(chips, 'foreignOi'),
+    // 名稱以程式碼為準：快取裡的舊資料（休市時會一直沿用）可能帶著改名前的名稱
+    foreignOi: pick(chips, 'foreignOi').then((q) => ({ ...q, name: CHIPS.foreignOi.name })),
     retailRatio: pick(chips, 'retailRatio'),
   };
 
