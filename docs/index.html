@@ -89,15 +89,17 @@
   /* 我的持股：兩檔一組、點卡片切換；每檔一行代號、一行「價格 漲跌 漲跌幅」 */
   .hold-card { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
   .hold-card[data-g="0"] .g1, .hold-card[data-g="1"] .g0 { display: none; }
-  .hold { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  /* 兩檔之間空一行 */
-  .hold + .hold { margin-top: 8px; }
-  /* 股號用台指VIX「升溫」的橘色 */
-  .hold .k { color: var(--warn); font-weight: 600; font-size: clamp(13px, 4vw, 16px); line-height: 1.2; }
-  /* 價格最大；漲跌加 ▲▼、漲跌幅再小一號，三個數字一眼分得出來 */
-  .hold .q { display: flex; align-items: baseline; gap: 7px; font-weight: 700; font-size: clamp(16px, 5vw, 21px); line-height: 1.2; overflow: hidden; }
-  .hold .q .c { font-size: 0.72em; font-weight: 600; }
-  .hold .q .p { font-size: 0.66em; font-weight: 600; }
+  /* 每組是一個三欄格線（價格、漲跌、漲跌幅各自靠右），兩檔的數字上下對齊 */
+  .hold-grp { display: grid; grid-template-columns: auto auto auto; justify-content: start; column-gap: 8px;
+    align-items: baseline; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .hold, .hold .q { display: contents; }
+  /* 股號用台指VIX「升溫」的橘色，獨佔一行；兩檔之間空一行 */
+  .hold .k { grid-column: 1 / -1; color: var(--warn); font-weight: 700; font-size: clamp(18px, 5.6vw, 22px); line-height: 1.15; }
+  .hold + .hold .k { margin-top: 6px; }
+  /* 價格最大；漲跌加 ▲▼、漲跌幅再小一號 */
+  .hold .q b { text-align: right; font-size: clamp(16px, 5vw, 21px); line-height: 1.2; }
+  .hold .q .c { text-align: right; font-size: clamp(12px, 3.6vw, 15px); font-weight: 600; }
+  .hold .q .p { text-align: right; font-size: clamp(11px, 3.3vw, 14px); font-weight: 600; }
   .hold-foot { display: flex; justify-content: space-between; gap: 4px; }
   .hold-foot .pg { flex-shrink: 0; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
@@ -156,7 +158,7 @@
     body { padding-left: 8px; padding-right: 8px; }
     main { gap: 4px; }
     .card { padding-left: 5px; padding-right: 5px; }
-    .hold .q { gap: 5px; }
+    .hold-grp { column-gap: 5px; }
     .badge { padding: 0 3px; }
   }
 </style>
@@ -769,10 +771,10 @@
       const sign = h.change > 0 ? '+' : '';
       const arrow = h.change > 0 ? '▲' : h.change < 0 ? '▼' : '';
       const digits = h.price >= 1000 ? 0 : 2;
-      return `<div class="hold"><span class="k">${h.code}</span><div class="q ${dir}">${fmt(h.price, digits)}`
-        + `<span class="c">${arrow}${fmt(Math.abs(h.change), digits)}</span><span class="p">${sign}${fmt(h.changePct, 2)}%</span></div></div>`;
+      return `<div class="hold"><span class="k">${h.code}</span><div class="q"><b class="${dir}">${fmt(h.price, digits)}</b>`
+        + `<span class="c ${dir}">${arrow}${fmt(Math.abs(h.change), digits)}</span><span class="p ${dir}">${sign}${fmt(h.changePct, 2)}%</span></div></div>`;
     };
-    const body = groups.map((g, i) => `<div class="g${i}">${g.map(row).join('')}</div>`).join('');
+    const body = groups.map((g, i) => `<div class="hold-grp g${i}">${g.map(row).join('')}</div>`).join('');
     const pages = groups.length > 1 ? groups.map((_, i) => `<span class="pg g${i}">${i + 1}/${groups.length}</span>`).join('') : '';
     return `
       <div class="card${pages ? ' hold-card' : ''}" data-g="${holdGroup}">
