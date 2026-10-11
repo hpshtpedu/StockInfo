@@ -117,6 +117,9 @@
   .card.roomy { justify-content: space-between; }
   .card.roomy .price { font-size: clamp(20px, 6.6vw, 30px); }
   .card.roomy .chg, .card.roomy .cmp:not(.long) { font-size: clamp(12.5px, 4vw, 15.5px); }
+  /* 台指期跟加權同一排、卡片較空：價格維持跟加權一樣大（主從關係不變），漲跌放大，時間貼底跟加權對齊 */
+  .card.txf .chg { font-size: clamp(14px, 4.6vw, 18px); }
+  .card.txf .meta { margin-top: auto; }
   .price small { font-size: 13px; font-weight: 600; }
   .price.tight { font-size: clamp(16px, 4.6vw, 22px); }
   .seg + .seg { margin-left: 10px; }
@@ -877,7 +880,7 @@
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
            ${meta}`;
       return `
-        <div class="card${chart ? ' has-k' : ''}">
+        <div class="card${chart ? ' has-k' : ''}${q.id === 'txf' ? ' txf' : ''}">
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
           <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}</div>
           ${body}
