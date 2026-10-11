@@ -568,7 +568,7 @@
     const weak = [sox < 0 && '費半轉弱', quarter < 0 && '台股轉弱'].filter(Boolean);
     const [label, dir] = great.length ? ['加碼好時機', 'up'] : weak.length ? ['按兵不動', ''] : ['可加碼', 'up'];
     const wait = label === '按兵不動' ? null : leverageTiming(holdings);
-    const meta = wait ?? (great.length ? great.join('、') : weak.length ? `原因：${weak.join('、')}` : '正二加碼參考');
+    const meta = wait ?? (great.length ? great.join('、') : weak.length ? `原因：${weak.join('、')}` : timeState(byId.twii?.time, byId.twii?.state));
     return `
       <div class="card">
         <div class="head"><div class="name">正二風向球</div>${wait ? '<span class="badge wait">等待時機</span>' : ''}</div>
