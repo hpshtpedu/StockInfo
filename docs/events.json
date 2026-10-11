@@ -1,17 +1,5 @@
 [
  {
-  "src": "market_holidays",
-  "date": "2026-10-09",
-  "time": "",
-  "label": "韓股休市(韓文日)"
- },
- {
-  "src": "tw_holidays",
-  "date": "2026-10-09",
-  "time": "",
-  "label": "國慶日補假"
- },
- {
   "src": "tw_holidays",
   "date": "2026-10-10",
   "time": "",
@@ -138,6 +126,12 @@
   "label": "美股休市(感恩節)"
  },
  {
+  "src": "market_holidays",
+  "date": "2026-11-28",
+  "time": "02:00",
+  "label": "美股提前收盤"
+ },
+ {
   "src": "ism",
   "date": "2026-12-01",
   "time": "23:00",
@@ -202,6 +196,12 @@
   "date": "2026-12-25",
   "time": "",
   "label": "行憲紀念日"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2026-12-25",
+  "time": "02:00",
+  "label": "美股提前收盤"
  },
  {
   "src": "market_holidays",
@@ -308,6 +308,12 @@
  {
   "src": "tw_holidays",
   "date": "2027-02-06",
+  "time": "",
+  "label": "春節"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-07",
   "time": "",
   "label": "春節"
  }
