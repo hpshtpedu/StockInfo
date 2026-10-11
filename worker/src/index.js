@@ -187,15 +187,16 @@ async function cached(origin, ctx, path, ttlFor, compute) {
   return value;
 }
 
-// 金十「特朗普動態」最新 3 則標題（簡轉繁）。一小時最多抓一次；抓失敗也快取一小時，不會每 2 分鐘重試
+// 金十「特朗普動態」最新 3 則標題（簡轉繁）。一小時最多抓一次；抓失敗也快取一小時，不會每 2 分鐘重試。
+// 金十掛掉不能拖累其他報價：5 秒逾時，任何錯誤都回傳空清單（網頁就隱藏這張卡）
 let toTw = null;
 async function fetchJin10(origin, ctx) {
   return cached(origin, ctx, '/_jin10_v1', () => 3600, async () => {
     try {
-      const res = await fetch(JIN10_URL, { headers: { 'User-Agent': UA } });
+      const res = await fetch(JIN10_URL, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(5000) });
       if (!res.ok) return { error: `HTTP ${res.status}`, items: [] };
       toTw ??= makeConverter(S2T);
-      const items = parseJin10(await res.text()).slice(0, 3).map((x) => ({ ...x, title: toTw(x.title) }));
+      const items = parseJin10(await res.text()).slice(0, 3).map((x) => ({ title: toTw(x.title), time: x.time }));
       return { items };
     } catch (err) {
       return { error: String(err), items: [] };

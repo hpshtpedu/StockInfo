@@ -92,7 +92,6 @@
   .pager .pg { margin-left: auto; color: var(--muted); font-size: 12px; }
   .jin10 .jt { font-size: clamp(14px, 4.2vw, 16px); font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .jin10 .meta { margin-top: 2px; }
-  .jin10 .meta a { color: var(--muted); }
   /* 我的持股：全寬卡片，左欄 2330、00685L，右欄 0056、00878；每檔一個淡底小方塊當視覺錨點。
      第一行：股號（橘）＋漲跌（▲▼，靠右且切齊）；第二行：價格＋（漲跌幅），跟其他卡片的寫法一致 */
   /* 選擇器多一層，才蓋得過 PC 版 media query 裡的 .card:not(.cal) 高度上限 */
@@ -704,15 +703,16 @@
   // 金十川寶快訊（純娛樂）：金十「特朗普動態」最新 3 則標題（Worker 簡轉繁、一小時抓一次），一次一則、點卡片換下一則
   let jin10Page = 0;
   const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // 防呆：金十資料有任何問題（沒資料、格式不對、畫卡片出錯）就整張不顯示，不影響其他卡片
   function jin10Html(j) {
-    const items = j?.items ?? [];
+    try { return jin10Card(j); } catch { return ''; }
+  }
+  function jin10Card(j) {
+    const items = (Array.isArray(j?.items) ? j.items : []).filter((x) => x?.title && x.time).slice(0, 3);
     if (!items.length) return '';
     if (jin10Page >= items.length) jin10Page = 0;
-    const pages = items.map((x, i) => {
-      const url = /^https:\/\/[a-z0-9.-]*\.jin10\.com\//.test(x.url) ? x.url : 'https://xnews.jin10.com/topic/418';
-      return `<div class="jp" data-i="${i}"><div class="jt">${esc(x.title)}</div>`
-        + `<div class="meta">${mdhm(x.time)} · <a href="${esc(url)}" target="_blank" rel="noopener">原文</a></div></div>`;
-    }).join('');
+    const pages = items.map((x, i) => `<div class="jp" data-i="${i}"><div class="jt">${esc(x.title)}</div>`
+      + `<div class="meta">${mdhm(x.time)}</div></div>`).join('');
     return `
       <div class="card wide jin10 pager" data-p="${jin10Page}" data-n="${items.length}">
         <div class="head"><div class="name">金十川寶快訊</div>${items.length > 1 ? items.map((_, i) => `<span class="pg" data-i="${i}">${i + 1}/${items.length}</span>`).join('') : ''}</div>
@@ -961,10 +961,10 @@
   }
 
   // 手機切到背景就停止輪詢，回來時立刻更新
-  // 金十卡片：點一下換下一則（點「原文」連結不算）
+  // 金十卡片：點一下換下一則
   $list.addEventListener('click', (e) => {
     const card = e.target.closest('.pager');
-    if (!card || e.target.closest('a')) return;
+    if (!card) return;
     jin10Page = (Number(card.dataset.p) + 1) % Number(card.dataset.n);
     card.dataset.p = jin10Page;
   });
