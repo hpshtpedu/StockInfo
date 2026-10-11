@@ -177,9 +177,11 @@
 <script>
   const API = 'https://stockinfo-quotes.hpshtpedu.workers.dev/quotes';
   const POLL_MS = 120 * 1000;
-  const STATE_LABELS = { lunch: '午休', closed: '收盤', holiday: '休市', night: '夜盤', opening: '開盤' };
+  const STATE_LABELS = { lunch: '午休', closed: '收盤', holiday: '休市', night: '夜盤', opening: '開盤', auction: '試撮' };
   // 「時間 · 狀態」；休市只寫「休市」（時間是上一個交易日的，沒意義）
+  const twDate = (t) => new Date(t + 8 * 3600000).toISOString().slice(0, 10);
   const timeState = (time, state) => (state === 'holiday' ? '休市'
+    : state === 'auction' && twDate(time) !== twDate(Date.now()) ? '試撮'  // 早盤試撮：時間是昨天的，不顯示
     : `${hhmm(time)}${STATE_LABELS[state] ? ` · ${STATE_LABELS[state]}` : ''}`);
 
   const $list = document.getElementById('list');
@@ -782,7 +784,17 @@
 
   // Worker 只能用交易時段猜：假日時 Yahoo 的時段跳到下一天（判成收盤），開盤初期延遲報價還沒出現（判成休市）。
   // 以行事曆為準：今天是休市日才顯示「休市」；不是的話，開盤後還沒拿到資料是「開盤 · 慢X分」，其餘為「收盤」
+  // 台股集合競價（試撮）時段，台北時間的分鐘數：現貨 08:30-09:00、13:25-13:30；台指期 08:30-08:45。
+  // 這段時間沒有新成交，數字維持上一筆，只把狀態改成「試撮」（試撮價在 MIS，robots.txt 禁止抓取，不用）
+  const AUCTION = { stock: [[510, 540], [805, 810]], txf: [[510, 525]] };
+  function inAuction(id) {
+    const tw = new Date(Date.now() + 8 * 3600000);
+    const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+    return !isMarketHoliday('tw') && AUCTION[id === 'txf' ? 'txf' : 'stock'].some(([s, e]) => mins >= s && mins < e);
+  }
+
   function effectiveState(q) {
+    if (MARKET_OF[q.id] === 'tw' && inAuction(q.id)) return 'auction';
     // Yahoo 的 USD/TWD 是國際參考報價，台灣休市日也算開盤；台北匯市沒交易，直接標休市
     if (q.id === 'usdtwd' && isMarketHoliday('tw')) return 'holiday';
     const market = MARKET_OF[q.id];
@@ -850,7 +862,8 @@
       // 沒有報價時間（例如 Yahoo 換到下一個交易時段）就不顯示時間，只留狀態
       // 收盤、休市等狀態只顯示時間，不加日期
       // 開盤但延遲報價還沒出來：最新一筆是昨天的收盤，不顯示時間
-      const when = q.time && q.state !== 'opening' && q.state !== 'holiday' ? (sameDay || STATE_LABELS[q.state] ? hhmm(q.time) : mdhm(q.time)) : '';
+      // 早盤試撮時最新一筆是昨天的收盤，也不顯示時間
+      const when = q.time && q.state !== 'opening' && q.state !== 'holiday' && !(q.state === 'auction' && !sameDay) ? (sameDay || STATE_LABELS[q.state] ? hhmm(q.time) : mdhm(q.time)) : '';
       const meta = `<div class="meta">${when}${when ? lag : lag.replace(/^ · /, '')}${stale}</div>`;
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
       // 有 K 線的卡片（加權）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K」
