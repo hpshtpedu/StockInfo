@@ -89,7 +89,7 @@
   /* 我的持股：兩檔一組、點卡片切換；每檔一行代號、一行「價格 漲跌 漲跌幅」 */
   .hold-card { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
   .hold-card[data-g="0"] .g1, .hold-card[data-g="1"] .g0 { display: none; }
-  /* 每組是一個三欄格線（價格、漲跌、漲跌幅各自靠右），兩檔的數字上下對齊 */
+  /* 每組是一個三欄格線：價格靠右；漲跌、漲跌幅靠左，▼ 和數字開頭上下切齊 */
   .hold-grp { display: grid; grid-template-columns: auto auto auto; justify-content: start; column-gap: 8px;
     align-items: baseline; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .hold, .hold .q { display: contents; }
@@ -98,8 +98,8 @@
   .hold + .hold .k { margin-top: 14px; }
   /* 價格最大；漲跌加 ▲▼、漲跌幅再小一號 */
   .hold .q b { text-align: right; font-size: clamp(16px, 5vw, 21px); line-height: 1.2; }
-  .hold .q .c { text-align: right; font-size: clamp(12px, 3.6vw, 15px); font-weight: 600; }
-  .hold .q .p { text-align: right; font-size: clamp(11px, 3.3vw, 14px); font-weight: 600; }
+  .hold .q .c { text-align: left; font-size: clamp(12px, 3.6vw, 15px); font-weight: 600; }
+  .hold .q .p { text-align: left; font-size: clamp(11px, 3.3vw, 14px); font-weight: 600; }
   .hold-foot { display: flex; justify-content: space-between; gap: 4px; }
   .hold-foot .pg { flex-shrink: 0; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
