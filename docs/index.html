@@ -94,6 +94,8 @@
   .jin10 .jt { font-size: clamp(15px, 4.6vw, 18px); font-weight: 600; line-height: 1.35; height: 4.05em;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .jin10 .head { justify-content: flex-start; align-items: baseline; }
+  /* 卡片名稱跟標題一樣大，用持股股號的橘色 */
+  .jin10 .head .name { font-size: clamp(15px, 4.6vw, 18px); color: var(--warn); }
   .jin10 .head .jtime { color: var(--muted); font-size: clamp(11.5px, 3.3vw, 13px); margin-left: 6px; display: none; }
   .jin10[data-p="0"] .jtime[data-i="0"], .jin10[data-p="1"] .jtime[data-i="1"], .jin10[data-p="2"] .jtime[data-i="2"] { display: inline; }
   /* 我的持股：全寬卡片，左欄 2330、00685L，右欄 0056、00878；每檔一個淡底小方塊當視覺錨點。
