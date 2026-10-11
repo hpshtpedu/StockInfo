@@ -86,15 +86,15 @@
   .ma-row { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; font-size: clamp(13px, 4.2vw, 16px); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .ma-row .k { font-size: inherit; }
   /* 我的持股：全寬卡片，左欄 2330、00685L，右欄 0056、00878；每檔一個淡底小方塊當視覺錨點。
-     第一行：股號（橘）＋漲跌（▲▼，起點切齊）；第二行：價格＋（漲跌幅），跟其他卡片的寫法一致 */
+     第一行：股號（橘）＋漲跌（▲▼，靠右且切齊）；第二行：價格＋（漲跌幅），跟其他卡片的寫法一致 */
   .card.holdings { max-height: 200px; }
   .holds { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 6px; }
   .hold { display: flex; flex-direction: column; gap: 1px; background: #20242c; border: 1px solid var(--line); border-radius: 8px;
     padding: 3px 7px 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .hold .top, .hold .q { display: flex; align-items: baseline; gap: 6px; }
-  /* 股號欄固定寬度（放得下 00685L），四檔的 ▲▼ 都從同一個位置開始 */
-  .hold .k { min-width: 3.4em; color: var(--warn); font-weight: 700; font-size: clamp(15px, 4.8vw, 19px); line-height: 1.15; }
-  .hold .c { font-size: clamp(13px, 4.2vw, 17px); font-weight: 600; }
+  .hold .k { color: var(--warn); font-weight: 700; font-size: clamp(15px, 4.8vw, 19px); line-height: 1.15; }
+  /* 漲跌靠方塊右邊，但固定寬度、內容靠左，四檔的 ▲▼ 落在同一個水平位置 */
+  .hold .c { margin-left: auto; min-width: 3.3em; text-align: left; font-size: clamp(13px, 4.2vw, 17px); font-weight: 600; }
   .hold .q b { font-size: clamp(18px, 6vw, 24px); line-height: 1.15; }
   .hold .q .p { font-size: clamp(12.5px, 3.9vw, 15.5px); font-weight: 600; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
