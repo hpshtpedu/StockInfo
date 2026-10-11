@@ -90,8 +90,12 @@
   .pager .jp, .pager .pg { display: none; }
   .pager[data-p="0"] [data-i="0"], .pager[data-p="1"] [data-i="1"], .pager[data-p="2"] [data-i="2"] { display: block; }
   .pager .pg { margin-left: auto; color: var(--muted); font-size: 12px; }
-  .jin10 .jt { font-size: clamp(14px, 4.2vw, 16px); font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  .jin10 .meta { margin-top: 2px; }
+  /* 卡片高度固定 3 行（以最長的標題為準），換頁不跳動；塞不下就在第 3 行尾加「…」。時間放在卡片名稱右邊 */
+  .jin10 .jt { font-size: clamp(15px, 4.6vw, 18px); font-weight: 600; line-height: 1.35; height: 4.05em;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .jin10 .head { justify-content: flex-start; align-items: baseline; }
+  .jin10 .head .jtime { color: var(--muted); font-size: clamp(11.5px, 3.3vw, 13px); margin-left: 6px; display: none; }
+  .jin10[data-p="0"] .jtime[data-i="0"], .jin10[data-p="1"] .jtime[data-i="1"], .jin10[data-p="2"] .jtime[data-i="2"] { display: inline; }
   /* 我的持股：全寬卡片，左欄 2330、00685L，右欄 0056、00878；每檔一個淡底小方塊當視覺錨點。
      第一行：股號（橘）＋漲跌（▲▼，靠右且切齊）；第二行：價格＋（漲跌幅），跟其他卡片的寫法一致 */
   /* 選擇器多一層，才蓋得過 PC 版 media query 裡的 .card:not(.cal) 高度上限 */
@@ -711,11 +715,11 @@
     const items = (Array.isArray(j?.items) ? j.items : []).filter((x) => x?.title && x.time).slice(0, 3);
     if (!items.length) return '';
     if (jin10Page >= items.length) jin10Page = 0;
-    const pages = items.map((x, i) => `<div class="jp" data-i="${i}"><div class="jt">${esc(x.title)}</div>`
-      + `<div class="meta">${mdhm(x.time)}</div></div>`).join('');
+    const pages = items.map((x, i) => `<div class="jp" data-i="${i}"><div class="jt">${esc(x.title)}</div></div>`).join('');
+    const times = items.map((x, i) => `<span class="jtime" data-i="${i}">${mdhm(x.time)}</span>`).join('');
     return `
       <div class="card wide jin10 pager" data-p="${jin10Page}" data-n="${items.length}">
-        <div class="head"><div class="name">金十川寶快訊</div>${items.length > 1 ? items.map((_, i) => `<span class="pg" data-i="${i}">${i + 1}/${items.length}</span>`).join('') : ''}</div>
+        <div class="head"><div class="name">金十川寶快訊</div>${times}${items.length > 1 ? items.map((_, i) => `<span class="pg" data-i="${i}">${i + 1}/${items.length}</span>`).join('') : ''}</div>
         ${pages}
       </div>`;
   }
