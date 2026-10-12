@@ -94,7 +94,7 @@
   .jin10 .jt { font-size: clamp(16.5px, 5vw, 19.8px); font-weight: 600; line-height: 1.35; height: 4.05em;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .jin10 .head { justify-content: flex-start; align-items: baseline; }
-  /* 卡片名稱跟標題一樣大，用持股股號的橘色 */
+  /* 卡片名稱跟標題一樣大，用橘色（娛樂卡片的識別色） */
   .jin10 .head .name { font-size: clamp(16.5px, 5vw, 19.8px); color: var(--warn); }
   .jin10 .head .jtime { color: var(--muted); font-size: clamp(12.5px, 3.6vw, 14.3px); margin-left: 6px; display: none; }
   .jin10[data-p="0"] .jtime[data-i="0"], .jin10[data-p="1"] .jtime[data-i="1"], .jin10[data-p="2"] .jtime[data-i="2"] { display: inline; }
@@ -106,14 +106,14 @@
   .hold { display: flex; flex-direction: column; gap: 1px; background: #20242c; border: 1px solid var(--line); border-radius: 8px;
     padding: 3px 7px 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .hold .top, .hold .q { display: flex; align-items: baseline; gap: 6px; }
-  .hold .k { color: var(--warn); font-weight: 700; font-size: clamp(15px, 4.8vw, 19px); line-height: 1.15; }
+  .hold .k { color: var(--text); font-weight: 700; font-size: clamp(15px, 4.8vw, 19px); line-height: 1.15; }
   /* 漲跌靠方塊右邊，但固定寬度、內容靠左，四檔的 ▲▼ 落在同一個水平位置 */
   .hold .c { margin-left: auto; min-width: 3.6em; text-align: left; font-size: clamp(13px, 4.2vw, 17px); font-weight: 600; }
   .hold .q b { font-size: clamp(18px, 6vw, 24px); line-height: 1.15; }
   /* 外資／投信買賣超（張），盤後才出現 */
-  /* 兩欄固定位置（像 tab），「投」永遠從同一個位置開始；標籤用股號的橘色，未公布用灰字 */
+  /* 兩欄固定位置（像 tab），「投」永遠從同一個位置開始；標籤白色正常粗細（同三大法人明細），未公布用灰字 */
   .hold .fl { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6px; margin-top: 6px; padding-top: 5px; border-top: 1px solid var(--line); font-size: clamp(12px, 3.6vw, 14px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .hold .fl .fk { color: var(--warn); font-weight: 700; margin-right: 4px; }
+  .hold .fl .fk { color: var(--text); font-weight: 400; margin-right: 4px; }
   .hold .fl .fp { color: var(--muted); font-weight: 400; }
   .hold .q .p { font-size: clamp(12.5px, 3.9vw, 15.5px); font-weight: 600; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
