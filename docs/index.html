@@ -194,7 +194,7 @@
 <script>
   const API = 'https://stockinfo-quotes.hpshtpedu.workers.dev/quotes';
   const POLL_MS = 120 * 1000;
-  const STATE_LABELS = { lunch: '午休', closed: '收盤', holiday: '休市', night: '夜盤', opening: '開盤', auction: '試撮' };
+  const STATE_LABELS = { lunch: '午休', closed: '收盤', holiday: '休市', night: '夜盤', opening: '開盤', auction: '試撮', fault: '<span class="lag">故障</span>' };
   // 「時間 · 狀態」；休市只寫「休市」（時間是上一個交易日的，沒意義）
   const twDate = (t) => new Date(t + 8 * 3600000).toISOString().slice(0, 10);
   const timeState = (time, state) => (state === 'holiday' ? '休市'
@@ -752,7 +752,7 @@
       <div class="card wide holdings">
         <div class="head"><div class="name">我的持股</div>${badge}</div>
         <div class="holds">${body}</div>
-        <div class="meta">${timeState(list[0].time, twii?.state)}</div>
+        <div class="meta">${timeState(list[0].time, list[0].fault ? 'fault' : twii?.state)}</div>
       </div>`;
   }
 
@@ -827,6 +827,7 @@
   }
 
   function effectiveState(q) {
+    if (q.fault) return 'fault';  // 上游抓不到，顯示的是最後一次成功的數字
     if (MARKET_OF[q.id] === 'tw' && inAuction(q.id)) return 'auction';
     // Yahoo 的 USD/TWD 是國際參考報價，台灣休市日也算開盤；台北匯市沒交易，直接標休市
     if (q.id === 'usdtwd' && isMarketHoliday('tw')) return 'holiday';
@@ -874,7 +875,8 @@
     if (fx) quotes.splice(quotes.findIndex((q) => q.id === 'us10y') + 1, 0, fx);
     const cardFor = (q) => {
       if (q.error) {
-        return `<div class="card"><div class="name">${q.name}</div><div class="error">${q.error}</div></div>`;
+        // 抓不到又沒有舊資料可用：只寫「故障」，錯誤細節放在 title（長按 / 滑過可看）
+        return `<div class="card"><div class="name">${q.name}</div><div class="meta" title="${esc(q.error)}"><span class="lag">故障</span></div></div>`;
       }
       if (q.kind === 'daily') return dailyHtml(q, data.institutional);
       if (q.kind === 'breadth') return breadthHtml(q, byId.twii, data.holdings?.find((h) => h.code === '2330'));
@@ -890,7 +892,7 @@
         : STATE_LABELS[q.state] ? 0 : ageMin >= 5 && ageMin < 60 ? ageMin : 0;
       const lag = (STATE_LABELS[q.state] ? ` · ${STATE_LABELS[q.state]}` : '')
         + (lagMin ? ` · <span class="lag">慢${lagMin}分</span>` : '');
-      const stale = q.stale ? ' · <span class="lag">舊資料</span>' : '';
+      const stale = q.stale && !q.fault ? ' · <span class="lag">舊資料</span>' : '';
       const chart = q.candles ? miniCandles(q.candles, q.prev) : '';
       // 沒有報價時間（例如 Yahoo 換到下一個交易時段）就不顯示時間，只留狀態
       // 收盤、休市等狀態只顯示時間，不加日期

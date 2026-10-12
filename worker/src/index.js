@@ -110,9 +110,12 @@ async function buildQuotes(origin, ctx) {
         let q = { id, ...(await jobs[id]) };
         if (YAHOO_TW[id]) q = await keepSessionQuote(origin, ctx, q);
         lastGood[id] = q;
+        saveLast(origin, ctx, id, q);
         return q;
       } catch (err) {
-        if (lastGood[id]) return { ...lastGood[id], stale: true };
+        // 上游故障（例如 Yahoo HTTP 500）：沿用最後一次成功的報價，標 fault，網頁顯示「故障」而不是錯誤卡片
+        const last = lastGood[id] ?? await loadLast(origin, id);
+        if (last) return { ...last, stale: true, fault: true };
         return { id, name: NAMES[id], error: String(err.message || err) };
       }
     }),
@@ -134,11 +137,25 @@ async function buildQuotes(origin, ctx) {
   const announcements = await fetchAnnouncements(origin, ctx, holidays).catch(() => null);
   const vix = await fetchVix(origin, ctx).catch(() => null);
   const jin10 = await fetchJin10(origin, ctx).catch(() => null);
-  const holdings = (await Promise.all(['tw2330', 'tw0056', 'tw00878', 'tw00685L'].map(async (id) => {
+  let holdings = (await Promise.all(['tw2330', 'tw0056', 'tw00878', 'tw00685L'].map(async (id) => {
     const q = await pick(tw, id).catch(() => null);
     return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, auction: q.auction };
   }))).filter(Boolean);
+  if (holdings.length) saveLast(origin, ctx, 'holdings', holdings);
+  else holdings = ((await loadLast(origin, 'holdings')) ?? []).map((h) => ({ ...h, fault: true }));
   return { updated: Date.now(), quotes, holidays, institutional, margin, announcements, vix, holdings, jin10 };
+}
+
+// Last successful copy of each quote (Cache API, kept a day), so an upstream outage shows the last
+// numbers marked 故障 instead of an error card. Isolates are short-lived, so memory alone isn't enough.
+function saveLast(origin, ctx, id, value) {
+  ctx.waitUntil(caches.default.put(new Request(`${origin}/_last_v1/${id}`), new Response(JSON.stringify(value), {
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=86400' },
+  })));
+}
+async function loadLast(origin, id) {
+  const hit = await caches.default.match(new Request(`${origin}/_last_v1/${id}`));
+  return hit ? hit.json() : null;
 }
 
 // TAIFEX 臺指選擇權波動率指數: daily 13:45 closes from TAIFEX's monthly files (a few hundred
