@@ -89,14 +89,14 @@
   .pager { cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .pager .jp, .pager .pg { display: none; }
   .pager[data-p="0"] [data-i="0"], .pager[data-p="1"] [data-i="1"], .pager[data-p="2"] [data-i="2"] { display: block; }
-  .pager .pg { margin-left: auto; color: var(--muted); font-size: 14.5px; }
+  .pager .pg { margin-left: auto; color: var(--muted); font-size: 13.2px; }
   /* 卡片高度固定 3 行（以最長的標題為準），換頁不跳動；塞不下就在第 3 行尾加「…」。時間放在卡片名稱右邊 */
-  .jin10 .jt { font-size: clamp(18px, 5.5vw, 21.5px); font-weight: 600; line-height: 1.35; height: 4.05em;
+  .jin10 .jt { font-size: clamp(16.5px, 5vw, 19.8px); font-weight: 600; line-height: 1.35; height: 4.05em;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .jin10 .head { justify-content: flex-start; align-items: baseline; }
   /* 卡片名稱跟標題一樣大，用持股股號的橘色 */
-  .jin10 .head .name { font-size: clamp(18px, 5.5vw, 21.5px); color: var(--warn); }
-  .jin10 .head .jtime { color: var(--muted); font-size: clamp(13.5px, 4vw, 15.5px); margin-left: 6px; display: none; }
+  .jin10 .head .name { font-size: clamp(16.5px, 5vw, 19.8px); color: var(--warn); }
+  .jin10 .head .jtime { color: var(--muted); font-size: clamp(12.5px, 3.6vw, 14.3px); margin-left: 6px; display: none; }
   .jin10[data-p="0"] .jtime[data-i="0"], .jin10[data-p="1"] .jtime[data-i="1"], .jin10[data-p="2"] .jtime[data-i="2"] { display: inline; }
   /* 我的持股：全寬卡片，左欄 2330、00685L，右欄 0056、00878；每檔一個淡底小方塊當視覺錨點。
      第一行：股號（橘）＋漲跌（▲▼，靠右且切齊）；第二行：價格＋（漲跌幅），跟其他卡片的寫法一致 */
@@ -151,14 +151,14 @@
   .card.wide .chg { font-size: clamp(13px, 4.6vw, 18px); }
   .chg.big { font-size: clamp(14px, 4.4vw, 17px); }
   .error { color: var(--warn); font-size: 12px; }
-  .cal { grid-column: 1 / -1; font-size: 15.5px; gap: 3px; }
+  .cal { grid-column: 1 / -1; font-size: 14.3px; gap: 3px; }
   /* 懸掛縮排：圖示獨立一欄，換行文字對齊「今」；明日行用隱形圖示佔位，跟「今」對齊 */
   .cal .today, .cal .next { display: flex; gap: 4px; }
-  .cal .ico { flex-shrink: 0; font-size: 15.5px; }
+  .cal .ico { flex-shrink: 0; font-size: 14.3px; }
   .cal .next .ico { visibility: hidden; }
   .cal .today { font-weight: 600; }
   .cal .today b { color: var(--warn); }
-  .cal .next { color: var(--muted); font-size: 14.5px; }
+  .cal .next { color: var(--muted); font-size: 13.2px; }
   .cal .next b { color: inherit; font-weight: 400; }
   .cal .ev { color: var(--text); font-weight: 600; }
   .cal .next .ev { color: inherit; font-weight: 400; }
