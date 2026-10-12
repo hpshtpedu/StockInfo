@@ -157,6 +157,7 @@ async function buildQuotes(origin, ctx) {
   const vix = await fetchVix(origin, ctx).catch(() => null);
   const jin10 = await fetchJin10(origin, ctx).catch(() => null);
   const flows = await fetchStockFlows(origin, ctx).catch(() => null);
+  const govBanks = await fetchGovBanks(origin, ctx).catch(() => null);
   let holdings = (await Promise.all(['tw2330', 'tw0056', 'tw00878', 'tw00685L'].map(async (id) => {
     const q = await pick(tw, id).catch(() => null);
     return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, auction: q.auction };
@@ -168,7 +169,7 @@ async function buildQuotes(origin, ctx) {
     lastSnapshotSaved = Date.now();
     saveLast(origin, ctx, 'quotes', Object.fromEntries(Object.entries(lastGood).filter(([, v]) => !v?.fault && !v?.stale)));
   }
-  return { updated: Date.now(), quotes, holidays, institutional, margin, announcements, vix, holdings, jin10, flows };
+  return { updated: Date.now(), quotes, holidays, institutional, margin, announcements, vix, holdings, jin10, flows, govBanks };
 }
 
 // 持股的外資（TWT38U，約 17:00 後）、投信（TWT44U，約 15:00）個股買賣超，單位：張。
@@ -177,6 +178,39 @@ async function buildQuotes(origin, ctx) {
 const FLOW_CODES = ['2330', '0056', '00878', '00685L'];
 const flowErrors = {};
 const savedTurnover = {};
+
+// 八大行庫買賣超（HiStock broker8，robots.txt 允許）：每晚排程存長期歷史，但 GitHub 排程常延遲到半夜，
+// 所以 Worker 在 16:00 後另外抓當天的。拿到當天的就快取到隔天 16:00；還沒更新每 30 分鐘試一次。
+// 只回最近 10 天，網頁跟 gov_banks.json 合併
+async function fetchGovBanks(origin, ctx) {
+  const key = new Request(`${origin}/_govbanks_v1`);
+  const hit = await caches.default.match(key);
+  if (hit) return hit.json();
+  let value = await loadLast(origin, 'govbanks');
+  const twToday = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+  const due = !twMarketClosedToday() && new Date(Date.now() + 8 * 3600 * 1000).getUTCHours() >= 16;
+  if (due && value?.days?.at(-1)?.date !== twToday) {
+    try {
+      const res = await fetch('https://histock.tw/stock/broker8.aspx', { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`HiStock HTTP ${res.status}`);
+      const m = (await res.text()).match(/loadChart\(([\s\S]*?)\);/);
+      const series = m ? JSON.parse(JSON.parse(m[1]).SumMoney) : [];
+      // 沒交易的日子是 0（真實交易日不會剛好 0）
+      const days = series.filter(([, v]) => v !== 0)
+        .map(([t, v]) => ({ date: new Date(t + 8 * 3600 * 1000).toISOString().slice(0, 10), net: Math.round(v * 100) / 100 }))
+        .slice(-10);
+      if (days.length) { value = { days }; saveLast(origin, ctx, 'govbanks', value); }
+    } catch (err) {
+      flowErrors.govbanks = `${new Date().toISOString()} ${err?.message || err}`;
+    }
+  }
+  const lastDate = value?.days?.at(-1)?.date?.replace(/-/g, '');
+  const ttl = lastDate ? dailyTtl(lastDate, 16, 1800) : 1800;
+  ctx.waitUntil(caches.default.put(key, new Response(JSON.stringify(value), {
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
+  })));
+  return value;
+}
 
 // 診斷用（/debug）：這個 Cloudflare 機房看到的快取內容，以及現在直接打證交所、金十的結果（只回狀態碼和開頭幾個字）
 async function debugInfo(request, origin) {

@@ -183,6 +183,7 @@
     .card { padding-left: 5px; padding-right: 5px; }
     .hold { padding-left: 5px; padding-right: 5px; }
     .badge { padding: 0 3px; }
+    .nm-x { display: none; }  /* 窄螢幕：「八大行庫買賣超」縮成「八大行庫」，右上的連N買才放得下 */
   }
 </style>
 </head>
@@ -384,8 +385,11 @@
   }
 
   // 八大公股行庫買賣超（HiStock，每晚抓一次）。含公股券商的自營與客戶下單，不完全等於國家隊
-  function govBanksHtml() {
-    const days = govBanks?.days ?? [];
+  // 每晚排程的 gov_banks.json（長期歷史）＋ Worker 當天抓的最近 10 天（排程常延遲到半夜）
+  function govBanksHtml(live, twii) {
+    const byDate = new Map((govBanks?.days ?? []).map((d) => [d.date, d]));
+    for (const d of live?.days ?? []) byDate.set(d.date, d);
+    const days = [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
     const last = days.at(-1);
     if (!last) return '';
     // 連買/賣：單日不到 10 億（近 60 日約 8% 的日子）視為持平，跳過不算、也不打斷
@@ -395,7 +399,9 @@
     for (let i = big.length - 1; i >= 0 && Math.sign(big[i].net) === sign; i--) n++;
     // 護盤：大盤收跌的日子，官股買超佔當天成交金額 1.9% 以上（成交金額是 volume_profile.json 的
     // 一般交易時段總額，百萬元）。用比例而非固定金額，市場變大變小都適用；近 60 日 5 次，約 8%
-    const turnover = volumeProfile?.totals?.[last.date];
+    // 當天的成交金額排程還沒存：用加權卡片的成交金額（百萬元，同一天才用）
+    const twiiDay = twii?.time ? new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10) : null;
+    const turnover = volumeProfile?.totals?.[last.date] ?? (twiiDay === last.date ? twii.turnover : null);
     const taiexPct = taiexChangePct(last.date, null);
     const sharePct = turnover ? ((last.net * 100) / turnover) * 100 : 0;  // 億→百萬，再換成 %
     const rescue = sharePct >= 1.9 && taiexPct != null && taiexPct < 0;
@@ -406,7 +412,7 @@
     const note = rescue ? '<span class="badge note">護盤</span>' : '';
     return `
       <div class="card roomy">
-        <div class="head"><div class="name">八大行庫</div>${streak}</div>
+        <div class="head"><div class="name">八大行庫<span class="nm-x">買賣超</span></div>${streak}</div>
         <div class="price ${dir}">${last.net > 0 ? '+' : ''}${fmt(last.net, 1)}<small> 億</small></div>
         <div class="foot"><div class="meta">${mm}/${dd} 盤後</div>${note}</div>
       </div>`;
@@ -913,7 +919,7 @@
     const after = {
       txf: holdingsHtml(data.holdings, byId.twii, data.flows),
       breadth: maHtml(byId.twii),
-      foreignOi: vixHtml(data.vix, byId.twii) + govBanksHtml(),
+      foreignOi: vixHtml(data.vix, byId.twii) + govBanksHtml(data.govBanks, byId.twii),
     };
     // USD/TWD 是國際外匯報價，排到國際市場最後（美債後面）
     const quotes = data.quotes.filter((q) => q.id !== 'usdtwd');
