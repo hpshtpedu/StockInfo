@@ -771,14 +771,12 @@
     };
     // 依欄排：左欄第一組、右欄第二組（格線逐列填，所以交錯排列）
     const rows = Math.max(...groups.map((g) => g.length));
-    const fd = (fo ?? tr)?.date;
-    const flowNote = fd ? ` · 法人買賣超 ${Number(fd.slice(5, 7))}/${Number(fd.slice(8))}（張）` : '';
     const body = Array.from({ length: rows }, (_, i) => groups.map((g) => (g[i] ? row(g[i]) : '<div></div>')).join('')).join('');
     return `
       <div class="card wide holdings">
         <div class="head"><div class="name">我的持股</div>${badge}</div>
         <div class="holds">${body}</div>
-        <div class="meta">${timeState(list[0].time, list[0].fault ? 'fault' : twii?.state)}${flowNote}</div>
+        <div class="meta">${timeState(list[0].time, list[0].fault ? 'fault' : twii?.state)}</div>
       </div>`;
   }
 
