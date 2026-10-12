@@ -375,7 +375,9 @@
         <div class="head"><div class="name">三大法人買賣超</div>${foreignStreak(inst, history)}</div>
         <div class="price ${dir(inst.total)}">${num(inst.total)}<small> 億</small></div>
         <div class="chg">${parts}</div>
-        <div class="meta">${m}/${d} 盤後</div>
+        <div class="foot"><div class="meta">${m}/${d} 盤後</div>${inst.share != null
+          // 法人成交比重：三大法人買＋賣 ÷（大盤成交金額 × 2），中性說明
+          ? `<span class="badge note">法人成交比重${fmt(inst.share, 0)}%</span>` : ''}</div>
       </div>`;
   }
 

@@ -413,7 +413,7 @@ async function fetchMargin(origin, ctx) {
 // TWSE 三大法人買賣金額 (BFI82U), latest trading day, in NT$ 億. Published ~15:00 Taipei.
 async function fetchInstitutional(origin, ctx) {
   const cache = caches.default;
-  const key = new Request(origin + '/_institutional_v2');
+  const key = new Request(origin + '/_institutional_v3');
   const cached = await cache.match(key);
   if (cached) return cached.json();
 
@@ -431,6 +431,19 @@ async function fetchInstitutional(origin, ctx) {
     dealer: sum('自營商'),  // 自行買賣 + 避險
     total: net['合計'],
   };
+  // 法人成交比重 = (三大法人買進 + 賣出) / (大盤成交金額 × 2)；大盤成交金額取證交所 FMTQIK（每月一張表）
+  try {
+    const row = data.data.find((r) => r[0] === '合計');
+    const both = Number(row[1].replace(/,/g, '')) + Number(row[2].replace(/,/g, ''));
+    const fm = await fetch(`https://www.twse.com.tw/rwd/zh/afterTrading/FMTQIK?date=${data.date}&response=json`,
+      { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) }).then((r) => r.json());
+    const roc = `${Number(data.date.slice(0, 4)) - 1911}/${data.date.slice(4, 6)}/${data.date.slice(6, 8)}`;
+    const day = fm?.data?.find((r) => r[0] === roc);
+    const turnover = day ? Number(day[2].replace(/,/g, '')) : 0;
+    if (turnover) out.share = (both / (turnover * 2)) * 100;
+  } catch {
+    // 拿不到成交金額就不顯示比重，其他照常
+  }
 
   ctx.waitUntil(cache.put(key, new Response(JSON.stringify(out), {
     headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${institutionalTtl(data.date)}` },
