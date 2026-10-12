@@ -111,8 +111,10 @@
   .hold .c { margin-left: auto; min-width: 3.6em; text-align: left; font-size: clamp(13px, 4.2vw, 17px); font-weight: 600; }
   .hold .q b { font-size: clamp(18px, 6vw, 24px); line-height: 1.15; }
   /* 外資／投信買賣超（張），盤後才出現 */
-  .hold .fl { display: flex; gap: 10px; font-size: clamp(12px, 3.6vw, 14px); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .hold .fl .fk { color: var(--muted); font-weight: 400; margin-right: 3px; }
+  /* 兩欄固定位置（像 tab），「投」永遠從同一個位置開始；標籤用股號的橘色，未公布用灰字 */
+  .hold .fl { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6px; font-size: clamp(12px, 3.6vw, 14px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .hold .fl .fk { color: var(--warn); font-weight: 700; margin-right: 4px; }
+  .hold .fl .fp { color: var(--muted); font-weight: 400; }
   .hold .q .p { font-size: clamp(12.5px, 3.9vw, 15.5px); font-weight: 600; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
@@ -750,12 +752,14 @@
     const groups = HOLD_GROUPS.map((codes) => list.filter((h) => codes.includes(h.code))).filter((g) => g.length);
     const fo = flowVisible(flows?.foreign) ? flows.foreign : null;
     const tr = flowVisible(flows?.trust) ? flows.trust : null;
+    // 這行固定顯示（版面不跳動）；還沒公布或盤中就寫灰色「未公布」
     const flowSeg = (label, t, code) => {
       const v = t?.net?.[code];
-      if (v == null) return '';
-      return `<span><span class="fk">${label}</span><span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${v > 0 ? '+' : ''}${fmt(v, 0)}</span></span>`;
+      const val = v == null ? '<span class="fp">未公布</span>'
+        : `<span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${v > 0 ? '+' : ''}${fmt(v, 0)}</span>`;
+      return `<span><span class="fk">${label}</span>${val}</span>`;
     };
-    const flowLine = (code) => (fo || tr ? `<div class="fl">${flowSeg('外', fo, code)}${flowSeg('投', tr, code)}</div>` : '');
+    const flowLine = (code) => `<div class="fl">${flowSeg('外', fo, code)}${flowSeg('投', tr, code)}</div>`;
     const row = (h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
       const sign = h.change > 0 ? '+' : '';
