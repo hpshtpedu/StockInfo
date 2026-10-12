@@ -528,6 +528,21 @@ async function fetchYahooTw() {
       time: meta.regularMarketTime * 1000 <= Date.now() + 120000 ? Math.min(meta.regularMarketTime * 1000, Date.now()) : 0,
       state: marketState(meta),
     };
+    // regularMarketTime is sometimes stale or stamped ahead (10/12: TXF stuck at 12:16 all afternoon,
+    // so the remembered 12:16 quote was shown as 收盤). The minute bars are the ground truth: use the
+    // last bar that actually traded, if it is newer than what the meta says.
+    {
+      const ts = chart.timestamp ?? [];
+      const closes = chart.indicators?.quote?.[0]?.close ?? [];
+      let i = ts.length - 1;
+      while (i >= 0 && (closes[i] == null || ts[i] * 1000 > Date.now() + 60000)) i--;
+      if (i >= 0 && ts[i] * 1000 > out[id].time) {
+        out[id].time = Math.min(ts[i] * 1000, Date.now());
+        out[id].price = closes[i];
+        out[id].change = prev != null ? closes[i] - prev : null;
+        out[id].changePct = prev ? ((closes[i] - prev) / prev) * 100 : null;
+      }
+    }
     // Yahoo's trading period for WTX& covers only the day session, so judge TXF by its last
     // trade instead: trading if it printed within 10 minutes, and 15:00-05:00 is the night session.
     if (id === 'txf') {
