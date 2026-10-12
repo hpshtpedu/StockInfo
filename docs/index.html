@@ -739,7 +739,8 @@
     const row = (h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
       const sign = h.change > 0 ? '+' : '';
-      const arrow = h.change > 0 ? '▲ ' : h.change < 0 ? '▼ ' : '';  // 箭頭跟數字空一格
+      // 箭頭跟數字空一格；平盤（例如試撮時）用「▬」當視覺錨點，不讓 0.00 飄著
+      const arrow = h.change > 0 ? '▲ ' : h.change < 0 ? '▼ ' : h.change === 0 ? '▬ ' : '';
       const digits = h.price >= 1000 ? 0 : 2;
       return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${fmt(h.change == null ? null : Math.abs(h.change), digits)}</span></div>`
         + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div></div>`;
@@ -894,8 +895,8 @@
       // 沒有報價時間（例如 Yahoo 換到下一個交易時段）就不顯示時間，只留狀態
       // 收盤、休市等狀態只顯示時間，不加日期
       // 開盤但延遲報價還沒出來：最新一筆是昨天的收盤，不顯示時間
-      // 早盤試撮時最新一筆是昨天的收盤，也不顯示時間
-      const when = q.time && q.state !== 'opening' && q.state !== 'holiday' && !(q.state === 'auction' && !sameDay) ? (sameDay || STATE_LABELS[q.state] ? hhmm(q.time) : mdhm(q.time)) : '';
+      // 早盤試撮時最新一筆是前一個時段的（現貨是昨天收盤、台指期是夜盤 05:00），不顯示時間
+      const when = q.time && q.state !== 'opening' && q.state !== 'holiday' && !(q.state === 'auction' && (!sameDay || q.id === 'txf')) ? (sameDay || STATE_LABELS[q.state] ? hhmm(q.time) : mdhm(q.time)) : '';
       const meta = `<div class="meta">${when}${when ? lag : lag.replace(/^ · /, '')}${stale}</div>`;
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
       // 有 K 線的卡片（加權）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K」
