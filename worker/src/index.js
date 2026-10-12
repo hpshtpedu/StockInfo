@@ -137,13 +137,61 @@ async function buildQuotes(origin, ctx) {
   const announcements = await fetchAnnouncements(origin, ctx, holidays).catch(() => null);
   const vix = await fetchVix(origin, ctx).catch(() => null);
   const jin10 = await fetchJin10(origin, ctx).catch(() => null);
+  const flows = await fetchStockFlows(origin, ctx).catch(() => null);
   let holdings = (await Promise.all(['tw2330', 'tw0056', 'tw00878', 'tw00685L'].map(async (id) => {
     const q = await pick(tw, id).catch(() => null);
     return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, auction: q.auction };
   }))).filter(Boolean);
   if (holdings.length) saveLast(origin, ctx, 'holdings', holdings);
   else holdings = ((await loadLast(origin, 'holdings')) ?? []).map((h) => ({ ...h, fault: true }));
-  return { updated: Date.now(), quotes, holidays, institutional, margin, announcements, vix, holdings, jin10 };
+  return { updated: Date.now(), quotes, holidays, institutional, margin, announcements, vix, holdings, jin10, flows };
+}
+
+// 持股的外資（TWT38U，約 17:00 後）、投信（TWT44U，約 15:00）個股買賣超，單位：張。
+// 每張表一天只成功抓一次：拿到當天的就快取到隔天公布時間；還沒公布就每 10 分鐘試一次；
+// 抓不到（還沒公布、錯誤）時回傳上一個交易日的，網頁再決定要不要顯示（開盤後到公布前隱藏）
+const FLOW_CODES = ['2330', '0056', '00878', '00685L'];
+async function fetchStockFlows(origin, ctx) {
+  const [foreign, trust] = await Promise.all([
+    flowTable(origin, ctx, 'TWT38U', 17, (r) => r[11]),
+    flowTable(origin, ctx, 'TWT44U', 15, (r) => r[5]),
+  ]);
+  return { foreign, trust };
+}
+async function flowTable(origin, ctx, table, publishHour, netOf) {
+  const key = new Request(`${origin}/_flows_v1/${table}`);
+  const hit = await caches.default.match(key);
+  if (hit) return hit.json();
+  const get = async (day) => {
+    const ymd = day.replace(/-/g, '');
+    const res = await fetch(`https://www.twse.com.tw/rwd/zh/fund/${table}?date=${ymd}&response=json`,
+      { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`${table} HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.stat !== 'OK' || data.date !== ymd) return null;
+    const net = Object.fromEntries(FLOW_CODES.map((c) => [c, 0]));  // 沒出現在表上＝當天沒買賣
+    for (const r of data.data ?? []) {
+      const code = String(r[1]).trim();
+      if (code in net) net[code] = Math.round(Number(String(netOf(r)).replace(/,/g, '')) / 1000);
+    }
+    return { date: day, net };
+  };
+  let value = await loadLast(origin, `flows_${table}`);
+  try {
+    const [today, prev] = await recentTradingDays(origin, ctx, 2);
+    const twToday = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+    if (value?.date !== twToday) {
+      const got = (today === twToday ? await get(today) : null) ?? (value?.date >= (today === twToday ? prev : today) ? null : await get(today === twToday ? prev : today));
+      if (got) { value = got; saveLast(origin, ctx, `flows_${table}`, got); }
+    }
+  } catch (err) {
+    // 證交所暫時抓不到：沿用上次的，10 分鐘後再試
+  }
+  const ttl = value ? dailyTtl(value.date.replace(/-/g, ''), publishHour, 600) : 600;
+  ctx.waitUntil(caches.default.put(key, new Response(JSON.stringify(value), {
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
+  })));
+  return value;
 }
 
 // Last successful copy of each quote (Cache API, kept a day), so an upstream outage shows the last

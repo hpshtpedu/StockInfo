@@ -101,7 +101,7 @@
   /* 我的持股：全寬卡片，左欄 2330、00685L，右欄 0056、00878；每檔一個淡底小方塊當視覺錨點。
      第一行：股號（橘）＋漲跌（▲▼，靠右且切齊）；第二行：價格＋（漲跌幅），跟其他卡片的寫法一致 */
   /* 選擇器多一層，才蓋得過 PC 版 media query 裡的 .card:not(.cal) 高度上限 */
-  .card.wide.holdings { max-height: 220px; }
+  .card.wide.holdings { max-height: 240px; }
   .holds { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 6px; }
   .hold { display: flex; flex-direction: column; gap: 1px; background: #20242c; border: 1px solid var(--line); border-radius: 8px;
     padding: 3px 7px 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -110,6 +110,9 @@
   /* 漲跌靠方塊右邊，但固定寬度、內容靠左，四檔的 ▲▼ 落在同一個水平位置 */
   .hold .c { margin-left: auto; min-width: 3.6em; text-align: left; font-size: clamp(13px, 4.2vw, 17px); font-weight: 600; }
   .hold .q b { font-size: clamp(18px, 6vw, 24px); line-height: 1.15; }
+  /* 外資／投信買賣超（張），盤後才出現 */
+  .hold .fl { display: flex; gap: 10px; font-size: clamp(12px, 3.6vw, 14px); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .hold .fl .fk { color: var(--muted); font-weight: 400; margin-right: 3px; }
   .hold .q .p { font-size: clamp(12.5px, 3.9vw, 15.5px); font-weight: 600; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
@@ -729,13 +732,30 @@
   // 我的持股：全寬卡片分兩欄（2330、00685L | 0056、00878）
   const HOLD_GROUPS = [['2330', '00685L'], ['0056', '00878']];
 
-  function holdingsHtml(list, twii) {
+  // 個股外資／投信買賣超（張）：盤後公布後才顯示，到隔天開盤（09:00）就隱藏，直到當天的公布為止
+  function flowVisible(t) {
+    if (!t?.date || !t.net) return false;
+    const tw = new Date(Date.now() + 8 * 3600000);
+    const today = tw.toISOString().slice(0, 10);
+    const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+    return t.date === today || isMarketHoliday('tw') || mins < 9 * 60;
+  }
+
+  function holdingsHtml(list, twii, flows) {
     if (!list?.length) return '';
     // 台積電收盤集合競價（13:25-13:30）比盤中最後一筆漲 2 檔以上＝尾盤拉雞，跌 2 檔以上＝尾盤殺雞
     const auction = list.find((h) => h.code === '2330')?.auction;
     const badge = auction?.ticks >= 2 ? '<span class="badge buy">尾盤拉雞</span>'
       : auction?.ticks <= -2 ? '<span class="badge sell">尾盤殺雞</span>' : '';
     const groups = HOLD_GROUPS.map((codes) => list.filter((h) => codes.includes(h.code))).filter((g) => g.length);
+    const fo = flowVisible(flows?.foreign) ? flows.foreign : null;
+    const tr = flowVisible(flows?.trust) ? flows.trust : null;
+    const flowSeg = (label, t, code) => {
+      const v = t?.net?.[code];
+      if (v == null) return '';
+      return `<span><span class="fk">${label}</span><span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${v > 0 ? '+' : ''}${fmt(v, 0)}</span></span>`;
+    };
+    const flowLine = (code) => (fo || tr ? `<div class="fl">${flowSeg('外', fo, code)}${flowSeg('投', tr, code)}</div>` : '');
     const row = (h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
       const sign = h.change > 0 ? '+' : '';
@@ -743,16 +763,18 @@
       const arrow = h.change > 0 ? '▲ ' : h.change < 0 ? '▼ ' : h.change === 0 ? '▬ ' : '';
       const digits = h.price >= 1000 ? 0 : 2;
       return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${fmt(h.change == null ? null : Math.abs(h.change), digits)}</span></div>`
-        + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div></div>`;
+        + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div>${flowLine(h.code)}</div>`;
     };
     // 依欄排：左欄第一組、右欄第二組（格線逐列填，所以交錯排列）
     const rows = Math.max(...groups.map((g) => g.length));
+    const fd = (fo ?? tr)?.date;
+    const flowNote = fd ? ` · 法人買賣超 ${Number(fd.slice(5, 7))}/${Number(fd.slice(8))}（張）` : '';
     const body = Array.from({ length: rows }, (_, i) => groups.map((g) => (g[i] ? row(g[i]) : '<div></div>')).join('')).join('');
     return `
       <div class="card wide holdings">
         <div class="head"><div class="name">我的持股</div>${badge}</div>
         <div class="holds">${body}</div>
-        <div class="meta">${timeState(list[0].time, list[0].fault ? 'fault' : twii?.state)}</div>
+        <div class="meta">${timeState(list[0].time, list[0].fault ? 'fault' : twii?.state)}${flowNote}</div>
       </div>`;
   }
 
@@ -884,7 +906,7 @@
     // 插在某張卡片後面的卡片：台指期後接我的持股（全寬，排在加權、台指期那一排下面）；
     // 漲跌家數後接大盤均線；外資淨OI 後接台指VIX、八大行庫
     const after = {
-      txf: holdingsHtml(data.holdings, byId.twii),
+      txf: holdingsHtml(data.holdings, byId.twii, data.flows),
       breadth: maHtml(byId.twii),
       foreignOi: vixHtml(data.vix, byId.twii) + govBanksHtml(),
     };
