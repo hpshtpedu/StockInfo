@@ -585,14 +585,29 @@ async function keepSessionQuote(origin, ctx, q) {
     })));
     return q;
   }
-  const last = await caches.default.match(key);
-  if (last) return { ...(await last.json()), state: 'closed' };
+  const lastHit = await caches.default.match(key);
+  const last = lastHit ? await lastHit.json() : null;
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);
+  const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+  // TXF between the 13:45 day close and the 15:00 night open: Yahoo's meta price is already the day's
+  // close, but its time points at the night session. The remembered copy lives in this Cloudflare
+  // location's cache only and may be hours old if nobody opened the page here (10/12: one location
+  // still had 12:16), so take the price from Yahoo and only the previous close from memory.
+  if (q.id === 'txf' && q.price != null && mins >= 13 * 60 + 45 && mins < 15 * 60) {
+    const [lastTradingDay] = await recentTradingDays(origin, ctx, 1);
+    const today = tw.toISOString().slice(0, 10);
+    if (lastTradingDay === today) {
+      const close = Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate(), 13 - 8, 45);
+      const prev = last?.prev;
+      return { ...q, prev: prev ?? null, change: prev != null ? q.price - prev : null,
+        changePct: prev ? ((q.price - prev) / prev) * 100 : null, time: close, state: 'closed' };
+    }
+  }
+  if (last) return { ...last, state: 'closed' };
   // Nothing remembered. Between the 13:45 day close and the 15:00 night open Yahoo compares the
   // close with that day's settlement (a few points, not the day's change), so hide it then.
   // After the 05:00 night close the change vs the day settlement is the night session's change.
   // On holidays there is no day session, so Yahoo's change is still the last night session's.
-  const tw = new Date(Date.now() + 8 * 3600 * 1000);
-  const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
   if (mins < 13 * 60 + 45 || mins >= 15 * 60) return q;
   const [lastTradingDay] = await recentTradingDays(origin, ctx, 1);
   if (lastTradingDay !== tw.toISOString().slice(0, 10)) return q;
