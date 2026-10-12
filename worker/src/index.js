@@ -178,7 +178,7 @@ const FLOW_CODES = ['2330', '0056', '00878', '00685L'];
 const flowErrors = {};
 const savedTurnover = {};
 
-// 診斷用：這個 Cloudflare 機房看到的快取內容，以及現在直接打證交所、金十的結果（只回狀態碼和開頭幾個字）
+// 診斷用（/debug）：這個 Cloudflare 機房看到的快取內容，以及現在直接打證交所、金十的結果（只回狀態碼和開頭幾個字）
 async function debugInfo(request, origin) {
   const probe = async (u) => {
     try {
