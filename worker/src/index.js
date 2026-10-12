@@ -51,6 +51,7 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 
 // Per-isolate fallback when an upstream call fails.
 const lastGood = {};
+let lastSnapshotSaved = 0;
 
 // TWSE holidays ("YYYY-MM-DD"), refreshed at the start of each build. The cache TTL helpers treat
 // them like weekends, so nothing TW-only is refetched on a day with no new data.
@@ -105,17 +106,20 @@ async function buildQuotes(origin, ctx) {
     retailRatio: pick(chips, 'retailRatio'),
   };
 
+  // 最後成功的報價：整份存成一筆快取（免費方案每次請求最多 50 個子請求，Cache API 讀寫也算在內，
+  // 不能每張卡片各寫一次——10/12 就是超過上限，排在最後的金十和外資投信抓取直接失敗）
+  let snapshot;
+  const lastSnapshot = () => (snapshot ??= loadLast(origin, 'quotes').then((v) => v ?? {}));
   const quotes = await Promise.all(
     ORDER.map(async (id) => {
       try {
         let q = { id, ...(await jobs[id]) };
         if (YAHOO_TW[id]) q = await keepSessionQuote(origin, ctx, q);
         lastGood[id] = q;
-        saveLast(origin, ctx, id, q);
         return q;
       } catch (err) {
         // 上游故障（例如 Yahoo HTTP 500）：沿用最後一次成功的報價，標 fault，網頁顯示「故障」而不是錯誤卡片
-        const last = lastGood[id] ?? await loadLast(origin, id);
+        const last = lastGood[id] ?? (await lastSnapshot())[id];
         if (last) return { ...last, stale: true, fault: true };
         return { id, name: NAMES[id], error: String(err.message || err) };
       }
@@ -143,7 +147,7 @@ async function buildQuotes(origin, ctx) {
     let turnover = null;
     if (twiiDay === institutional.date && twii.state !== 'open' && twii.turnover) {
       turnover = twii.turnover;
-      saveLast(origin, ctx, `turnover_${twiiDay}`, turnover);
+      if (savedTurnover[twiiDay] !== turnover) { savedTurnover[twiiDay] = turnover; saveLast(origin, ctx, `turnover_${twiiDay}`, turnover); }
     } else {
       turnover = await loadLast(origin, `turnover_${institutional.date}`);
     }
@@ -157,8 +161,13 @@ async function buildQuotes(origin, ctx) {
     const q = await pick(tw, id).catch(() => null);
     return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, auction: q.auction };
   }))).filter(Boolean);
-  if (holdings.length) saveLast(origin, ctx, 'holdings', holdings);
-  else holdings = ((await loadLast(origin, 'holdings')) ?? []).map((h) => ({ ...h, fault: true }));
+  if (holdings.length) lastGood.holdings = holdings;
+  else holdings = (lastGood.holdings ?? (await lastSnapshot()).holdings ?? []).map((h) => ({ ...h, fault: true }));
+  // 一次寫入所有成功的報價（最多每 10 分鐘一次，同一個 isolate 內）
+  if (Date.now() - lastSnapshotSaved > 600000) {
+    lastSnapshotSaved = Date.now();
+    saveLast(origin, ctx, 'quotes', Object.fromEntries(Object.entries(lastGood).filter(([, v]) => !v?.fault && !v?.stale)));
+  }
   return { updated: Date.now(), quotes, holidays, institutional, margin, announcements, vix, holdings, jin10, flows };
 }
 
@@ -167,6 +176,7 @@ async function buildQuotes(origin, ctx) {
 // 抓不到（還沒公布、錯誤）時回傳上一個交易日的，網頁再決定要不要顯示（開盤後到公布前隱藏）
 const FLOW_CODES = ['2330', '0056', '00878', '00685L'];
 const flowErrors = {};
+const savedTurnover = {};
 
 // 診斷用：這個 Cloudflare 機房看到的快取內容，以及現在直接打證交所、金十的結果（只回狀態碼和開頭幾個字）
 async function debugInfo(request, origin) {
@@ -293,11 +303,11 @@ async function cached(origin, ctx, path, ttlFor, compute) {
   return value;
 }
 
-// 金十「特朗普動態」最新 3 則標題（簡轉繁）。一小時最多抓一次；抓失敗也快取一小時，不會每 2 分鐘重試。
+// 金十「特朗普動態」最新 3 則標題（簡轉繁）。成功一小時抓一次；失敗快取 10 分鐘，不會每 2 分鐘重試。
 // 金十掛掉不能拖累其他報價：5 秒逾時，任何錯誤都回傳空清單（網頁就隱藏這張卡）
 let toTw = null;
 async function fetchJin10(origin, ctx) {
-  return cached(origin, ctx, '/_jin10_v1', () => 3600, async () => {
+  return cached(origin, ctx, '/_jin10_v1', (v) => (v?.items?.length ? 3600 : 600), async () => {
     try {
       const res = await fetch(JIN10_URL, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(5000) });
       if (!res.ok) return { error: `HTTP ${res.status}`, items: [] };
@@ -518,7 +528,14 @@ function dailyTtl(dataDate, publishHour, retrySeconds = 300) {
 }
 
 // TWSE market holidays as [{ date: "YYYY-MM-DD", name }], used by the calendar.
+let holidaysMemo = null;
 async function fetchHolidays(origin, ctx) {
+  if (holidaysMemo && Date.now() - holidaysMemo.at < 600000) return holidaysMemo.value;
+  const value = await fetchHolidaysCached(origin, ctx);
+  holidaysMemo = { at: Date.now(), value };
+  return value;
+}
+async function fetchHolidaysCached(origin, ctx) {
   const cache = caches.default;
   const key = new Request(origin + '/_holidays_v2');
   const cached = await cache.match(key);
