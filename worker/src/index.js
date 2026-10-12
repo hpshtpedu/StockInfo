@@ -65,6 +65,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders(env) });
+    if (url.pathname === '/debug') return debugInfo(request, url.origin);
     if (url.pathname !== '/quotes') return new Response('Not found', { status: 404 });
 
     const cache = caches.default;
@@ -165,6 +166,31 @@ async function buildQuotes(origin, ctx) {
 // 每張表一天只成功抓一次：拿到當天的就快取到隔天公布時間；還沒公布就每 10 分鐘試一次；
 // 抓不到（還沒公布、錯誤）時回傳上一個交易日的，網頁再決定要不要顯示（開盤後到公布前隱藏）
 const FLOW_CODES = ['2330', '0056', '00878', '00685L'];
+const flowErrors = {};
+
+// 診斷用：這個 Cloudflare 機房看到的快取內容，以及現在直接打證交所、金十的結果（只回狀態碼和開頭幾個字）
+async function debugInfo(request, origin) {
+  const probe = async (u) => {
+    try {
+      const r = await fetch(u, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
+      const t = await r.text();
+      return { status: r.status, type: r.headers.get('content-type'), bytes: t.length, head: t.slice(0, 80) };
+    } catch (err) {
+      return { error: String(err?.message || err) };
+    }
+  };
+  const ymd = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, '');
+  const read = async (path) => { const h = await caches.default.match(new Request(origin + path)); return h ? h.json() : null; };
+  const out = {
+    colo: request.cf?.colo,
+    cachedFlows: { TWT38U: await read('/_flows_v1/TWT38U'), TWT44U: await read('/_flows_v1/TWT44U') },
+    lastFlows: { TWT38U: await read('/_last_v1/flows_TWT38U'), TWT44U: await read('/_last_v1/flows_TWT44U') },
+    flowErrors,
+    twse: await probe(`https://www.twse.com.tw/rwd/zh/fund/TWT44U?date=${ymd}&response=json`),
+    jin10: await probe(JIN10_URL),
+  };
+  return new Response(JSON.stringify(out, null, 1), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
+}
 async function fetchStockFlows(origin, ctx) {
   const [foreign, trust] = await Promise.all([
     flowTable(origin, ctx, 'TWT38U', 17, (r) => r[11]),
@@ -200,6 +226,7 @@ async function flowTable(origin, ctx, table, publishHour, netOf) {
     }
   } catch (err) {
     // 證交所暫時抓不到：沿用上次的，10 分鐘後再試
+    flowErrors[table] = `${new Date().toISOString()} ${err?.message || err}`;
   }
   const ttl = value ? dailyTtl(value.date.replace(/-/g, ''), publishHour, 600) : 600;
   ctx.waitUntil(caches.default.put(key, new Response(JSON.stringify(value), {
