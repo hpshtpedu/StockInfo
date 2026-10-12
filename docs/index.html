@@ -879,19 +879,23 @@
     const before = {
       twii: section('台股盤中'),
       sox: section('國際市場'),
-      foreignOi: section('台股盤後') + institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii),
+      retailRatio: section('台股盤後') + institutionalHtml(data.institutional, instHistory),
     };
     // 插在某張卡片後面的卡片：台指期後接我的持股（全寬，排在加權、台指期那一排下面）；
-    // 漲跌家數後接大盤均線；散戶多空比後接八大行庫
+    // 漲跌家數後接大盤均線；外資淨OI 後接台指VIX、八大行庫
     const after = {
       txf: holdingsHtml(data.holdings, byId.twii),
       breadth: maHtml(byId.twii),
-      retailRatio: govBanksHtml(),
+      foreignOi: vixHtml(data.vix, byId.twii) + govBanksHtml(),
     };
     // USD/TWD 是國際外匯報價，排到國際市場最後（美債後面）
     const quotes = data.quotes.filter((q) => q.id !== 'usdtwd');
     const fx = data.quotes.find((q) => q.id === 'usdtwd');
     if (fx) quotes.splice(quotes.findIndex((q) => q.id === 'us10y') + 1, 0, fx);
+    // 台股盤後依更新先後排：散戶多空比、外資淨OI（期交所 15:00）在前，台指VIX、八大行庫在後
+    const rr = quotes.findIndex((q) => q.id === 'retailRatio');
+    const oi = quotes.findIndex((q) => q.id === 'foreignOi');
+    if (rr > oi && oi >= 0) quotes.splice(oi, 0, ...quotes.splice(rr, 1));
     const cardFor = (q) => {
       if (q.error) {
         // 抓不到又沒有舊資料可用：只寫「故障」，錯誤細節放在 title（長按 / 滑過可看）
