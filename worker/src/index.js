@@ -134,6 +134,20 @@ async function buildQuotes(origin, ctx) {
     fetchInstitutional(origin, ctx).catch(() => null),
     fetchMargin(origin, ctx).catch(() => null),
   ]);
+  // 法人成交比重的分母用加權指數當天的成交金額（Yahoo 分鐘量加總，跟加權卡片的 badge 同一個數字，
+  // 也跟 PTT 等常見算法一致）。收盤後記下當天的值，隔天開盤後還能算前一天的比重；沒有就用 FMTQIK 的總成交金額
+  if (institutional?.both) {
+    const twii = quotes.find((q) => q.id === 'twii');
+    const twiiDay = twii?.time ? new Date(twii.time + 8 * 3600 * 1000).toISOString().slice(0, 10) : null;
+    let turnover = null;
+    if (twiiDay === institutional.date && twii.state !== 'open' && twii.turnover) {
+      turnover = twii.turnover;
+      saveLast(origin, ctx, `turnover_${twiiDay}`, turnover);
+    } else {
+      turnover = await loadLast(origin, `turnover_${institutional.date}`);
+    }
+    if (turnover) institutional.share = (institutional.both / (turnover * 1e6 * 2)) * 100;
+  }
   const announcements = await fetchAnnouncements(origin, ctx, holidays).catch(() => null);
   const vix = await fetchVix(origin, ctx).catch(() => null);
   const jin10 = await fetchJin10(origin, ctx).catch(() => null);
@@ -440,6 +454,7 @@ async function fetchInstitutional(origin, ctx) {
     const roc = `${Number(data.date.slice(0, 4)) - 1911}/${data.date.slice(4, 6)}/${data.date.slice(6, 8)}`;
     const day = fm?.data?.find((r) => r[0] === roc);
     const turnover = day ? Number(day[2].replace(/,/g, '')) : 0;
+    out.both = both;  // 元；網頁上的比重改用加權指數的成交金額（跟加權卡片的「成交XXXX億」同一個數字），見下方
     if (turnover) out.share = (both / (turnover * 2)) * 100;
   } catch {
     // 拿不到成交金額就不顯示比重，其他照常
