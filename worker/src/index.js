@@ -674,8 +674,15 @@ async function fetchChips(origin, ctx) {
   // Already holding the newest published day (e.g. on a market holiday): don't refetch.
   if (last && lastDate >= expected) {
     delete last.foreignOi.stale; delete last.retailRatio.stale;
+    // Don't let this "already newest" answer outlive 15:00 on a trading day, when the newer day is due
+    // (10/12: a copy cached at 14:5x kept serving 10/8 after another location already had 10/12).
+    let ttl = CHIPS_RETRY_SECONDS * 3;
+    const todayTw = tw.toISOString().slice(0, 10);
+    if (days[0] === todayTw && tw.getUTCHours() < 15) {
+      ttl = Math.max(60, Math.min(ttl, Math.floor((Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate(), 15) - tw.getTime()) / 1000)));
+    }
     ctx.waitUntil(cache.put(key, new Response(JSON.stringify(last), {
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CHIPS_RETRY_SECONDS * 3}` },
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
     })));
     return last;
   }

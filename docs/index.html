@@ -837,7 +837,26 @@
     return q.state === 'holiday' ? 'opening' : 'closed';
   }
 
+  // 盤後資料只進不退：Worker 在不同 Cloudflare 機房的快取可能一新一舊，2 分鐘後拿到比畫面上還舊的
+  // 盤後數字（10/12 15:06 已是 10/12，15:08 又變回 10/8）時，保留畫面上較新的那份
+  const newest = {};
+  function pick(key, cur, dateOf) {
+    const d = cur ? dateOf(cur) : null;
+    const old = newest[key];
+    if (old && (!d || d < old.d)) return old.v;
+    if (d) newest[key] = { d, v: cur };
+    return cur;
+  }
+  function keepNewest(data) {
+    data.quotes = data.quotes.map((q) => (q.kind === 'daily' ? pick(`q:${q.id}`, q, (x) => (x.error ? null : x.time)) : q));
+    data.institutional = pick('inst', data.institutional, (x) => x.date);
+    data.vix = pick('vix', data.vix, (x) => x.closes?.at(-1)?.date);
+    return data;
+  }
+
   function render(data, margin, profile) {
+    data = keepNewest(data);
+    margin = pick('margin', margin, (x) => x.date);
     announcements = data.announcements ?? null;
     if (data.holidays?.length) {
       holidays = new Map(data.holidays.map((h) => (typeof h === 'string' ? [h, ''] : [h.date, h.name])));
