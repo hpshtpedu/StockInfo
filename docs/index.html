@@ -401,14 +401,14 @@
     const rescue = sharePct >= 1.9 && taiexPct != null && taiexPct < 0;
     const dir = last.net > 0 ? 'up' : 'down';
     const [, mm, dd] = last.date.split('-').map(Number);
-    const streak = sign ? `<span class="${sign > 0 ? 'up' : 'down'}">連${n}${sign > 0 ? '買' : '賣'}</span>` : '&nbsp;';
-    const badge = rescue ? '<span class="badge buy">護盤</span>' : '';
+    // 右上：連買/賣（狀態）；右下：護盤（有觸發才出現，灰色說明）；大數字放大跟左邊卡片對齊
+    const streak = sign ? `<span class="badge ${sign > 0 ? 'up' : 'down'}">連${n}${sign > 0 ? '買' : '賣'}</span>` : '';
+    const note = rescue ? '<span class="badge note">護盤</span>' : '';
     return `
-      <div class="card">
-        <div class="head"><div class="name">八大行庫買賣超</div>${badge}</div>
+      <div class="card roomy">
+        <div class="head"><div class="name">八大行庫</div>${streak}</div>
         <div class="price ${dir}">${last.net > 0 ? '+' : ''}${fmt(last.net, 1)}<small> 億</small></div>
-        <div class="chg big">${streak}</div>
-        <div class="meta">${mm}/${dd} 盤後</div>
+        <div class="foot"><div class="meta">${mm}/${dd} 盤後</div>${note}</div>
       </div>`;
   }
 
@@ -631,11 +631,10 @@
     const c = m.balanceChange;
     const dir = c > 0 ? 'up' : c < 0 ? 'down' : '';
     return `
-      <div class="card">
+      <div class="card roomy">
         <div class="head"><div class="name">上市融資增減</div>${marginStreakBadge(m)}</div>
         <div class="price ${dir}">${c > 0 ? '+' : ''}${fmt(c, 1)}<small> 億</small></div>
-        <div class="chg">${segments(`餘額${fmt(m.balance, 0)}億`)}</div>
-        <div class="meta">${mm}/${dd} 盤後</div>
+        <div class="foot"><div class="meta">${mm}/${dd} 盤後</div><span class="badge note">餘額${fmt(m.balance, 0)}億</span></div>
       </div>`;
   }
 
