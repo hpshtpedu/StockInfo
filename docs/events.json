@@ -1,11 +1,5 @@
 [
  {
-  "src": "tw_holidays",
-  "date": "2026-10-10",
-  "time": "",
-  "label": "國慶日"
- },
- {
   "src": "market_holidays",
   "date": "2026-10-12",
   "time": "",
@@ -316,5 +310,29 @@
   "date": "2027-02-07",
   "time": "",
   "label": "春節"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2027-02-08",
+  "time": "",
+  "label": "韓股休市(春節)"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-08",
+  "time": "",
+  "label": "春節"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2027-02-09",
+  "time": "",
+  "label": "韓股休市(春節補假)"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-09",
+  "time": "",
+  "label": "春節補假"
  }
 ]
