@@ -180,7 +180,7 @@ const flowErrors = {};
 const savedTurnover = {};
 
 // 八大行庫買賣超（HiStock broker8，robots.txt 允許）：每晚排程存長期歷史，但 GitHub 排程常延遲到半夜，
-// 所以 Worker 在 16:00 後另外抓當天的。拿到當天的就快取到隔天 16:00；還沒更新每 30 分鐘試一次。
+// 所以 Worker 另外抓當天的。HiStock 約 21:00 才更新，21:00 前不抓；拿到當天的就快取到隔天 21:00，還沒更新每 15 分鐘試一次。
 // 只回最近 10 天，網頁跟 gov_banks.json 合併
 async function fetchGovBanks(origin, ctx) {
   const key = new Request(`${origin}/_govbanks_v1`);
@@ -188,7 +188,7 @@ async function fetchGovBanks(origin, ctx) {
   if (hit) return hit.json();
   let value = await loadLast(origin, 'govbanks');
   const twToday = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
-  const due = !twMarketClosedToday() && new Date(Date.now() + 8 * 3600 * 1000).getUTCHours() >= 16;
+  const due = !twMarketClosedToday() && new Date(Date.now() + 8 * 3600 * 1000).getUTCHours() >= 21;
   if (due && value?.days?.at(-1)?.date !== twToday) {
     try {
       const res = await fetch('https://histock.tw/stock/broker8.aspx', { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
@@ -205,7 +205,7 @@ async function fetchGovBanks(origin, ctx) {
     }
   }
   const lastDate = value?.days?.at(-1)?.date?.replace(/-/g, '');
-  const ttl = lastDate ? dailyTtl(lastDate, 16, 1800) : 1800;
+  const ttl = lastDate ? dailyTtl(lastDate, 21, 900) : 900;
   ctx.waitUntil(caches.default.put(key, new Response(JSON.stringify(value), {
     headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
   })));
