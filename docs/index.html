@@ -912,6 +912,16 @@
       const cut = (el) => el.scrollWidth > el.clientWidth;
       if (head && (cut(head) || [...head.children].some(cut))) x.hidden = true;
     }
+    // 漲跌那一行（例如加權跌破千點「-1,061.66 (-2.15%)」）放不下時，字自動縮小到剛好放得下（最小 11px）；
+    // 每次重畫都先恢復原本大小再量，所以漲跌變小時會自動變回來
+    for (const el of $list.querySelectorAll('.card .chg')) {
+      el.style.fontSize = '';
+      let size = parseFloat(getComputedStyle(el).fontSize);
+      while (el.scrollWidth > el.clientWidth && size > 11) {
+        size -= 0.5;
+        el.style.fontSize = `${size}px`;
+      }
+    }
   }
   window.addEventListener('resize', () => fitNames());
 
