@@ -184,7 +184,6 @@
     .card { padding-left: 5px; padding-right: 5px; }
     .hold { padding-left: 5px; padding-right: 5px; }
     .badge { padding: 0 3px; }
-    .nm-x { display: none; }  /* 窄螢幕：「八大行庫買賣超」縮成「八大行庫」，右上的連N買才放得下 */
   }
 </style>
 </head>
@@ -892,6 +891,19 @@
     return data;
   }
 
+  // 卡片名稱的可省略部分（例如「八大行庫買賣超」的「買賣超」）：實際量測放不下右上 badge 才隱藏，
+  // 不用固定的螢幕寬度判斷（同一支手機的縮放比例不同，空間也不同）
+  function fitNames() {
+    for (const x of $list.querySelectorAll('.nm-x')) {
+      x.hidden = false;
+      const head = x.closest('.head');
+      // badge 空間不夠時是自己縮成「連…」，不會撐破 head，所以要檢查 head 裡每個元素有沒有被截斷
+      const cut = (el) => el.scrollWidth > el.clientWidth;
+      if (head && (cut(head) || [...head.children].some(cut))) x.hidden = true;
+    }
+  }
+  window.addEventListener('resize', () => fitNames());
+
   function render(data, margin, profile) {
     data = keepNewest(data);
     margin = pick('margin', margin, (x) => x.date);
@@ -981,6 +993,7 @@
     $list.innerHTML = calendarHtml() + jin10Html(data.jin10)
       + quotes.map((q) => (before[q.id] ?? '') + cardFor(q) + (after[q.id] ?? '')).join('')
       + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
+    fitNames();
   }
 
   async function load() {
