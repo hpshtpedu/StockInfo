@@ -115,6 +115,7 @@
   .hold .fl { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6px; margin-top: 6px; padding-top: 5px; border-top: 1px solid var(--line); font-size: clamp(12px, 3.6vw, 14px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .hold .fl .fk { color: var(--text); font-weight: 400; margin-right: 4px; }
   .hold .fl .fp { color: var(--muted); font-weight: 400; }
+  .hold .fl.fl-hide { visibility: hidden; }
   .hold .q .p { font-size: clamp(12.5px, 3.9vw, 15.5px); font-weight: 600; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
@@ -768,7 +769,11 @@
         : `<span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${v > 0 ? '+' : ''}${fmt(v, 0)}</span>`;
       return `<span><span class="fk">${label}</span>${val}</span>`;
     };
-    const flowLine = (code) => `<div class="fl">${flowSeg('外', fo, code)}${flowSeg('投', tr, code)}</div>`;
+    // 盤中（交易日 09:00-15:00）整行隱藏但保留高度：卡片大小不變，也不會看到一排「未公布」的雜訊
+    const twNow = new Date(Date.now() + 8 * 3600000);
+    const nowMins = twNow.getUTCHours() * 60 + twNow.getUTCMinutes();
+    const intraday = !isMarketHoliday('tw') && nowMins >= 9 * 60 && nowMins < 15 * 60;
+    const flowLine = (code) => `<div class="fl${intraday ? ' fl-hide' : ''}">${flowSeg('外', fo, code)}${flowSeg('投', tr, code)}</div>`;
     const row = (h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
       const sign = h.change > 0 ? '+' : '';
