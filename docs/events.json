@@ -1,11 +1,5 @@
 [
  {
-  "src": "market_holidays",
-  "date": "2026-10-12",
-  "time": "",
-  "label": "日股休市(體育日)"
- },
- {
   "src": "fred",
   "date": "2026-10-14",
   "time": "20:30",
@@ -332,6 +326,12 @@
  {
   "src": "tw_holidays",
   "date": "2027-02-09",
+  "time": "",
+  "label": "春節補假"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-10",
   "time": "",
   "label": "春節補假"
  }
