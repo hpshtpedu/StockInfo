@@ -115,7 +115,9 @@
   .hold .fl { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6px; margin-top: 6px; padding-top: 5px; border-top: 1px solid var(--line); font-size: clamp(12px, 3.6vw, 14px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .hold .fl .fk { color: var(--text); font-weight: 400; margin-right: 4px; }
   .hold .fl .fp { color: var(--muted); font-weight: 400; }
-  .hold .fl.fl-hide { visibility: hidden; }
+  /* 盤中的 15 分 K：占外/投那一行的位置，高度相同 */
+  .hold .fl.hk { display: block; }
+  .hold .fl.hk .kchart { height: 19px; }
   .hold .q .p { font-size: clamp(12.5px, 3.9vw, 15.5px); font-weight: 600; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
@@ -771,8 +773,17 @@
     // 盤中（交易日 09:00-15:00）整行隱藏但保留高度：卡片大小不變，也不會看到一排「未公布」的雜訊
     const twNow = new Date(Date.now() + 8 * 3600000);
     const nowMins = twNow.getUTCHours() * 60 + twNow.getUTCMinutes();
-    const intraday = !isMarketHoliday('tw') && nowMins >= 9 * 60 && nowMins < 15 * 60;
-    const flowLine = (code) => `<div class="fl${intraday ? ' fl-hide' : ''}">${flowSeg('外', fo, code)}${flowSeg('投', tr, code)}</div>`;
+    // 盤中到外資／投信公布前，這一行改畫 15 分 K（高度跟外/投那一行一樣，卡片大小不變）；公布後換回外/投
+    const todayTw = twNow.toISOString().slice(0, 10);
+    const published = [fo, tr].some((t) => t?.date === todayTw);
+    const kMode = !isMarketHoliday('tw') && nowMins >= 9 * 60 && !published;
+    const flowLine = (h) => {
+      if (kMode) {
+        const chart = h.candles ? miniCandles(h.candles, h.prev ?? (h.change != null ? h.price - h.change : null)) : '';
+        return `<div class="fl hk">${chart}</div>`;
+      }
+      return `<div class="fl">${flowSeg('外', fo, h.code)}${flowSeg('投', tr, h.code)}</div>`;
+    };
     const row = (h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
       const sign = h.change > 0 ? '+' : '';
@@ -780,7 +791,7 @@
       const arrow = h.change > 0 ? '▲ ' : h.change < 0 ? '▼ ' : h.change === 0 ? '▬ ' : '';
       const digits = h.price >= 1000 ? 0 : 2;
       return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${fmt(h.change == null ? null : Math.abs(h.change), digits)}</span></div>`
-        + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div>${flowLine(h.code)}</div>`;
+        + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div>${flowLine(h)}</div>`;
     };
     // 依欄排：左欄第一組、右欄第二組（格線逐列填，所以交錯排列）
     const rows = Math.max(...groups.map((g) => g.length));
@@ -789,7 +800,7 @@
       <div class="card wide holdings">
         <div class="head"><div class="name">我的持股</div>${badge}</div>
         <div class="holds">${body}</div>
-        <div class="meta">${timeState(list[0].time, list[0].fault ? 'fault' : twii?.state)}</div>
+        <div class="foot"><div class="meta">${timeState(list[0].time, list[0].fault ? 'fault' : twii?.state)}</div>${kMode ? '<span class="klabel">15分K</span>' : ''}</div>
       </div>`;
   }
 

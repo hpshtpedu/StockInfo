@@ -160,7 +160,7 @@ async function buildQuotes(origin, ctx) {
   const govBanks = await fetchGovBanks(origin, ctx).catch(() => null);
   let holdings = (await Promise.all(['tw2330', 'tw0056', 'tw00878', 'tw00685L'].map(async (id) => {
     const q = await pick(tw, id).catch(() => null);
-    return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, auction: q.auction };
+    return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, auction: q.auction, prev: q.prev, candles: q.candles };
   }))).filter(Boolean);
   if (holdings.length) lastGood.holdings = holdings;
   else holdings = (lastGood.holdings ?? (await lastSnapshot()).holdings ?? []).map((h) => ({ ...h, fault: true }));
@@ -722,8 +722,9 @@ async function fetchYahooTw() {
     // TAIEX per-minute volume is turnover in NT$ millions; the sum is today's cumulative turnover.
     if (id === 'twii') {
       out[id].turnover = (chart.indicators?.quote?.[0]?.volume ?? []).reduce((sum, v) => sum + (v || 0), 0);
-      out[id].candles = candles15(chart);
     }
+    // 15 分 K：加權卡片和持股方塊（盤中）都用，同一個 Yahoo 請求裡的分鐘線，不多抓
+    if (id === 'twii' || id.startsWith('tw')) out[id].candles = candles15(chart);
   }
   return out;
 }
