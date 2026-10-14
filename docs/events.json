@@ -1,1 +1,284 @@
-[{"src": "fred", "date": "2026-10-14", "time": "20:30", "label": "美國CPI"}, {"src": "tw_stocks", "date": "2026-10-15", "time": "14:00", "label": "台積電法說會"}, {"src": "tw_stocks", "date": "2026-10-22", "time": "", "label": "0056除息1.72元"}, {"src": "tw_holidays", "date": "2026-10-25", "time": "", "label": "光復節"}, {"src": "tw_holidays", "date": "2026-10-26", "time": "", "label": "光復節補假"}, {"src": "fomc", "date": "2026-10-29", "time": "02:00", "label": "FOMC利率決議"}, {"src": "market_holidays", "date": "2026-11-03", "time": "", "label": "日股休市(文化日)"}, {"src": "ism", "date": "2026-11-04", "time": "23:00", "label": "ISM服務業PMI"}, {"src": "fred", "date": "2026-11-06", "time": "21:30", "label": "非農就業"}, {"src": "fred", "date": "2026-11-10", "time": "21:30", "label": "美國CPI"}, {"src": "tw_stocks", "date": "2026-11-11", "time": "", "label": "0056配息1.72元"}, {"src": "fomc", "date": "2026-11-19", "time": "03:00", "label": "FOMC會議紀要"}, {"src": "market_holidays", "date": "2026-11-23", "time": "", "label": "日股休市(勤勞感謝日)"}, {"src": "market_holidays", "date": "2026-11-26", "time": "", "label": "美股休市(感恩節)"}, {"src": "market_holidays", "date": "2026-11-28", "time": "02:00", "label": "美股提前收盤"}, {"src": "ism", "date": "2026-12-03", "time": "23:00", "label": "ISM服務業PMI"}, {"src": "fred", "date": "2026-12-04", "time": "21:30", "label": "非農就業"}, {"src": "tw_stocks", "date": "2026-12-10", "time": "", "label": "台積電除息7元"}, {"src": "fomc", "date": "2026-12-10", "time": "03:00", "label": "FOMC利率決議"}, {"src": "fred", "date": "2026-12-10", "time": "21:30", "label": "美國CPI"}, {"src": "market_holidays", "date": "2026-12-25", "time": "", "label": "美股休市(聖誕節)"}, {"src": "market_holidays", "date": "2026-12-25", "time": "", "label": "韓股休市(聖誕節)"}, {"src": "tw_holidays", "date": "2026-12-25", "time": "", "label": "行憲紀念日"}, {"src": "market_holidays", "date": "2026-12-25", "time": "02:00", "label": "美股提前收盤"}, {"src": "market_holidays", "date": "2026-12-31", "time": "", "label": "日股休市(年底)"}, {"src": "market_holidays", "date": "2026-12-31", "time": "", "label": "韓股休市(年底)"}, {"src": "fomc", "date": "2026-12-31", "time": "03:00", "label": "FOMC會議紀要"}, {"src": "market_holidays", "date": "2027-01-01", "time": "", "label": "美股休市(元旦)"}, {"src": "market_holidays", "date": "2027-01-01", "time": "", "label": "日股休市(元旦)"}, {"src": "market_holidays", "date": "2027-01-01", "time": "", "label": "韓股休市(元旦)"}, {"src": "tw_holidays", "date": "2027-01-01", "time": "", "label": "元旦"}, {"src": "tw_stocks", "date": "2027-01-07", "time": "", "label": "台積電配息7元"}, {"src": "ism", "date": "2027-01-07", "time": "23:00", "label": "ISM服務業PMI"}, {"src": "market_holidays", "date": "2027-01-11", "time": "", "label": "日股休市(成人日)"}, {"src": "market_holidays", "date": "2027-01-18", "time": "", "label": "美股休市(金恩紀念日)"}, {"src": "fomc", "date": "2027-01-28", "time": "03:00", "label": "FOMC利率決議"}, {"src": "ism", "date": "2027-02-03", "time": "23:00", "label": "ISM服務業PMI"}, {"src": "tw_holidays", "date": "2027-02-04", "time": "", "label": "農曆除夕"}, {"src": "tw_holidays", "date": "2027-02-05", "time": "", "label": "農曆除夕"}, {"src": "tw_holidays", "date": "2027-02-06", "time": "", "label": "春節"}, {"src": "tw_holidays", "date": "2027-02-07", "time": "", "label": "春節"}, {"src": "market_holidays", "date": "2027-02-08", "time": "", "label": "韓股休市(春節)"}, {"src": "tw_holidays", "date": "2027-02-08", "time": "", "label": "春節"}, {"src": "market_holidays", "date": "2027-02-09", "time": "", "label": "韓股休市(春節補假)"}, {"src": "tw_holidays", "date": "2027-02-09", "time": "", "label": "春節補假"}, {"src": "tw_holidays", "date": "2027-02-10", "time": "", "label": "春節補假"}, {"src": "market_holidays", "date": "2027-02-11", "time": "", "label": "日股休市(建國紀念日)"}]
+[
+ {
+  "src": "fred",
+  "date": "2026-10-14",
+  "time": "20:30",
+  "label": "美國CPI"
+ },
+ {
+  "src": "tw_stocks",
+  "date": "2026-10-15",
+  "time": "14:00",
+  "label": "台積電法說會"
+ },
+ {
+  "src": "tw_stocks",
+  "date": "2026-10-22",
+  "time": "",
+  "label": "0056除息1.72元"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2026-10-25",
+  "time": "",
+  "label": "光復節"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2026-10-26",
+  "time": "",
+  "label": "光復節補假"
+ },
+ {
+  "src": "fomc",
+  "date": "2026-10-29",
+  "time": "02:00",
+  "label": "FOMC利率決議"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2026-11-03",
+  "time": "",
+  "label": "日股休市(文化日)"
+ },
+ {
+  "src": "ism",
+  "date": "2026-11-04",
+  "time": "23:00",
+  "label": "ISM服務業PMI"
+ },
+ {
+  "src": "fred",
+  "date": "2026-11-06",
+  "time": "21:30",
+  "label": "非農就業"
+ },
+ {
+  "src": "fred",
+  "date": "2026-11-10",
+  "time": "21:30",
+  "label": "美國CPI"
+ },
+ {
+  "src": "tw_stocks",
+  "date": "2026-11-11",
+  "time": "",
+  "label": "0056配息1.72元"
+ },
+ {
+  "src": "fomc",
+  "date": "2026-11-19",
+  "time": "03:00",
+  "label": "FOMC會議紀要"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2026-11-23",
+  "time": "",
+  "label": "日股休市(勤勞感謝日)"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2026-11-26",
+  "time": "",
+  "label": "美股休市(感恩節)"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2026-11-28",
+  "time": "02:00",
+  "label": "美股提前收盤"
+ },
+ {
+  "src": "ism",
+  "date": "2026-12-03",
+  "time": "23:00",
+  "label": "ISM服務業PMI"
+ },
+ {
+  "src": "fred",
+  "date": "2026-12-04",
+  "time": "21:30",
+  "label": "非農就業"
+ },
+ {
+  "src": "tw_stocks",
+  "date": "2026-12-10",
+  "time": "",
+  "label": "台積電除息7元"
+ },
+ {
+  "src": "fomc",
+  "date": "2026-12-10",
+  "time": "03:00",
+  "label": "FOMC利率決議"
+ },
+ {
+  "src": "fred",
+  "date": "2026-12-10",
+  "time": "21:30",
+  "label": "美國CPI"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2026-12-25",
+  "time": "",
+  "label": "美股休市(聖誕節)"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2026-12-25",
+  "time": "",
+  "label": "韓股休市(聖誕節)"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2026-12-25",
+  "time": "",
+  "label": "行憲紀念日"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2026-12-25",
+  "time": "02:00",
+  "label": "美股提前收盤"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2026-12-31",
+  "time": "",
+  "label": "日股休市(年底)"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2026-12-31",
+  "time": "",
+  "label": "韓股休市(年底)"
+ },
+ {
+  "src": "fomc",
+  "date": "2026-12-31",
+  "time": "03:00",
+  "label": "FOMC會議紀要"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2027-01-01",
+  "time": "",
+  "label": "美股休市(元旦)"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2027-01-01",
+  "time": "",
+  "label": "日股休市(元旦)"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2027-01-01",
+  "time": "",
+  "label": "韓股休市(元旦)"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-01-01",
+  "time": "",
+  "label": "元旦"
+ },
+ {
+  "src": "tw_stocks",
+  "date": "2027-01-07",
+  "time": "",
+  "label": "台積電配息7元"
+ },
+ {
+  "src": "ism",
+  "date": "2027-01-07",
+  "time": "23:00",
+  "label": "ISM服務業PMI"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2027-01-11",
+  "time": "",
+  "label": "日股休市(成人日)"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2027-01-18",
+  "time": "",
+  "label": "美股休市(金恩紀念日)"
+ },
+ {
+  "src": "fomc",
+  "date": "2027-01-28",
+  "time": "03:00",
+  "label": "FOMC利率決議"
+ },
+ {
+  "src": "ism",
+  "date": "2027-02-03",
+  "time": "23:00",
+  "label": "ISM服務業PMI"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-04",
+  "time": "",
+  "label": "農曆除夕"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-05",
+  "time": "",
+  "label": "農曆除夕"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-06",
+  "time": "",
+  "label": "春節"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-07",
+  "time": "",
+  "label": "春節"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2027-02-08",
+  "time": "",
+  "label": "韓股休市(春節)"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-08",
+  "time": "",
+  "label": "春節"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2027-02-09",
+  "time": "",
+  "label": "韓股休市(春節補假)"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-09",
+  "time": "",
+  "label": "春節補假"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-10",
+  "time": "",
+  "label": "春節補假"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2027-02-11",
+  "time": "",
+  "label": "日股休市(建國紀念日)"
+ }
+]
