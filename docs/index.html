@@ -81,12 +81,10 @@
   .badge.warn { background: var(--warn); color: var(--bg); }
   .badge.fuel, .badge.sell { background: var(--down); color: var(--bg); }
   .badge.buy { background: var(--up); color: var(--bg); }
-  .heat { color: var(--warn); }
-  .cool { color: #5b8fd6; }
   .ma-row { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; font-size: clamp(13px, 4.2vw, 16px); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .ma-row .k { font-size: inherit; }
-  /* 金十川寶快訊：一次一則，其他頁隱藏；標題最多 3 行 */
-  .pager { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  /* 川寶快訊：一次一則，其他頁隱藏；標題最多 3 行 */
+  .pager { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   .pager .jp, .pager .pg { display: none; }
   .pager[data-p="0"] [data-i="0"], .pager[data-p="1"] [data-i="1"], .pager[data-p="2"] [data-i="2"] { display: block; }
   .pager .pg { margin-left: auto; color: var(--muted); font-size: 13.2px; }
@@ -108,7 +106,10 @@
   .hold .top, .hold .q { display: flex; align-items: baseline; gap: 6px; }
   .hold .k { color: var(--text); font-weight: 700; font-size: clamp(15px, 4.8vw, 19px); line-height: 1.15; }
   /* 漲跌靠方塊右邊，但固定寬度、內容靠左，四檔的 ▲▼ 落在同一個水平位置 */
-  .hold .c { margin-left: auto; min-width: 3.6em; text-align: left; font-size: clamp(13px, 4.2vw, 17px); font-weight: 600; }
+  /* 漲跌：細框小 badge（固定寬度、內容靠左，▲▼ 位置對齊），紅漲綠跌、平盤白 */
+  .hold .c { margin-left: auto; min-width: 4.3em; text-align: left; font-size: clamp(12.5px, 4vw, 16px); font-weight: 600; line-height: 1.35;
+    padding: 0 6px; border-radius: 6px; border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+    background: color-mix(in srgb, currentColor 10%, transparent); }
   .hold .q b { font-size: clamp(18px, 6vw, 24px); line-height: 1.15; }
   /* 外資／投信買賣超（張），盤後才出現 */
   /* 兩欄固定位置（像 tab），「投」永遠從同一個位置開始；標籤白色正常粗細（同三大法人明細），未公布用灰字 */
@@ -141,6 +142,9 @@
   /* 加權、台指期同一排：漲跌一起放大，兩張字級一致；時間貼底對齊 */
   .card.txf .chg, .card.has-k .chg { font-size: clamp(14px, 4.6vw, 18px); }
   .card.txf .meta { margin-top: auto; }
+  /* 外資成本（估）：上一行小字標籤、下一行數字，半寬卡片才放得下 */
+  .card.txf .txcost { margin-top: 2px; color: var(--muted); font-size: clamp(11.5px, 3.3vw, 13px); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card.txf .txcost b { display: block; color: var(--text); font-size: clamp(15px, 4.6vw, 18px); font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
   .price small { font-size: 13px; font-weight: 600; }
   .price.tight { font-size: clamp(16px, 4.6vw, 22px); }
   .seg + .seg { margin-left: 10px; }
@@ -542,8 +546,12 @@
   // 價差 = 台指期 - 加權指數
   // TSM ADR 溢價率：ADR 換算成台幣每股（1 ADR = 5 股）÷ 2330 − 1；溢價紅、折價綠
   // 每晚存的日收盤（global_history.json）+ 即時報價當最新一天；檔案落後一天時用報價的昨收補上
+  // 歷史日收盤的日期是各交易所當地日期；即時報價那天（或之後）的歷史收盤先拿掉，避免同一天算兩次
+  const MARKET_TZ = { sox: 'America/New_York', nq: 'America/New_York', us10y: 'America/New_York', tsm: 'America/New_York',
+    brent: 'America/New_York', kospi: 'Asia/Seoul', nikkei: 'Asia/Tokyo' };
   function dailySeries(q) {
-    const closes = (globalHistory?.[q?.id] ?? []).map((c) => c.close);
+    const quoteDay = q?.time ? new Intl.DateTimeFormat('en-CA', { timeZone: MARKET_TZ[q.id] ?? 'Asia/Taipei' }).format(new Date(q.time)) : null;
+    const closes = (globalHistory?.[q?.id] ?? []).filter((c) => !quoteDay || c.date < quoteDay).map((c) => c.close);
     if (!q?.price || !closes.length) return [];
     if (q.prev != null && Math.abs(closes.at(-1) - q.prev) > Math.abs(q.prev) * 1e-6) closes.push(q.prev);
     return [...closes, q.price];
@@ -666,7 +674,8 @@
     if (!bars.length) return '';
     const lo = Math.min(prev ?? Infinity, ...bars.map((b) => b.l));
     const hi = Math.max(prev ?? -Infinity, ...bars.map((b) => b.h));
-    const y = (v) => (hi === lo ? 50 : ((hi - v) / (hi - lo)) * 100);
+    // 上下各留 8% 內距：跳空時昨收虛線剛好是最高／最低，貼在 SVG 邊緣會被裁掉看不見
+    const y = (v) => (hi === lo ? 50 : 8 + ((hi - v) / (hi - lo)) * 84);
     const w = 7;
     const parts = bars.map((b) => {
       const color = b.c >= b.o ? 'var(--up)' : 'var(--down)';
@@ -685,6 +694,7 @@
   let vixHistory = null;
   let volumeProfile = null;  // 每日成交金額（totals），護盤判斷用
   let govBanks = null;  // 八大公股行庫每日買賣超
+  let txCost = null;  // 外資台指期淨部位推估均價（tx_cost.json，自訂估算模型）
   let foreignRecords = null;  // 外資買超／賣超史上排行（foreign_records.json）
   let globalHistory = null;  // 費半、小納、韓股、日經的日收盤，月線 badge 用
   let tsmcWeight = null;  // 台積電市值佔大盤比重（%），拉雞盤判斷用
@@ -710,8 +720,8 @@
     const [lastDate, last] = series.at(-1);
     const prev = series.at(-2)[1];
     const change = last - prev;
-    // VIX 上升是警訊，不用漲跌的紅綠：升溫橘、降溫藍
-    const dir = (v) => (v > 0 ? 'heat' : v < 0 ? 'cool' : '');
+    // 漲跌顏色跟其他卡片一致：漲紅、跌綠（只是方向，不代表 VIX 上漲是好事）
+    const dir = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : '');
     const sign = (v) => (v > 0 ? '+' : '');
     // VIX 超過 40 → 橘色「極度恐慌」，優先。只是描述狀態：2016-2026 第一次破 40 共 7 次，之後 60 日都上漲，
     // 但「存現金等 VIX 破 40 再投入」回測並沒有比固定日期投入好，所以不寫成買進指令。
@@ -731,14 +741,16 @@
         <div class="head"><div class="name">台指VIX</div>${badge}</div>
         <div class="price">${fmt(last, 2)}</div>
         <div class="chg ${dir(change)}">${sign(change)}${fmt(change, 2)} (${sign(change)}${fmt((change / prev) * 100, 1)}%)</div>
-        <div class="meta">${mm}/${dd} 盤後</div>
+        <div class="foot"><div class="meta">${mm}/${dd} 盤後</div><span class="badge note">恐慌線&gt;40</span></div>
       </div>`;
   }
 
   // 我的持股：代號、價格、漲跌幅
 
-  // 金十川寶快訊（純娛樂）：金十「特朗普動態」最新 3 則標題（Worker 簡轉繁、一小時抓一次），一次一則、點卡片換下一則
+  // 川寶快訊（純娛樂）：金十「特朗普動態」最新 3 則標題（Worker 簡轉繁、一小時抓一次），一次一則、點卡片換下一則
   let jin10Page = 0;
+  let jin10Key = null;
+  let jin10Keys = [];
   const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // 防呆：金十資料有任何問題（沒資料、格式不對、畫卡片出錯）就整張不顯示，不影響其他卡片
   function jin10Html(j) {
@@ -747,12 +759,17 @@
   function jin10Card(j) {
     const items = (Array.isArray(j?.items) ? j.items : []).filter((x) => x?.title && x.time).slice(0, 3);
     if (!items.length) return '';
-    if (jin10Page >= items.length) jin10Page = 0;
+    // 新聞更新後仍停在同一則（用時間＋標題當識別）；那則被擠掉了才回第一則
+    const keyOf = (x) => `${x.time}|${x.title}`;
+    const keep = items.findIndex((x) => keyOf(x) === jin10Key);
+    jin10Page = keep >= 0 ? keep : (jin10Page < items.length && jin10Key == null ? jin10Page : 0);
+    jin10Key = keyOf(items[jin10Page]);
+    jin10Keys = items.map(keyOf);
     const pages = items.map((x, i) => `<div class="jp" data-i="${i}"><div class="jt">${esc(x.title)}</div></div>`).join('');
     const times = items.map((x, i) => `<span class="jtime" data-i="${i}">${mdhm(x.time)}</span>`).join('');
     return `
       <div class="card wide jin10 pager" data-p="${jin10Page}" data-n="${items.length}">
-        <div class="head"><div class="name">金十川寶快訊</div>${times}${items.length > 1 ? items.map((_, i) => `<span class="pg" data-i="${i}">${i + 1}/${items.length}</span>`).join('') : ''}</div>
+        <div class="head"><div class="name">川寶快訊</div>${times}${items.length > 1 ? items.map((_, i) => `<span class="pg" data-i="${i}">${i + 1}/${items.length}</span>`).join('') : ''}</div>
         ${pages}
       </div>`;
   }
@@ -797,13 +814,14 @@
         const chart = h.candles ? miniCandles(h.candles, h.prev ?? (h.change != null ? h.price - h.change : null)) : '';
         return `<div class="fl hk">${chart}</div>`;
       }
-      return `<div class="fl">${flowSeg('外', fo, h.code)}${flowSeg('投', tr, h.code)}</div>`;
+      // 投信不做 00685L，「投 0」沒意義：只顯示外資，右半格留空維持排版
+      return `<div class="fl">${flowSeg('外', fo, h.code)}${h.code === '00685L' ? '<span></span>' : flowSeg('投', tr, h.code)}</div>`;
     };
     const row = (h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
       const sign = h.change > 0 ? '+' : '';
-      // 箭頭跟數字空一格；平盤（例如試撮時）用「▬」當視覺錨點，不讓 0.00 飄著
-      const arrow = h.change > 0 ? '▲ ' : h.change < 0 ? '▼ ' : h.change === 0 ? '▬ ' : '';
+      // 箭頭跟數字空一格；平盤只寫 0.00（細框 badge 本身就是錨點）；沒資料寫「—」
+      const arrow = h.change > 0 ? '▲ ' : h.change < 0 ? '▼ ' : '';
       const digits = h.price >= 1000 ? 0 : 2;
       return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${fmt(h.change == null ? null : Math.abs(h.change), digits)}</span></div>`
         + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div>${flowLine(h)}</div>`;
@@ -914,6 +932,7 @@
     data.quotes = data.quotes.map((q) => (q.kind === 'daily' ? pick(`q:${q.id}`, q, (x) => (x.error ? null : x.time)) : q));
     data.institutional = pick('inst', data.institutional, (x) => x.date);
     data.vix = pick('vix', data.vix, (x) => x.closes?.at(-1)?.date);
+    data.govBanks = pick('govBanks', data.govBanks, (x) => x.days?.at(-1)?.date);
     return data;
   }
 
@@ -977,7 +996,8 @@
     // USD/TWD 是國際外匯報價，排到國際市場最後（美債後面）
     const quotes = data.quotes.filter((q) => q.id !== 'usdtwd');
     const fx = data.quotes.find((q) => q.id === 'usdtwd');
-    if (fx) quotes.splice(quotes.findIndex((q) => q.id === 'us10y') + 1, 0, fx);
+    // USD/TWD 排在小納後面（國際市場：費半、TSM、小納、USD/TWD、韓股、日經、布蘭特、美債）
+    if (fx) quotes.splice(quotes.findIndex((q) => q.id === 'nq') + 1, 0, fx);
     // 台股盤後依更新先後排：散戶多空比、外資淨OI（期交所 15:00）在前，台指VIX、八大行庫在後
     const rr = quotes.findIndex((q) => q.id === 'retailRatio');
     const oi = quotes.findIndex((q) => q.id === 'foreignOi');
@@ -1009,16 +1029,21 @@
       // 早盤試撮時最新一筆是前一個時段的（現貨是昨天收盤、台指期是夜盤 05:00），不顯示時間
       const when = q.time && q.state !== 'opening' && q.state !== 'holiday' && !(q.state === 'auction' && (!sameDay || q.id === 'txf')) ? (sameDay || STATE_LABELS[q.state] ? hhmm(q.time) : mdhm(q.time)) : '';
       const meta = `<div class="meta">${when}${when ? lag : lag.replace(/^ · /, '')}${stale}</div>`;
+      // 台指期：外資淨部位的推估均價（估），只有 status ok 且數字合理才顯示；日期與模型說明放在 title
+      const tc = q.id === 'txf' && txCost?.status === 'ok' && Number.isFinite(txCost.cost) && txCost.cost > 0
+        && (txCost.side === 'short' || txCost.side === 'long') ? txCost : null;
+      const txLine = tc ? `<div class="txcost" title="${esc(`資料截至 ${tc.asOf}（結算日 ${tc.cycleStart} 起，依外資淨部位與三日轉倉均價推估，不是真實成本）`)}">`
+        + `外資${tc.side === 'short' ? '空' : '多'}單成本（估）<b>${fmt(Math.round(tc.cost), 0)}</b></div>` : '';
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
-      // 有 K 線的卡片（加權）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K」
+      // 有 K 線的卡片（加權 15 分 K；費半、TSM 30 分 K）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K／30分K」
       const body = chart
         ? `<div class="chg ${dir}">${sign}${fmt(q.change, q.digits)} ${pct}</div>
            <div class="krow">${chart}</div>
-           <div class="foot">${meta}<span class="klabel">15分K</span></div>`
+           <div class="foot">${meta}<span class="klabel">${q.id === 'twii' ? '15分K' : '30分K'}</span></div>`
         : `<div class="chg ${dir}">${q.unit === 'yield'
             ? `${sign}${fmt(q.change * 100, 1)}bp`
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
-           ${meta}`;
+           ${txLine}${meta}`;
       return `
         <div class="card${chart ? ' has-k' : ''}${q.id === 'txf' ? ' txf' : ''}">
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
@@ -1045,6 +1070,7 @@
       const globalReq = getJson('global_history.json');
       const govReq = getJson('gov_banks.json');
       const recordsReq = getJson('foreign_records.json');
+      const txCostReq = getJson('tx_cost.json');
       const res = await fetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
@@ -1060,6 +1086,7 @@
       globalHistory = (await globalReq) ?? globalHistory;
       govBanks = (await govReq) ?? govBanks;
       foreignRecords = (await recordsReq) ?? foreignRecords;
+      txCost = (await txCostReq) ?? txCost;
       volumeProfile = (await profileReq) ?? volumeProfile;
       render(data, pickMargin(data.margin, await marginReq), await profileReq);
       $status.className = '';
@@ -1088,6 +1115,7 @@
     if (!card) return;
     jin10Page = (Number(card.dataset.p) + 1) % Number(card.dataset.n);
     card.dataset.p = jin10Page;
+    jin10Key = jin10Keys[jin10Page] ?? null;
   });
   document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
   $list.innerHTML = calendarHtml();

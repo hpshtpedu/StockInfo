@@ -5,11 +5,11 @@ const DELAY_GRACE_MIN = 20;
 
 // delayMin: typical Yahoo feed delay, measured; shown when the market is not open.
 const YAHOO = {
-  sox: { name: '費半 SOX', symbol: '^SOX', digits: 2 },
+  sox: { name: '費半 SOX', symbol: '^SOX', digits: 2, k30: true },
   kospi: { name: '韓股', symbol: '^KS11', digits: 2, delayMin: 20 },
   // Yahoo's trading period ignores the TSE lunch break (11:30-12:30 JST = 02:30-03:30 UTC).
   nikkei: { name: '日經', symbol: '^N225', digits: 2, delayMin: 15, breaksUtc: [[150, 210]] },
-  tsm: { name: 'TSM', symbol: 'TSM', digits: 2 },
+  tsm: { name: 'TSM', symbol: 'TSM', digits: 2, k30: true },
   brent: { name: '布蘭特原油', symbol: 'BZ=F', digits: 2, delayMin: 10 },
   usdtwd: { name: 'USD/TWD', symbol: 'TWD=X', digits: 3 },
   nq: { name: '小納 NQ', symbol: 'NQ=F', digits: 2, delayMin: 10 },
@@ -66,7 +66,6 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders(env) });
-    if (url.pathname === '/debug') return debugInfo(request, url.origin);
     if (url.pathname !== '/quotes') return new Response('Not found', { status: 404 });
 
     const cache = caches.default;
@@ -153,11 +152,14 @@ async function buildQuotes(origin, ctx) {
     }
     if (turnover) institutional.share = (institutional.both / (turnover * 1e6 * 2)) * 100;
   }
-  const announcements = await fetchAnnouncements(origin, ctx, holidays).catch(() => null);
-  const vix = await fetchVix(origin, ctx).catch(() => null);
-  const jin10 = await fetchJin10(origin, ctx).catch(() => null);
-  const flows = await fetchStockFlows(origin, ctx).catch(() => null);
-  const govBanks = await fetchGovBanks(origin, ctx).catch(() => null);
+  // 互不相依的來源一起抓：快取同時過期時不必一個等一個；任何一個失敗都只回 null，不影響其他
+  const [announcements, vix, jin10, flows, govBanks] = await Promise.all([
+    fetchAnnouncements(origin, ctx, holidays).catch(() => null),
+    fetchVix(origin, ctx).catch(() => null),
+    fetchJin10(origin, ctx).catch(() => null),
+    fetchStockFlows(origin, ctx).catch(() => null),
+    fetchGovBanks(origin, ctx).catch(() => null),
+  ]);
   let holdings = (await Promise.all(['tw2330', 'tw0056', 'tw00878', 'tw00685L'].map(async (id) => {
     const q = await pick(tw, id).catch(() => null);
     return q && { code: q.symbol.replace('.TW', ''), name: q.name, price: q.price, change: q.change, changePct: q.changePct, time: q.time, auction: q.auction, prev: q.prev, candles: q.candles };
@@ -180,7 +182,7 @@ const flowErrors = {};
 const savedTurnover = {};
 
 // 八大行庫買賣超（HiStock broker8，robots.txt 允許）：每晚排程存長期歷史，但 GitHub 排程常延遲到半夜，
-// 所以 Worker 另外抓當天的。HiStock 約 21:00 才更新，21:00 前不抓；拿到當天的就快取到隔天 21:00，還沒更新每 15 分鐘試一次。
+// 所以 Worker 另外抓當天的。HiStock 約 20:30 更新，20:30 前不抓；拿到當天的就快取到隔天 20:30，還沒更新每 15 分鐘試一次。
 // 只回最近 10 天，網頁跟 gov_banks.json 合併
 async function fetchGovBanks(origin, ctx) {
   const key = new Request(`${origin}/_govbanks_v1`);
@@ -188,7 +190,9 @@ async function fetchGovBanks(origin, ctx) {
   if (hit) return hit.json();
   let value = await loadLast(origin, 'govbanks');
   const twToday = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
-  const due = !twMarketClosedToday() && new Date(Date.now() + 8 * 3600 * 1000).getUTCHours() >= 21;
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);
+  const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+  const due = !twMarketClosedToday() && mins >= 20 * 60 + 30;
   if (due && value?.days?.at(-1)?.date !== twToday) {
     try {
       const res = await fetch('https://histock.tw/stock/broker8.aspx', { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
@@ -204,37 +208,16 @@ async function fetchGovBanks(origin, ctx) {
       flowErrors.govbanks = `${new Date().toISOString()} ${err?.message || err}`;
     }
   }
-  const lastDate = value?.days?.at(-1)?.date?.replace(/-/g, '');
-  const ttl = lastDate ? dailyTtl(lastDate, 21, 900) : 900;
+  // dailyTtl 只認整點，20:30 自己算：已有今天的 → 到明天 20:30；還沒到 20:30 → 到今天 20:30；否則 15 分鐘後再試
+  const until = (dayOffset) => Math.max(60, Math.round((Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate() + dayOffset, 20, 30) - tw.getTime()) / 1000));
+  const lastDate = value?.days?.at(-1)?.date;
+  const ttl = lastDate === twToday || twMarketClosedToday() ? until(1) : mins < 20 * 60 + 30 ? until(0) : 900;
   ctx.waitUntil(caches.default.put(key, new Response(JSON.stringify(value), {
     headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
   })));
   return value;
 }
 
-// 診斷用（/debug）：這個 Cloudflare 機房看到的快取內容，以及現在直接打證交所、金十的結果（只回狀態碼和開頭幾個字）
-async function debugInfo(request, origin) {
-  const probe = async (u) => {
-    try {
-      const r = await fetch(u, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
-      const t = await r.text();
-      return { status: r.status, type: r.headers.get('content-type'), bytes: t.length, head: t.slice(0, 80) };
-    } catch (err) {
-      return { error: String(err?.message || err) };
-    }
-  };
-  const ymd = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, '');
-  const read = async (path) => { const h = await caches.default.match(new Request(origin + path)); return h ? h.json() : null; };
-  const out = {
-    colo: request.cf?.colo,
-    cachedFlows: { TWT38U: await read('/_flows_v1/TWT38U'), TWT44U: await read('/_flows_v1/TWT44U') },
-    lastFlows: { TWT38U: await read('/_last_v1/flows_TWT38U'), TWT44U: await read('/_last_v1/flows_TWT44U') },
-    flowErrors,
-    twse: await probe(`https://www.twse.com.tw/rwd/zh/fund/TWT44U?date=${ymd}&response=json`),
-    jin10: await probe(JIN10_URL),
-  };
-  return new Response(JSON.stringify(out, null, 1), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
-}
 async function fetchStockFlows(origin, ctx) {
   const [foreign, trust] = await Promise.all([
     flowTable(origin, ctx, 'TWT38U', 17, (r) => r[11]),
@@ -597,16 +580,20 @@ async function fetchHolidaysCached(origin, ctx) {
   return out;
 }
 
-async function fetchYahoo({ name, symbol, digits, unit, delayMin, breaksUtc }) {
+async function fetchYahoo({ name, symbol, digits, unit, delayMin, breaksUtc, k30 }) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=1d`;
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(`Yahoo ${symbol} HTTP ${res.status}`);
-  const meta = (await res.json())?.chart?.result?.[0]?.meta;
+  const chart = (await res.json())?.chart?.result?.[0];
+  const meta = chart?.meta;
   if (!meta || meta.regularMarketPrice == null) throw new Error(`Yahoo ${symbol} no data`);
 
   const price = meta.regularMarketPrice;
   const prev = meta.chartPreviousClose ?? meta.previousClose;
+  // 費半、TSM 的 30 分 K：同一個回應裡的 5 分 K（range=1d 只含一般交易時段）每 30 分鐘合成一根，不多抓
+  const candles = k30 ? candles30(chart) : undefined;
   return {
+    candles,
     name,
     symbol,
     source: 'Yahoo',
@@ -769,6 +756,29 @@ async function keepSessionQuote(origin, ctx, q) {
   return { ...q, change: null, changePct: null };
 }
 
+// 5-minute bars of the latest regular US session -> 30-minute [open, high, low, close] slots (13 for
+// 09:30-16:00; null where there are no trades). Slots count from the session's first bar, so DST
+// doesn't matter. Returns undefined when there is nothing usable (the card then shows no chart).
+function candles30(chart) {
+  const ts = chart?.timestamp ?? [];
+  const q = chart?.indicators?.quote?.[0] ?? {};
+  const start = chart?.meta?.currentTradingPeriod?.regular?.start;
+  const first = ts.find((t, i) => q.close?.[i] != null);
+  if (first == null) return undefined;
+  // The session start: Yahoo's regular period if it matches these bars' day, else the first bar.
+  const t0 = start && start <= first && first - start < 6.5 * 3600 ? start : first;
+  const slots = Array(13).fill(null);
+  ts.forEach((t, i) => {
+    const [o, h, l, c] = [q.open?.[i], q.high?.[i], q.low?.[i], q.close?.[i]];
+    if ([o, h, l, c].some((v) => v == null)) return;
+    const k = Math.floor((t - t0) / 1800);
+    if (k < 0 || k >= 13) return;
+    const s = slots[k];
+    slots[k] = s ? [s[0], Math.max(s[1], h), Math.min(s[2], l), c] : [o, h, l, c];
+  });
+  return slots.some(Boolean) ? slots : undefined;
+}
+
 // 1-minute bars -> 15-minute [open, high, low, close] for the 09:00-13:30 session (18 slots,
 // null where no trades yet). The 13:30 closing auction is folded into the last slot.
 function candles15(chart) {
@@ -875,6 +885,26 @@ async function fetchChips(origin, ctx) {
   }
 }
 
+// One CSV line -> fields. Handles quoted fields with commas ("1,234") and doubled quotes; a plain
+// split(',') would shift every later column when a quoted number has a thousands separator.
+function csvLine(line) {
+  const out = [];
+  let cur = '';
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quoted) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') quoted = false;
+      else cur += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === ',') { out.push(cur.trim()); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur.trim());
+  return out;
+}
+
 // TAIFEX OpenAPI serves JSON or CSV (Chinese headers) depending on the edge.
 // fields: { name: [jsonKey, csvHeaderRegex] } -> rows of { name: string }.
 function parseTaifex(text, fields) {
@@ -883,7 +913,7 @@ function parseTaifex(text, fields) {
   if (text.startsWith('[')) {
     return JSON.parse(text).map((r) => Object.fromEntries(entries.map(([k, [jsonKey]]) => [k, String(r[jsonKey] ?? '')])));
   }
-  const [header, ...rows] = text.split(/\r?\n/).map((l) => l.split(',').map((c) => c.trim().replace(/^"|"$/g, '')));
+  const [header, ...rows] = text.split(/\r?\n/).filter((l) => l.trim()).map(csvLine);
   const idx = entries.map(([k, [, re]]) => [k, header.findIndex((h) => re.test(h))]);
   const missing = idx.filter(([, i]) => i < 0).map(([k]) => k);
   if (missing.length) throw new Error(`TAIFEX CSV missing ${missing.join(',')}`);

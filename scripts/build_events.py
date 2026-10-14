@@ -28,7 +28,7 @@ TW = ZoneInfo('Asia/Taipei')
 HORIZON_DAYS = 120
 
 # FRED release ids; all are published at 08:30 ET.
-FRED_RELEASES = {10: '美國CPI', 50: '非農就業', 54: 'PCE物價', 9: '零售銷售'}
+FRED_RELEASES = {10: '美國CPI', 50: '非農就業'}  # 零售銷售、PCE物價：使用者要求拿掉
 
 
 def get(url, as_json=True):
@@ -115,7 +115,7 @@ def ism(today, until):
         business = [month + dt.timedelta(days=i) for i in range(10)]
         business = [d for d in business if d.weekday() < 5 and d not in holidays and d.month == month.month]
         shift = 1 if month.month == 1 else 0  # January reports come one business day later
-        for label, nth in (('ISM製造業PMI', 0), ('ISM服務業PMI', 2)):
+        for label, nth in (('ISM服務業PMI', 2),):  # ISM製造業PMI：使用者要求拿掉
             day = business[nth + shift]
             if today <= day <= until:
                 out.append(event('ism', label, day, '10:00', ET))

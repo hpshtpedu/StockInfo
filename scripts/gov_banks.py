@@ -32,9 +32,8 @@ def main():
     if not closes or closes[-1]['date'] != today:
         print('no TAIEX close for today (holiday or not out yet): skip')
         return 0
-    # Record the attempt first, so a failed or empty fetch also counts as today's one request.
-    old['fetched'] = today
-    OUT.write_text(json.dumps(old) + '\n', encoding='utf-8')
+    # 'fetched' means "today's figure is in": it is only set after a fetch that returned today's date,
+    # so a run before HiStock updates (or a failed one) leaves the 23:00 run free to try again.
 
     req = urllib.request.Request('https://histock.tw/stock/broker8.aspx', headers={'User-Agent': UA})
     with urllib.request.urlopen(req, timeout=60) as res:
@@ -56,7 +55,11 @@ def main():
     for d in days[-5:] if known else days:
         known[d['date']] = d
     merged = [known[k] for k in sorted(known)][-KEEP:]
-    OUT.write_text(json.dumps({'fetched': today, 'days': merged}) + '\n', encoding='utf-8')
+    got_today = merged[-1]['date'] == today
+    OUT.write_text(json.dumps({'fetched': today if got_today else old.get('fetched'), 'days': merged}) + '\n',
+                   encoding='utf-8')
+    if not got_today:
+        print('HiStock has no figure for today yet; the next run will try again')
     days = merged
     print(days[-3:])
     return 0
