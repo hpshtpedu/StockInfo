@@ -76,6 +76,11 @@
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price { font-size: clamp(17px, 5.2vw, 24px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* 名稱優先完整顯示，空間不夠時截斷 badge */
+  /* 標題的「局」：設定頁入口，外觀跟其他字完全一樣（不變色、不變游標、不閃） */
+  .ju { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: text;
+    -webkit-tap-highlight-color: transparent; -webkit-appearance: none; appearance: none; }
+  .ju:focus:not(:focus-visible) { outline: none; }
+  .head .hl { display: flex; align-items: center; gap: 6px; min-width: 0; }
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
@@ -197,7 +202,7 @@
 <body>
 <header>
   <div>
-    <h1>股市大局觀</h1>
+    <h1>股市大<button type="button" class="ju" id="ju" aria-label="設定">局</button>觀</h1>
   </div>
   <div class="right">
     <div id="status">載入中…</div>
@@ -206,6 +211,7 @@
 </header>
 <main id="list"></main>
 <footer id="source">資料來源：Yahoo、證交所、期交所、HiStock、金十數據</footer>
+<script src="private-vault.js"></script>
 <script>
   const API = 'https://stockinfo-quotes.hpshtpedu.workers.dev/quotes';
   const POLL_MS = 120 * 1000;
@@ -831,7 +837,7 @@
     const body = Array.from({ length: rows }, (_, i) => groups.map((g) => (g[i] ? row(g[i]) : '<div></div>')).join('')).join('');
     return `
       <div class="card wide holdings">
-        <div class="head"><div class="name">我的持股</div>${badge}</div>
+        <div class="head"><div class="hl"><div class="name">我的自選股</div>${privateBadge(list)}</div>${badge}</div>
         <div class="holds">${body}</div>
         <div class="foot"><div class="meta">${timeState(list[0].time, list[0].fault ? 'fault' : twii?.state)}</div>${kMode ? '<span class="klabel">15分K</span>' : ''}</div>
       </div>`;
@@ -959,7 +965,38 @@
   }
   window.addEventListener('resize', () => fitNames());
 
+  // 私人自選股張數（解鎖後才有；private-vault.js 加密存在這個瀏覽器）→「我的自選股」旁的今日增減 badge
+  let privateLots = null;
+  let lastRenderArgs = null;
+  (async () => {
+    if (!window.PrivateVault?.unlocked()) return;
+    privateLots = await window.PrivateVault.readLots();
+    if (privateLots && lastRenderArgs) render(...lastRenderArgs);
+  })();
+  // 今日市值變動 = Σ（現價 − 昨收）× 張數 × 1000。休市、盤前（報價還是前一天的）、任一檔缺報價或故障就不顯示，
+  // 不拿前一天的漲跌冒充今天；不含交易、股利、稅費
+  function privateBadge(list) {
+    if (!privateLots || isMarketHoliday('tw')) return '';
+    const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+    let total = 0;
+    let held = 0;
+    for (const [code, lots] of Object.entries(privateLots)) {
+      if (!(lots > 0)) continue;
+      held++;
+      const h = list.find((x) => x.code === code);
+      const day = h?.time ? new Date(h.time + 8 * 3600000).toISOString().slice(0, 10) : null;
+      if (!h || h.fault || !Number.isFinite(h.change) || day !== today) return '';
+      total += h.change * lots * 1000;
+    }
+    if (!held) return '';
+    const wan = Math.abs(total) / 10000;
+    const amount = total !== 0 && wan < 0.005 ? '<0.01' : wan.toFixed(2);
+    if (Math.round(total) === 0) return '<span class="badge note">持平0.00萬</span>';
+    return `<span class="badge ${total > 0 ? 'buy' : 'sell'}">${total > 0 ? '增' : '減'}${amount}萬</span>`;
+  }
+
   function render(data, margin, profile) {
+    lastRenderArgs = [data, margin, profile];
     data = keepNewest(data);
     margin = pick('margin', margin, (x) => x.date);
     announcements = data.announcements ?? null;
@@ -1117,6 +1154,7 @@
     card.dataset.p = jin10Page;
     jin10Key = jin10Keys[jin10Page] ?? null;
   });
+  document.getElementById('ju')?.addEventListener('click', () => { location.href = 'private.html'; });
   document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
   $list.innerHTML = calendarHtml();
   start();
