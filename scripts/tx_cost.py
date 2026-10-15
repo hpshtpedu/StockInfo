@@ -71,6 +71,9 @@ def parse(text):
         if day in out:
             raise ValueError(f'{day} 有重複的外資列')
         d = {k: num(r, k) for k in NEED[3:]}
+        # 期交所公布過程中，當天那列可能先出現、未平倉卻還是 0（10/15 就遇到）：外資不可能多空單都 0，當作還沒公布
+        if d['多方未平倉口數'] == 0 and d['空方未平倉口數'] == 0:
+            continue
         if d['多方未平倉口數'] - d['空方未平倉口數'] != d['多空未平倉口數淨額']:
             raise ValueError(f'{day} 多空未平倉對不上')
         out[day] = d
