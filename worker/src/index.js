@@ -832,9 +832,11 @@ async function fetchChips(origin, ctx) {
   const last = await cache.match(lastKey).then((r) => (r ? r.json() : null));
   const lastDate = last?.foreignOi?.time ? new Date(last.foreignOi.time + 8 * 3600 * 1000).toISOString().slice(0, 10) : null;
   const days = await recentTradingDays(origin, ctx, 3);
-  // The newest trading day whose data should already be out (published ~15:00).
+  // The newest trading day whose data should already be out (due from 14:30).
   const tw = new Date(Date.now() + 8 * 3600 * 1000);
-  const expected = days[0] === tw.toISOString().slice(0, 10) && tw.getUTCHours() < 15 ? days[1] : days[0];
+  // 外資淨OI、散戶多空比：14:30 起就開始找當天的（期交所盤後公布後才拿得到，沒拿到每 10 分鐘再試）
+  const beforeDue = tw.getUTCHours() * 60 + tw.getUTCMinutes() < 14 * 60 + 30;
+  const expected = days[0] === tw.toISOString().slice(0, 10) && beforeDue ? days[1] : days[0];
 
   // Already holding the newest published day (e.g. on a market holiday): don't refetch.
   if (last && lastDate >= expected) {
@@ -843,8 +845,8 @@ async function fetchChips(origin, ctx) {
     // (10/12: a copy cached at 14:5x kept serving 10/8 after another location already had 10/12).
     let ttl = CHIPS_RETRY_SECONDS * 3;
     const todayTw = tw.toISOString().slice(0, 10);
-    if (days[0] === todayTw && tw.getUTCHours() < 15) {
-      ttl = Math.max(60, Math.min(ttl, Math.floor((Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate(), 15) - tw.getTime()) / 1000)));
+    if (days[0] === todayTw && beforeDue) {
+      ttl = Math.max(60, Math.min(ttl, Math.floor((Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate(), 14, 30) - tw.getTime()) / 1000)));
     }
     ctx.waitUntil(cache.put(key, new Response(JSON.stringify(last), {
       headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
