@@ -22,11 +22,23 @@ BACKFILL_PER_RUN = 5
 TW = dt.timezone(dt.timedelta(hours=8))
 
 
-def is_trading_day():
-    """Today's TAIEX close is in (taiex_history.py runs earlier in the same job): not a holiday."""
+def latest_session(closes, now):
+    """The trading day whose after-hours data is due: the latest TAIEX close if it is today, or
+    yesterday's while it is still before 09:00 (GitHub's nightly cron often runs after midnight)."""
+    if not closes:
+        return None
+    last = closes[-1]['date']
+    today = now.date().isoformat()
+    yesterday = (now.date() - dt.timedelta(days=1)).isoformat()
+    return last if last == today or (last == yesterday and now.hour < 9) else None
+
+
+def session_day():
+    """The trading day to record (see latest_session), or None on a holiday."""
     taiex = OUT.parent / 'taiex_history.json'
     closes = json.loads(taiex.read_text(encoding='utf-8'))['closes'] if taiex.exists() else []
-    return bool(closes) and closes[-1]['date'] == dt.datetime.now(TW).date().isoformat()
+    day = latest_session(closes, dt.datetime.now(TW))
+    return dt.date.fromisoformat(day) if day else None
 
 
 def shares_from_rows(rows):
@@ -51,11 +63,12 @@ def main():
     old = json.loads(OUT.read_text(encoding='utf-8')) if OUT.exists() else {}
     days = {d['date']: d['shares'] for d in old.get('days', [])}
     closed = set(old.get('closed', []))  # weekdays with no data (holidays), so they aren't retried
-    if not is_trading_day():
+    session = session_day()
+    if not session:
         print('market holiday: skip')
         return 0
 
-    todo = [dt.datetime.now(TW).date()]
+    todo = [session]
     day = min((dt.date.fromisoformat(d) for d in days), default=todo[0])
     while len(todo) < 1 + BACKFILL_PER_RUN and day > START:
         day -= dt.timedelta(days=1)

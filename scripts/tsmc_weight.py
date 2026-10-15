@@ -9,6 +9,17 @@ import re
 import sys
 import urllib.request
 
+
+def latest_session(closes, now):
+    """The trading day whose after-hours data is due: the latest TAIEX close if it is today, or
+    yesterday's while it is still before 09:00 (GitHub's nightly cron often runs after midnight)."""
+    if not closes:
+        return None
+    last = closes[-1]['date']
+    today = now.date().isoformat()
+    yesterday = (now.date() - dt.timedelta(days=1)).isoformat()
+    return last if last == today or (last == yesterday and now.hour < 9) else None
+
 OUT = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'tsmc_weight.json'
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
 
@@ -17,8 +28,7 @@ def is_trading_day():
     """Today's TAIEX close is in (taiex_history.py runs earlier in the same job): not a holiday."""
     taiex = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'taiex_history.json'
     closes = json.loads(taiex.read_text(encoding='utf-8'))['closes'] if taiex.exists() else []
-    today = dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).date().isoformat()
-    return bool(closes) and closes[-1]['date'] == today
+    return latest_session(closes, dt.datetime.now(dt.timezone(dt.timedelta(hours=8)))) is not None
 
 
 def main():

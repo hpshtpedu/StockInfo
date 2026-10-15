@@ -19,18 +19,30 @@ KEEP = 60
 TW = dt.timezone(dt.timedelta(hours=8))
 
 
+def latest_session(closes, now):
+    """The trading day whose after-hours data is due: the latest TAIEX close if it is today, or
+    yesterday's while it is still before 09:00 (GitHub's nightly cron often runs after midnight)."""
+    if not closes:
+        return None
+    last = closes[-1]['date']
+    today = now.date().isoformat()
+    yesterday = (now.date() - dt.timedelta(days=1)).isoformat()
+    return last if last == today or (last == yesterday and now.hour < 9) else None
+
+
 def main():
     old = json.loads(OUT.read_text(encoding='utf-8')) if OUT.exists() else {'days': []}
-    today = dt.datetime.now(TW).date().isoformat()
-    if old.get('fetched') == today:
-        print('already fetched today')
-        return 0
+    now = dt.datetime.now(TW)
     # Market holidays have nothing new: skip unless today's TAIEX close is in (taiex_history.py runs
     # earlier in the same job), without asking anyone.
     taiex = OUT.parent / 'taiex_history.json'
     closes = json.loads(taiex.read_text(encoding='utf-8'))['closes'] if taiex.exists() else []
-    if not closes or closes[-1]['date'] != today:
+    today = latest_session(closes, now)  # the trading day due (cron often runs after midnight)
+    if not today:
         print('no TAIEX close for today (holiday or not out yet): skip')
+        return 0
+    if old.get('fetched') == today:
+        print('already have this trading day')
         return 0
     # 'fetched' means "today's figure is in": it is only set after a fetch that returned today's date,
     # so a run before HiStock updates (or a failed one) leaves the 23:00 run free to try again.
