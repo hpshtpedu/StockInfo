@@ -82,7 +82,7 @@
   .ju:focus:not(:focus-visible) { outline: none; }
   /* 我的自選股標題列：跟下面兩欄方塊同寬，增減 badge 靠左欄右側、尾盤 badge 靠右欄右側，
      右邊緣跟方塊裡的漲跌框切齊（方塊邊框 1px + 內距 7px，窄螢幕 5px） */
-  .head.hhead { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6px; }
+  .head.hhead { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 6px; }
   .hhead .hcol { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; padding-right: 8px; }
   .hhead .hcol:last-child { justify-content: flex-end; }
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
@@ -109,7 +109,7 @@
      第一行：股號（橘）＋漲跌（▲▼，靠右且切齊）；第二行：價格＋（漲跌幅），跟其他卡片的寫法一致 */
   /* 選擇器多一層，才蓋得過 PC 版 media query 裡的 .card:not(.cal) 高度上限 */
   .card.wide.holdings { max-height: 280px; }
-  .holds { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 6px; }
+  .holds { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 5px 6px; }
   .hold { display: flex; flex-direction: column; gap: 1px; background: #20242c; border: 1px solid var(--line); border-radius: 8px;
     padding: 3px 7px 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .hold .top, .hold .q { display: flex; align-items: baseline; gap: 6px; }
@@ -842,8 +842,8 @@
       const v = (n) => {
         const x = netCompounding(n, twiiQuote);
         if (x == null) return '<b class="fp">資料不足</b>';
-        const r = Math.round(x * 100) / 100;
-        return `<b class="${r > 0 ? 'up' : r < 0 ? 'down' : ''}">${r > 0 ? '+' : ''}${(r === 0 ? 0 : r).toFixed(2)}pp</b>`;
+        const r = Math.round(x * 10) / 10;
+        return `<b class="${r > 0 ? 'up' : r < 0 ? 'down' : ''}">${r > 0 ? '+' : ''}${(r === 0 ? 0 : r).toFixed(1)}pp</b>`;
       };
       // 月＝最近 20 個交易日、季＝最近 60 個交易日（跟月線、季線同樣長的視窗）
       second = `<div class="fl ma cmp2"><span>月 ${v(20)}</span><span>季 ${v(60)}</span></div>`;
