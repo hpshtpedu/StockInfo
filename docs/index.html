@@ -1012,7 +1012,13 @@
     data.quotes = data.quotes.map((q) => (q.kind === 'daily' ? pick(`q:${q.id}`, q, (x) => (x.error ? null : x.time)) : q));
     data.institutional = pick('inst', data.institutional, (x) => x.date);
     data.vix = pick('vix', data.vix, (x) => x.closes?.at(-1)?.date);
+    // 八大：除了這次開網頁期間不倒退，也記在這台裝置（localStorage），重開網頁、換到給舊資料的機房都不會退回舊日期
+    try {
+      const saved = JSON.parse(localStorage.getItem('govBanksNewest') ?? 'null');
+      if (saved?.days?.length && !newest.govBanks) newest.govBanks = { d: saved.days.at(-1).date, v: saved };
+    } catch {}
     data.govBanks = pick('govBanks', data.govBanks, (x) => x.days?.at(-1)?.date);
+    try { if (data.govBanks?.days?.length) localStorage.setItem('govBanksNewest', JSON.stringify(data.govBanks)); } catch {}
     return data;
   }
 
