@@ -1195,7 +1195,7 @@
            ${q.id === 'twii'
              // 加權：點 K 線在 15 分 K ↔ 週 K 之間切換，右下標示跟著換
              ? `<div class="kw" data-p="${taiexKPage}"><div class="krow k0">${chart}</div><div class="krow k1">${weeklyCandles(q)}</div></div>
-           <div class="foot kw-foot" data-p="${taiexKPage}">${meta}<span class="klabel k0">15分K</span><span class="klabel k1">週K · 20MA</span></div>`
+           <div class="foot kw-foot" data-p="${taiexKPage}">${meta}<span class="klabel k0">15分K</span><span class="klabel k1">週K · 20週線</span></div>`
              : `<div class="krow">${chart}</div>
            <div class="foot">${meta}<span class="klabel">30分K</span></div>`}`
         : `<div class="chg ${dir}">${q.unit === 'yield'
