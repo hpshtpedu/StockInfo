@@ -129,6 +129,7 @@
   .tsw[data-p="0"] > .ma, .tsw[data-p="1"] > .fl:not(.ma) { display: none; }
   .hold .fl.ma { font-weight: 400; }
   .hold .fl.ma b { color: var(--warn); font-weight: 700; }
+  .hold .fl.ma .wide { grid-column: 1 / -1; }
   /* 盤中的 15 分 K：占外/投那一行的位置，高度相同 */
   .hold .fl.hk { display: block; }
   .hold .fl.hk .kchart { height: 19px; }
@@ -802,14 +803,25 @@
     return t.date === today || isMarketHoliday('tw') || mins < 9 * 60;
   }
 
-  // 2330 方塊下半部：點一下在「K 線／外/投」和「月線、季線」之間切換（每晚存的日收盤 + 即時價當最新一天）
-  let tsmcPage = 0;
-  function tsmcLower(h, first) {
-    const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
-    const closes = [...(globalHistory?.tw2330 ?? []).filter((c) => c.date < today).map((c) => c.close), h.price];
-    const ma = (n) => (closes.length >= n ? closes.slice(-n).reduce((a, b) => a + b, 0) / n : null);
-    const v = (x) => `<b>${x == null ? '—' : fmt(Math.round(x), 0)}</b>`;
-    return `<div class="tsw" data-p="${tsmcPage}">${first}<div class="fl ma"><span>月 ${v(ma(20))}</span><span>季 ${v(ma(60))}</span></div></div>`;
+  // 方塊下半部點一下切換第 2 頁：2330＝月線、季線（每晚存的日收盤 + 即時價當最新一天）；
+  // 0056、00878＝近一年殖利率（etf_yield.json：最近 4 次已除息配息率加總，自訂歷史配息率指標）
+  const lowerPage = {};
+  let etfYield = null;
+  function lowerToggle(h, first) {
+    let second = '';
+    if (h.code === '2330') {
+      const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+      const closes = [...(globalHistory?.tw2330 ?? []).filter((c) => c.date < today).map((c) => c.close), h.price];
+      const ma = (n) => (closes.length >= n ? closes.slice(-n).reduce((a, b) => a + b, 0) / n : null);
+      const v = (x) => `<b>${x == null ? '—' : fmt(Math.round(x), 0)}</b>`;
+      second = `<div class="fl ma"><span>月 ${v(ma(20))}</span><span>季 ${v(ma(60))}</span></div>`;
+    } else if (h.code === '0056' || h.code === '00878') {
+      const y = etfYield?.[h.code]?.yield;
+      second = `<div class="fl ma"><span class="wide">近一年殖利率 <b>${Number.isFinite(y) ? `${y.toFixed(2)}%` : '—'}</b></span></div>`;
+    } else {
+      return first;
+    }
+    return `<div class="tsw" data-code="${h.code}" data-p="${lowerPage[h.code] ?? 0}">${first}${second}</div>`;
   }
 
   function holdingsHtml(list, twii, flows) {
@@ -852,7 +864,7 @@
       const chgText = h.change === 0 ? '0.00' : fmt(h.change == null ? null : Math.abs(h.change), digits);
       return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${chgText}</span></div>`
         + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div>`
-        + (h.code === '2330' ? tsmcLower(h, flowLine(h)) : flowLine(h)) + '</div>';
+        + lowerToggle(h, flowLine(h)) + '</div>';
     };
     // 依欄排：左欄第一組、右欄第二組（格線逐列填，所以交錯排列）
     const rows = Math.max(...groups.map((g) => g.length));
@@ -1134,6 +1146,7 @@
       const govReq = getJson('gov_banks.json');
       const recordsReq = getJson('foreign_records.json');
       const txCostReq = getJson('tx_cost.json');
+      const yieldReq = getJson('etf_yield.json');
       const res = await fetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
@@ -1150,6 +1163,7 @@
       govBanks = (await govReq) ?? govBanks;
       foreignRecords = (await recordsReq) ?? foreignRecords;
       txCost = (await txCostReq) ?? txCost;
+      etfYield = (await yieldReq) ?? etfYield;
       volumeProfile = (await profileReq) ?? volumeProfile;
       render(data, pickMargin(data.margin, await marginReq), await profileReq);
       $status.className = '';
@@ -1180,12 +1194,12 @@
     card.dataset.p = jin10Page;
     jin10Key = jin10Keys[jin10Page] ?? null;
   });
-  // 2330 下半部：切換 K 線（外/投）↔ 月線、季線
+  // 2330／0056／00878 下半部：切換第 1 頁（K 線或外/投）↔ 第 2 頁（月季線／近一年殖利率）
   $list.addEventListener('click', (e) => {
     const w = e.target.closest('.tsw');
     if (!w) return;
-    tsmcPage = 1 - tsmcPage;
-    w.dataset.p = tsmcPage;
+    lowerPage[w.dataset.code] = 1 - (lowerPage[w.dataset.code] ?? 0);
+    w.dataset.p = lowerPage[w.dataset.code];
   });
   document.getElementById('ju')?.addEventListener('click', () => { location.href = 'private.html'; });
   document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
