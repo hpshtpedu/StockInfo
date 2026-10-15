@@ -80,7 +80,11 @@
   .ju { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: text;
     -webkit-tap-highlight-color: transparent; -webkit-appearance: none; appearance: none; }
   .ju:focus:not(:focus-visible) { outline: none; }
-  .head .hl { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  /* 我的自選股標題列：跟下面兩欄方塊同寬，增減 badge 靠左欄右側、尾盤 badge 靠右欄右側，
+     右邊緣跟方塊裡的漲跌框切齊（方塊邊框 1px + 內距 7px，窄螢幕 5px） */
+  .head.hhead { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6px; }
+  .hhead .hcol { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; padding-right: 8px; }
+  .hhead .hcol:last-child { justify-content: flex-end; }
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
@@ -195,6 +199,7 @@
     main { gap: 4px; }
     .card { padding-left: 5px; padding-right: 5px; }
     .hold { padding-left: 5px; padding-right: 5px; }
+    .hhead .hcol { padding-right: 6px; }
     .badge { padding: 0 3px; }
   }
 </style>
@@ -839,7 +844,7 @@
     const body = Array.from({ length: rows }, (_, i) => groups.map((g) => (g[i] ? row(g[i]) : '<div></div>')).join('')).join('');
     return `
       <div class="card wide holdings">
-        <div class="head"><div class="hl"><div class="name">我的自選股</div>${privateBadge(list)}</div>${badge}</div>
+        <div class="head hhead"><div class="hcol"><div class="name">我的自選股</div>${privateBadge(list)}</div><div class="hcol">${badge}</div></div>
         <div class="holds">${body}</div>
         <div class="foot"><div class="meta">${timeState(list[0].time, list[0].fault ? 'fault' : twii?.state)}</div>${kMode ? '<span class="klabel">15分K</span>' : ''}</div>
       </div>`;
