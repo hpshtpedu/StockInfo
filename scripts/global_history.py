@@ -16,7 +16,10 @@ import urllib.request
 OUT = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'global_history.json'
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
 KEEP = 30
-SYMBOLS = {'sox': '^SOX', 'nq': 'NQ=F', 'kospi': '^KS11', 'nikkei': '^N225', 'usdtwd': 'TWD=X', 'us10y': '^TNX'}
+SYMBOLS = {'sox': '^SOX', 'nq': 'NQ=F', 'kospi': '^KS11', 'nikkei': '^N225', 'usdtwd': 'TWD=X', 'us10y': '^TNX',
+           'tw2330': '2330.TW'}
+# 台積電要算季線（60 日），多抓一點
+LONG = {'tw2330': ('6mo', 70)}
 
 
 def get_json(url):
@@ -24,9 +27,9 @@ def get_json(url):
         return json.loads(res.read())
 
 
-def closes(symbol):
+def closes(symbol, rng='3mo', keep=KEEP):
     base = f'https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(symbol)}'
-    chart = get_json(base + '?interval=1d&range=3mo')['chart']['result'][0]
+    chart = get_json(base + f'?interval=1d&range={rng}')['chart']['result'][0]
     off = chart['meta']['gmtoffset']
     time.sleep(3)
     live = get_json(base + '?interval=5m&range=1d')['chart']['result'][0]['meta']
@@ -45,7 +48,7 @@ def closes(symbol):
         if prev is not None and not symbol.endswith('=X'):
             bars.append((start - 1, prev))
     return [{'date': dt.datetime.fromtimestamp(t + off, dt.timezone.utc).date().isoformat(), 'close': round(c, 3)}
-            for t, c in bars][-KEEP:]
+            for t, c in bars][-keep:]
 
 
 def main():
@@ -55,7 +58,7 @@ def main():
         if i:
             time.sleep(3)
         try:
-            out[key] = closes(symbol)
+            out[key] = closes(symbol, *LONG.get(key, ('3mo', KEEP)))
         except Exception as err:  # keep the previous list for this symbol
             print(f'{key}: {err}')
     OUT.write_text(json.dumps(out) + '\n', encoding='utf-8')

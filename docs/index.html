@@ -125,6 +125,10 @@
   .hold .fl { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6px; margin-top: 6px; padding-top: 5px; border-top: 1px solid var(--line); font-size: clamp(12px, 3.6vw, 14px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .hold .fl .fk { color: var(--text); font-weight: 400; margin-right: 4px; }
   .hold .fl .fp { color: var(--muted); font-weight: 400; }
+  .tsw { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  .tsw[data-p="0"] > .ma, .tsw[data-p="1"] > .fl:not(.ma) { display: none; }
+  .hold .fl.ma { font-weight: 400; }
+  .hold .fl.ma b { color: var(--warn); font-weight: 700; }
   /* 盤中的 15 分 K：占外/投那一行的位置，高度相同 */
   .hold .fl.hk { display: block; }
   .hold .fl.hk .kchart { height: 19px; }
@@ -798,6 +802,16 @@
     return t.date === today || isMarketHoliday('tw') || mins < 9 * 60;
   }
 
+  // 2330 方塊下半部：點一下在「K 線／外/投」和「月線、季線」之間切換（每晚存的日收盤 + 即時價當最新一天）
+  let tsmcPage = 0;
+  function tsmcLower(h, first) {
+    const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+    const closes = [...(globalHistory?.tw2330 ?? []).filter((c) => c.date < today).map((c) => c.close), h.price];
+    const ma = (n) => (closes.length >= n ? closes.slice(-n).reduce((a, b) => a + b, 0) / n : null);
+    const v = (x) => `<b>${x == null ? '—' : fmt(Math.round(x), 0)}</b>`;
+    return `<div class="tsw" data-p="${tsmcPage}">${first}<div class="fl ma"><span>月 ${v(ma(20))}</span><span>季 ${v(ma(60))}</span></div></div>`;
+  }
+
   function holdingsHtml(list, twii, flows) {
     if (!list?.length) return '';
     // 台積電收盤集合競價（13:25-13:30）比盤中最後一筆漲 2 檔以上＝尾盤拉雞，跌 2 檔以上＝尾盤殺雞
@@ -837,7 +851,8 @@
       const digits = h.price >= 1000 ? 0 : 2;
       const chgText = h.change === 0 ? '0.00' : fmt(h.change == null ? null : Math.abs(h.change), digits);
       return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${chgText}</span></div>`
-        + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div>${flowLine(h)}</div>`;
+        + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div>`
+        + (h.code === '2330' ? tsmcLower(h, flowLine(h)) : flowLine(h)) + '</div>';
     };
     // 依欄排：左欄第一組、右欄第二組（格線逐列填，所以交錯排列）
     const rows = Math.max(...groups.map((g) => g.length));
@@ -1164,6 +1179,13 @@
     jin10Page = (Number(card.dataset.p) + 1) % Number(card.dataset.n);
     card.dataset.p = jin10Page;
     jin10Key = jin10Keys[jin10Page] ?? null;
+  });
+  // 2330 下半部：切換 K 線（外/投）↔ 月線、季線
+  $list.addEventListener('click', (e) => {
+    const w = e.target.closest('.tsw');
+    if (!w) return;
+    tsmcPage = 1 - tsmcPage;
+    w.dataset.p = tsmcPage;
   });
   document.getElementById('ju')?.addEventListener('click', () => { location.href = 'private.html'; });
   document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
