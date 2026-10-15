@@ -125,6 +125,8 @@
   .hold .fl { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6px; margin-top: 6px; padding-top: 5px; border-top: 1px solid var(--line); font-size: clamp(12px, 3.6vw, 14px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .hold .fl .fk { color: var(--text); font-weight: 400; margin-right: 4px; }
   .hold .fl .fp { color: var(--muted); font-weight: 400; }
+  /* 下半部（K 線／外投／月季線／殖利率／複利）固定同一個高度＝最高的 K 線那一頁，切換時方塊不忽大忽小 */
+  .hold .fl { height: 25px; align-items: center; }
   .tsw { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   .tsw[data-p="0"] > .ma, .tsw[data-p="1"] > .fl:not(.ma) { display: none; }
   .hold .fl.ma { font-weight: 400; }
