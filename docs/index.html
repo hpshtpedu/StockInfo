@@ -1205,7 +1205,10 @@
 
   async function load() {
     try {
-      const getJson = (url) => fetch(url, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      // 網址帶上每 2 分鐘換一次的參數：GitHub Pages 的 CDN 每個節點會快取檔案約 10 分鐘，
+      // 手機和電腦連到不同節點時會一新一舊（10/15 八大就這樣）；換參數就一定拿到最新的檔案
+      const bust = Math.floor(Date.now() / POLL_MS);
+      const getJson = (url) => fetch(`${url}?v=${bust}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       const marginReq = getJson('margin.json');
       const profileReq = getJson('volume_profile.json');
       const eventsReq = getJson('events.json');
