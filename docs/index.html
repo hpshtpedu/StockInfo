@@ -843,7 +843,8 @@
         const r = Math.round(x * 100) / 100;
         return `<b class="${r > 0 ? 'up' : r < 0 ? 'down' : ''}">${r > 0 ? '+' : ''}${(r === 0 ? 0 : r).toFixed(2)}pp</b>`;
       };
-      second = `<div class="fl ma cmp2"><span>20D ${v(20)}</span><span>60D ${v(60)}</span></div>`;
+      // 月＝最近 20 個交易日、季＝最近 60 個交易日（跟月線、季線同樣長的視窗）
+      second = `<div class="fl ma cmp2"><span>月 ${v(20)}</span><span>季 ${v(60)}</span></div>`;
     } else if (h.code === '0056' || h.code === '00878') {
       const y = etfYield?.[h.code]?.yield;
       second = `<div class="fl ma"><span class="wide">近一年殖利率 <b>${Number.isFinite(y) ? `${y.toFixed(2)}%` : '—'}</b></span></div>`;
