@@ -130,6 +130,9 @@
   .hold .fl.ma { font-weight: 400; }
   .hold .fl.ma b { color: var(--warn); font-weight: 700; }
   .hold .fl.ma .wide { grid-column: 1 / -1; }
+  .hold .fl.cmp2 b.down { color: var(--down); }
+  .hold .fl.cmp2 b.up { color: var(--up); }
+  .hold .fl.cmp2 b.fp { color: var(--muted); font-weight: 400; }
   /* 盤中的 15 分 K：占外/投那一行的位置，高度相同 */
   .hold .fl.hk { display: block; }
   .hold .fl.hk .kchart { height: 19px; }
@@ -803,6 +806,23 @@
     return t.date === today || isMarketHoliday('tw') || mins < 9 * 60;
   }
 
+  // 00685L 淨複利：N = 100 ×［(L−1) − 2(G−1)］，G＝Π(1+r)、L＝Π(1+2r)，r＝加權（價格指數）日報酬。
+  // 正＝複利加速（綠）、負＝磨損（紅）；只看指數，不看持股、ETF 價格或台指期。資料不足回 null
+  let twiiQuote = null;
+  function netCompounding(n, twii) {
+    const s = taiexSeries(twii).slice(-(n + 1));
+    if (s.length < n + 1) return null;
+    let G = 1;
+    let L = 1;
+    for (let i = 1; i < s.length; i++) {
+      const r = s[i] / s[i - 1] - 1;
+      if (!Number.isFinite(r) || r <= -0.5) return null;
+      G *= 1 + r;
+      L *= 1 + 2 * r;
+    }
+    return 100 * ((L - 1) - 2 * (G - 1));
+  }
+
   // 方塊下半部點一下切換第 2 頁：2330＝月線、季線（每晚存的日收盤 + 即時價當最新一天）；
   // 0056、00878＝近一年殖利率（etf_yield.json：最近 4 次已除息配息率加總，自訂歷史配息率指標）
   const lowerPage = {};
@@ -815,6 +835,15 @@
       const ma = (n) => (closes.length >= n ? closes.slice(-n).reduce((a, b) => a + b, 0) / n : null);
       const v = (x) => `<b>${x == null ? '—' : fmt(Math.round(x), 0)}</b>`;
       second = `<div class="fl ma"><span>月 ${v(ma(20))}</span><span>季 ${v(ma(60))}</span></div>`;
+    } else if (h.code === '00685L') {
+      // 理想每日正2 相對「大盤整段報酬 × 2」的複利差（pp）；加權日報酬，盤中今天算 1 天（19＋今天／59＋今天）
+      const v = (n) => {
+        const x = netCompounding(n, twiiQuote);
+        if (x == null) return '<b class="fp">資料不足</b>';
+        const r = Math.round(x * 100) / 100;
+        return `<b class="${r > 0 ? 'down' : r < 0 ? 'up' : ''}">${r > 0 ? '+' : ''}${(r === 0 ? 0 : r).toFixed(2)}pp</b>`;
+      };
+      second = `<div class="fl ma cmp2"><span>20D ${v(20)}</span><span>60D ${v(60)}</span></div>`;
     } else if (h.code === '0056' || h.code === '00878') {
       const y = etfYield?.[h.code]?.yield;
       second = `<div class="fl ma"><span class="wide">近一年殖利率 <b>${Number.isFinite(y) ? `${y.toFixed(2)}%` : '—'}</b></span></div>`;
@@ -825,6 +854,7 @@
   }
 
   function holdingsHtml(list, twii, flows) {
+    twiiQuote = twii;
     if (!list?.length) return '';
     // 台積電收盤集合競價（13:25-13:30）比盤中最後一筆漲 2 檔以上＝尾盤拉雞，跌 2 檔以上＝尾盤殺雞
     const auction = list.find((h) => h.code === '2330')?.auction;
