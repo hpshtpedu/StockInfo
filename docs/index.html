@@ -694,7 +694,8 @@
 
   // 迷你 15 分 K：18 個時段（09:00-13:30），虛線為昨收
   // line：可選，每根 K 棒對應一個值（例如 20 週均線），畫成虛線折線，取代水平的昨收線
-  function miniCandles(candles, prev, line) {
+  // liveLast：最後一根還沒走完（例如本週週 K），畫成空心外框，免得誤會成已收完的 K 棒
+  function miniCandles(candles, prev, line, liveLast) {
     const bars = candles.map((c, i) => c && { i, o: c[0], h: c[1], l: c[2], c: c[3] }).filter(Boolean);
     if (!bars.length) return '';
     const lineVals = (line ?? []).filter((v) => v != null);
@@ -708,8 +709,9 @@
       const top = y(Math.max(b.o, b.c));
       const height = Math.max(2, y(Math.min(b.o, b.c)) - top);
       const x = b.i * w;
+      const hollow = liveLast && b.i === candles.length - 1;
       return `<line x1="${x + 3.5}" x2="${x + 3.5}" y1="${y(b.h)}" y2="${y(b.l)}" stroke="${color}" vector-effect="non-scaling-stroke"/>`
-        + `<rect x="${x + 1.5}" y="${top}" width="4" height="${height}" fill="${color}"/>`;
+        + `<rect x="${x + 1.5}" y="${top}" width="4" height="${height}" fill="${hollow ? 'var(--card)' : color}"${hollow ? ` stroke="${color}" vector-effect="non-scaling-stroke"` : ''}/>`;
     });
     const pts = (line ?? []).map((v, i) => (v == null ? null : `${i * w + 3.5},${y(v)}`)).filter(Boolean);
     const base = pts.length > 1
@@ -1103,7 +1105,11 @@
     if (bars.length < 2) return '';
     // 虛線＝20 週均線（每根 K 棒對應當時的 20 週收盤平均；資料不足 20 週的那幾根不畫）
     const ma = weeks.map((w, i) => (i >= 19 ? weeks.slice(i - 19, i + 1).reduce((a, x) => a + x.c, 0) / 20 : null)).slice(-18);
-    return miniCandles(bars, null, ma);
+    // 本週還沒結束（最後一根就是本週）→ 空心；週末、或下週一還沒開盤時本週已收完 → 實心
+    const tw = new Date(Date.now() + 8 * 3600000);
+    const thisMonday = new Date(Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate()) - ((tw.getUTCDay() + 6) % 7) * 86400000).toISOString().slice(0, 10);
+    const weekend = tw.getUTCDay() === 0 || tw.getUTCDay() === 6 || (tw.getUTCDay() === 5 && tw.getUTCHours() * 60 + tw.getUTCMinutes() >= 13 * 60 + 30);
+    return miniCandles(bars, null, ma, weeks.at(-1).key === thisMonday && !weekend);
   }
 
   function render(data, margin, profile) {
