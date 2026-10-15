@@ -975,11 +975,14 @@
     privateLots = await window.PrivateVault.readLots();
     if (privateLots && lastRenderArgs) render(...lastRenderArgs);
   })();
-  // 今日市值變動 = Σ（現價 − 昨收）× 張數 × 1000。休市、盤前（報價還是前一天的）、任一檔缺報價或故障就不顯示，
-  // 不拿前一天的漲跌冒充今天；不含交易、股利、稅費
+  // 最後一個交易日的市值變動 = Σ（現價 − 昨收）× 張數 × 1000，單位萬、小數 1 位。
+  // 開盤後一直顯示（收盤後、半夜、週末、連假都看得到最後一個交易日的），直到下一個交易日 08:15 才隱藏，
+  // 等開盤有今天的成交再出現。任一檔缺報價或故障就不顯示。不含當日交易、股利、稅費
   function privateBadge(list) {
-    if (!privateLots || isMarketHoliday('tw')) return '';
-    const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+    if (!privateLots) return '';
+    const tw = new Date(Date.now() + 8 * 3600000);
+    const today = tw.toISOString().slice(0, 10);
+    const preOpen = !isMarketHoliday('tw') && tw.getUTCHours() * 60 + tw.getUTCMinutes() >= 8 * 60 + 15;
     let total = 0;
     let held = 0;
     for (const [code, lots] of Object.entries(privateLots)) {
@@ -987,14 +990,15 @@
       held++;
       const h = list.find((x) => x.code === code);
       const day = h?.time ? new Date(h.time + 8 * 3600000).toISOString().slice(0, 10) : null;
-      if (!h || h.fault || !Number.isFinite(h.change) || day !== today) return '';
+      if (!h || h.fault || !Number.isFinite(h.change)) return '';
+      if (preOpen && day !== today) return '';  // 交易日 08:15 後、今天還沒成交：隱藏
       total += h.change * lots * 1000;
     }
     if (!held) return '';
     const wan = Math.abs(total) / 10000;
-    const amount = total !== 0 && wan < 0.005 ? '<0.01' : wan.toFixed(2);
-    if (Math.round(total) === 0) return '<span class="badge note">持平0.00萬</span>';
-    return `<span class="badge ${total > 0 ? 'buy' : 'sell'}">${total > 0 ? '增' : '減'}${amount}萬</span>`;
+    if (Math.round(total) === 0) return '<span class="badge note">■0.0萬</span>';
+    const amount = wan < 0.05 ? '<0.1' : wan.toFixed(1);
+    return `<span class="badge ${total > 0 ? 'buy' : 'sell'}">${total > 0 ? '▲' : '▼'}${amount}萬</span>`;
   }
 
   function render(data, margin, profile) {
