@@ -1081,7 +1081,7 @@
     return `<span class="badge ${total > 0 ? 'buy' : 'sell'}">${total > 0 ? '▲' : '▼'}${amount}萬</span>`;
   }
 
-  // 加權週 K（虛線＝20 週均線）：每晚存的日開高低收（證交所） + 今天（盤中 15 分 K 的開高低、即時指數當收），依週（週一起算）分組，
+  // 加權週 K（虛線＝月線）：每晚存的日開高低收（證交所） + 今天（盤中 15 分 K 的開高低、即時指數當收），依週（週一起算）分組，
   // 最近 18 週：開＝該週第一天開盤、高低＝該週最高最低、收＝該週最後一筆。舊資料沒有開高低時退回只用收盤
   let taiexKPage = 0;
   function weeklyCandles(twii) {
@@ -1103,8 +1103,15 @@
     }
     const bars = weeks.map((w) => [w.o, w.h, w.l, w.c]).slice(-18);
     if (bars.length < 2) return '';
-    // 虛線＝20 週均線（每根 K 棒對應當時的 20 週收盤平均；資料不足 20 週的那幾根不畫）
-    const ma = weeks.map((w, i) => (i >= 19 ? weeks.slice(i - 19, i + 1).reduce((a, x) => a + x.c, 0) / 20 : null)).slice(-18);
+    // 虛線＝月線（20 日均線）：每根週 K 對應該週最後一個交易日當時的月線，本週那點＝現在的月線（跟大盤均線卡片同一個數）
+    const closes = days.map((d) => d.c);
+    const ma20At = (i) => (i >= 19 ? closes.slice(i - 19, i + 1).reduce((a, b) => a + b, 0) / 20 : null);
+    const lastIdx = [];
+    days.forEach((d, i) => {
+      const t = new Date(`${d.date}T00:00:00Z`);
+      lastIdx[weeks.findIndex((w) => w.key === new Date(t - ((t.getUTCDay() + 6) % 7) * 86400000).toISOString().slice(0, 10))] = i;
+    });
+    const ma = weeks.map((_, i) => ma20At(lastIdx[i])).slice(-18);
     // 本週還沒結束（最後一根就是本週）→ 空心；週末、或下週一還沒開盤時本週已收完 → 實心
     const tw = new Date(Date.now() + 8 * 3600000);
     const thisMonday = new Date(Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate()) - ((tw.getUTCDay() + 6) % 7) * 86400000).toISOString().slice(0, 10);
@@ -1195,7 +1202,7 @@
            ${q.id === 'twii'
              // 加權：點 K 線在 15 分 K ↔ 週 K 之間切換，右下標示跟著換
              ? `<div class="kw" data-p="${taiexKPage}"><div class="krow k0">${chart}</div><div class="krow k1">${weeklyCandles(q)}</div></div>
-           <div class="foot kw-foot" data-p="${taiexKPage}">${meta}<span class="klabel k0">15分K</span><span class="klabel k1">週K · 20週線</span></div>`
+           <div class="foot kw-foot" data-p="${taiexKPage}">${meta}<span class="klabel k0">15分K</span><span class="klabel k1">週K · 月線</span></div>`
              : `<div class="krow">${chart}</div>
            <div class="foot">${meta}<span class="klabel">30分K</span></div>`}`
         : `<div class="chg ${dir}">${q.unit === 'yield'
