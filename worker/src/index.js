@@ -658,6 +658,18 @@ async function fetchYahooTw() {
     if (!meta || meta.regularMarketPrice == null) continue;
     const price = meta.regularMarketPrice;
     const prev = meta.previousClose ?? meta.chartPreviousClose;
+    // Yahoo stamps TXF's night session with the next trading day's date (Fri 10/16 17:28 came as Sun
+    // 10/18 17:28), so every night bar looked "ahead" and was dropped. In the night session, a time
+    // that is whole days ahead with the same time of day is shifted back by those days.
+    let shift = 0;
+    const twHour = new Date(Date.now() + 8 * 3600 * 1000).getUTCHours();
+    const ahead = meta.regularMarketTime * 1000 - Date.now();
+    if (id === 'txf' && (twHour >= 15 || twHour < 5) && ahead > 120000) {
+      const k = Math.round(ahead / 86400000);
+      const rest = ahead - k * 86400000;  // the feed can lag (慢N分), so allow up to 45 min behind
+      if (k >= 1 && rest > -45 * 60000 && rest < 120000) shift = k * 86400;
+    }
+    meta.regularMarketTime -= shift;
     out[id] = {
       name,
       symbol,
@@ -677,7 +689,7 @@ async function fetchYahooTw() {
     // so the remembered 12:16 quote was shown as 收盤). The minute bars are the ground truth: use the
     // last bar that actually traded, if it is newer than what the meta says.
     {
-      const ts = chart.timestamp ?? [];
+      const ts = (chart.timestamp ?? []).map((t) => t - shift);
       const closes = chart.indicators?.quote?.[0]?.close ?? [];
       let i = ts.length - 1;
       while (i >= 0 && (closes[i] == null || ts[i] * 1000 > Date.now() + 60000)) i--;
