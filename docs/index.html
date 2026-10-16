@@ -206,6 +206,8 @@
     /* 加權的 15 分 K 在 PC 上放大，卡片高度上限跟著放寬 */
     .kchart { height: 40px; }
     .card:not(.cal) { max-height: 176px; }
+    /* 持股標題：PC 欄寬大，私人增減貼在「我的自選股」旁邊，不要懸在欄位右側 */
+    .hhead .hcol:first-child { justify-content: flex-start; }
   }
   /* 窄螢幕（例如 iPhone 開「顯示器放大」約 320px）：邊距收窄、持股字小一號，漲跌幅才放得下 */
   @media (max-width: 359px) {
