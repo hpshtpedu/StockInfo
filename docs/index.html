@@ -107,15 +107,17 @@
   .maw { color: var(--muted); }  /* 月／季線、數值、乖離 % 全部灰字，不搶加權本身的漲跌 */
   .maw[data-p="0"] .k1, .maw[data-p="1"] .k0 { display: none; }
   /* 台指期下半部：淡分隔線下面，預設外資空單成本，點一下換 60 分K（K 線比加權的高，用掉分隔線省下的那一行） */
-  .tw2 { margin-top: 6px; padding-top: 2px; border-top: 1px solid var(--line); }
+  /* 分隔線跟加權月／季線底下那條同高（前面墊一行空白）；K 線填滿外資空單成本那兩行的高度，卡片高度不變 */
+  .tw2 { margin-top: 0; }
+  .maw.tx-sep { cursor: default; }
   .tw2.sw { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   /* 兩頁疊在同一格、只切換看不看得到：高度固定是兩頁中較高的，點一下卡片（和同排的加權）不會跳 */
   .tw2.sw { display: grid; }
   .tw2.sw > * { grid-area: 1 / 1; }
   .tw2[data-p="0"] .k1, .tw2[data-p="1"] .k0 { visibility: hidden; }
   .tw2-foot[data-p="0"] .k1, .tw2-foot[data-p="1"] .k0 { visibility: hidden; }
-  .tw2 .krow { margin: 6px 0 4px; }
-  .card.txf .tw2 .kchart { height: 52px; }
+  .tw2.sw .krow { margin: 6px 0 0; }
+  .card.txf .tw2.sw .kchart { height: 36px; }
   /* 加權多一行月/季線：同一排的台指期一起放寬，兩張卡底部才對齊 */
   .card.twii, .card.txf { max-height: 190px; }
   /* 川寶快訊：一次一則，其他頁隱藏；標題最多 3 行 */
@@ -225,7 +227,6 @@
   @media (min-width: 600px) {
     /* 加權的 15 分 K 在 PC 上放大，卡片高度上限跟著放寬 */
     .kchart { height: 40px; }
-    .card.txf .tw2 .kchart { height: 62px; }
     .card:not(.cal) { max-height: 176px; }
     .card.twii, .card.txf { max-height: 206px; }
   }
@@ -1236,11 +1237,12 @@
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
       // 台指期下半部（淡分隔線下）：外資空單成本 ↔ 60 分K（夜盤＋日盤），兩個都有才能點一下切換
       const k60 = q.id === 'txf' && q.k60?.some(Boolean) ? miniCandles(q.k60, q.prev) : '';
+      const sep = '<div class="maw tx-sep" aria-hidden="true">&nbsp;</div>';
       const txLower = txLine && k60
-        ? `<div class="tw2 sw" data-p="${txKPage}"><div class="k0">${txLine}</div><div class="krow k1">${k60}</div></div>
+        ? `${sep}<div class="tw2 sw" data-p="${txKPage}"><div class="k0">${txLine}</div><div class="krow k1">${k60}</div></div>
            <div class="foot tw2-foot" data-p="${txKPage}">${meta}<span class="klabel k1">60分K</span></div>`
-        : txLine ? `<div class="tw2">${txLine}</div>${meta}`
-        : k60 ? `<div class="tw2"><div class="krow">${k60}</div></div><div class="foot">${meta}<span class="klabel">60分K</span></div>`
+        : txLine ? `${sep}<div class="tw2">${txLine}</div>${meta}`
+        : k60 ? `${sep}<div class="tw2"><div class="krow">${k60}</div></div><div class="foot">${meta}<span class="klabel">60分K</span></div>`
         : meta;
       // 有 K 線的卡片（加權 15 分 K；費半、TSM 30 分 K）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K／30分K」
       const body = chart
@@ -1360,7 +1362,7 @@
       tw2.parentElement.querySelector('.tw2-foot').dataset.p = txKPage;
       return;
     }
-    const mw = e.target.closest('.maw');
+    const mw = e.target.closest('.maw:not(.tx-sep)');
     if (mw) {
       maPage = 1 - maPage;
       mw.dataset.p = maPage;
