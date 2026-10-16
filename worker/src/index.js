@@ -174,7 +174,7 @@ async function buildQuotes(origin, ctx) {
   return { updated: Date.now(), quotes, holidays, institutional, margin, announcements, vix, holdings, jin10, flows, govBanks };
 }
 
-// 持股的外資（TWT38U，約 17:00 後）、投信（TWT44U，約 15:00）個股買賣超，單位：張。
+// 持股的外資（TWT38U，16:30 起每 10 分鐘試一次）、投信（TWT44U，約 15:00）個股買賣超，單位：張。
 // 每張表一天只成功抓一次：拿到當天的就快取到隔天公布時間；還沒公布就每 10 分鐘試一次；
 // 抓不到（還沒公布、錯誤）時回傳上一個交易日的，網頁再決定要不要顯示（開盤後到公布前隱藏）
 const FLOW_CODES = ['2330', '0056', '00878', '00685L'];
@@ -220,7 +220,7 @@ async function fetchGovBanks(origin, ctx) {
 
 async function fetchStockFlows(origin, ctx) {
   const [foreign, trust] = await Promise.all([
-    flowTable(origin, ctx, 'TWT38U', 17, (r) => r[11]),
+    flowTable(origin, ctx, 'TWT38U', 16.5, (r) => r[11]),
     flowTable(origin, ctx, 'TWT44U', 15, (r) => r[5]),
   ]);
   return { foreign, trust };
@@ -537,10 +537,10 @@ function dailyTtl(dataDate, publishHour, retrySeconds = 300) {
   const tw = new Date(Date.now() + 8 * 3600 * 1000);
   const today = tw.toISOString().slice(0, 10).replace(/-/g, '');
   const secondsUntil = (dayOffset, hour) =>
-    Math.round(Math.max(60, (Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate() + dayOffset, hour) - tw.getTime()) / 1000));
+    Math.round(Math.max(60, (Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate() + dayOffset, 0, Math.round(hour * 60)) - tw.getTime()) / 1000));
   // Weekends and TWSE holidays bring nothing new: check again at the next day's publish hour.
   if (dataDate === today || twMarketClosedToday()) return secondsUntil(1, publishHour);
-  if (tw.getUTCHours() < publishHour) return secondsUntil(0, publishHour);
+  if (tw.getUTCHours() + tw.getUTCMinutes() / 60 < publishHour) return secondsUntil(0, publishHour);  // publishHour 可以是 16.5（16:30）
   return retrySeconds;
 }
 
