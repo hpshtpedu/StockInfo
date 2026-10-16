@@ -1237,12 +1237,16 @@
     fitNames();
   }
 
+  let lastLoad = 0;
   async function load() {
+    lastLoad = Date.now();
+    // 請求最多等 20 秒：手機休眠／換網路時連線可能卡住永遠不回來
+    const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(20000) : undefined;
     try {
       // 網址帶上每 2 分鐘換一次的參數：GitHub Pages 的 CDN 每個節點會快取檔案約 10 分鐘，
       // 手機和電腦連到不同節點時會一新一舊（10/15 八大就這樣）；換參數就一定拿到最新的檔案
       const bust = Math.floor(Date.now() / POLL_MS);
-      const getJson = (url) => fetch(`${url}?v=${bust}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const getJson = (url) => fetch(`${url}?v=${bust}`, { cache: 'no-store', signal }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       const marginReq = getJson('margin.json');
       const profileReq = getJson('volume_profile.json');
       const eventsReq = getJson('events.json');
@@ -1255,7 +1259,7 @@
       const recordsReq = getJson('foreign_records.json');
       const txCostReq = getJson('tx_cost.json');
       const yieldReq = getJson('etf_yield.json');
-      const res = await fetch(API, { cache: 'no-store' });
+      const res = await fetch(API, { cache: 'no-store', signal });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       const events = await eventsReq;
@@ -1284,7 +1288,7 @@
 
   function start() {
     stop();
-    load();
+    if (Date.now() - lastLoad > 5000) load();  // 幾個喚醒事件常一起觸發，5 秒內只抓一次
     timer = setInterval(load, POLL_MS);
   }
 
@@ -1333,6 +1337,11 @@
   });
   document.getElementById('ju')?.addEventListener('click', () => { location.href = 'private.html'; });
   document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
+  // 在背景很久（分頁休眠、iOS 從多工畫面回來、bfcache 還原）時 visibilitychange 不一定會觸發，
+  // 輪詢就一直停著：這些事件也當成「回到前景」，立刻更新並重新開始輪詢
+  const wake = () => { if (!document.hidden) start(); };
+  for (const ev of ['pageshow', 'focus', 'online']) window.addEventListener(ev, wake);
+  document.addEventListener('resume', wake);
   $list.innerHTML = calendarHtml();
   start();
 </script>
