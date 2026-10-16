@@ -733,6 +733,8 @@ async function fetchYahooTw() {
     }
     // 15 分 K：加權卡片和持股方塊（盤中）都用，同一個 Yahoo 請求裡的分鐘線，不多抓
     if (id === 'twii' || id.startsWith('tw')) out[id].candles = candles15(chart);
+    // 台指期 60 分K（夜盤＋日盤，同一個請求的分鐘線），點卡片下半部才看得到
+    if (id === 'txf') out[id].k60 = candles60(chart, shift);
   }
   return out;
 }
@@ -802,6 +804,27 @@ function candles30(chart) {
 
 // 1-minute bars -> 15-minute [open, high, low, close] for the 09:00-13:30 session (18 slots,
 // null where no trades yet). The 13:30 closing auction is folded into the last slot.
+// TXF 1-minute bars of the trading day (15:00 night open .. 13:45 day close) -> 19 hourly
+// [open, high, low, close] slots: 14 for the night (15:00-05:00), 5 for the day (08:45-13:45).
+// shift: seconds Yahoo stamped the night session ahead (see fetchYahooTw).
+function candles60(chart, shift) {
+  const ts = chart.timestamp ?? [];
+  const q = chart.indicators?.quote?.[0] ?? {};
+  const slots = Array(19).fill(null);
+  ts.forEach((t, i) => {
+    const [o, h, l, c] = [q.open?.[i], q.high?.[i], q.low?.[i], q.close?.[i]];
+    if ([o, h, l, c].some((v) => v == null)) return;
+    const tw = new Date((t - shift + 8 * 3600) * 1000);
+    const m = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+    const slot = m >= 15 * 60 ? Math.floor((m - 900) / 60) : m < 5 * 60 ? 9 + Math.floor(m / 60)
+      : m >= 8 * 60 + 45 && m <= 13 * 60 + 45 ? 14 + Math.min(4, Math.floor((m - 525) / 60)) : -1;
+    if (slot < 0) return;
+    const s = slots[slot];
+    slots[slot] = s ? [s[0], Math.max(s[1], h), Math.min(s[2], l), c] : [o, h, l, c];
+  });
+  return slots.map((s) => s && s.map((v) => Math.round(v)));
+}
+
 function candles15(chart) {
   const ts = chart.timestamp ?? [];
   const q = chart.indicators?.quote?.[0] ?? {};

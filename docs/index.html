@@ -106,7 +106,12 @@
   .maw { display: flex; justify-content: space-between; gap: 6px; margin-top: 2px; padding-bottom: 4px; border-bottom: 1px solid var(--line); font-size: clamp(12px, 3.5vw, 14px); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   .maw { color: var(--muted); }  /* 月／季線、數值、乖離 % 全部灰字，不搶加權本身的漲跌 */
   .maw[data-p="0"] .k1, .maw[data-p="1"] .k0 { display: none; }
-  .maw.tx-sep { cursor: default; }
+  /* 台指期下半部：淡分隔線下面，預設外資空單成本，點一下換 60 分K（K 線比加權的高，用掉分隔線省下的那一行） */
+  .tw2 { margin-top: 6px; padding-top: 2px; border-top: 1px solid var(--line); }
+  .tw2.sw { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  .tw2[data-p="0"] .k1, .tw2[data-p="1"] .k0, .tw2-foot[data-p="0"] .k1, .tw2-foot[data-p="1"] .k0 { display: none; }
+  .tw2 .krow { margin: 6px 0 4px; }
+  .card.txf .tw2 .kchart { height: 52px; }
   /* 加權多一行月/季線：同一排的台指期一起放寬，兩張卡底部才對齊 */
   .card.twii, .card.txf { max-height: 190px; }
   /* 川寶快訊：一次一則，其他頁隱藏；標題最多 3 行 */
@@ -179,7 +184,7 @@
   .card.txf .chg, .card.has-k .chg { font-size: clamp(14px, 4.6vw, 18px); }
   .card.txf .meta { margin-top: auto; }
   /* 外資成本（估）：上一行小字標籤、下一行數字，半寬卡片才放得下 */
-  .card.txf .txcost { margin-top: 6px; color: var(--muted); font-size: clamp(11.5px, 3.3vw, 13px); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card.txf .txcost { margin-top: 4px; color: var(--muted); font-size: clamp(11.5px, 3.3vw, 13px); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .card.txf .txcost b { display: block; color: inherit; font-size: clamp(17px, 5.2vw, 22px); font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
   .price small { font-size: 13px; font-weight: 600; }
   .seg + .seg { margin-left: 10px; }
@@ -216,6 +221,7 @@
   @media (min-width: 600px) {
     /* 加權的 15 分 K 在 PC 上放大，卡片高度上限跟著放寬 */
     .kchart { height: 40px; }
+    .card.txf .tw2 .kchart { height: 62px; }
     .card:not(.cal) { max-height: 176px; }
     .card.twii, .card.txf { max-height: 206px; }
   }
@@ -962,6 +968,7 @@
 
   // 加權卡片 K 線下面一行：月線／季線與乖離，點一下切換（大盤均線卡片已併進來）
   let maPage = 0;
+  let txKPage = 0;  // 台指期下半部：0 外資空單成本、1 60 分K
   function maLine(twii) {
     const closes = taiexHistory?.closes;
     if (!twii?.price || !closes?.length) return '';
@@ -1220,9 +1227,17 @@
       const tc = q.id === 'txf' && txCost?.status === 'ok' && Number.isFinite(txCost.cost) && txCost.cost > 0
         && (txCost.side === 'short' || txCost.side === 'long') ? txCost : null;
       // 台指期跟加權同一排：先放一行空白＋淡分隔線（跟加權月／季線那行同高），外資成本放在線下面
-      const txLine = tc ? `<div class="maw tx-sep" aria-hidden="true">&nbsp;</div><div class="txcost" title="${esc(`資料截至 ${tc.asOf}（結算日 ${tc.cycleStart} 起，依外資淨部位與三日轉倉均價推估，不是真實成本）`)}">`
+      const txLine = tc ? `<div class="txcost" title="${esc(`資料截至 ${tc.asOf}（結算日 ${tc.cycleStart} 起，依外資淨部位與三日轉倉均價推估，不是真實成本）`)}">`
         + `外資${tc.side === 'short' ? '空' : '多'}單成本（估）<b>${fmt(Math.round(tc.cost), 0)}</b></div>` : '';
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
+      // 台指期下半部（淡分隔線下）：外資空單成本 ↔ 60 分K（夜盤＋日盤），兩個都有才能點一下切換
+      const k60 = q.id === 'txf' && q.k60?.some(Boolean) ? miniCandles(q.k60, q.prev) : '';
+      const txLower = txLine && k60
+        ? `<div class="tw2 sw" data-p="${txKPage}"><div class="k0">${txLine}</div><div class="krow k1">${k60}</div></div>
+           <div class="foot tw2-foot" data-p="${txKPage}">${meta}<span class="klabel k1">60分K</span></div>`
+        : txLine ? `<div class="tw2">${txLine}</div>${meta}`
+        : k60 ? `<div class="tw2"><div class="krow">${k60}</div></div><div class="foot">${meta}<span class="klabel">60分K</span></div>`
+        : meta;
       // 有 K 線的卡片（加權 15 分 K；費半、TSM 30 分 K）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K／30分K」
       const body = chart
         ? `<div class="chg ${dir}">${sign}${fmt(q.change, q.digits)} ${pct}</div>
@@ -1236,7 +1251,7 @@
         : `<div class="chg ${dir}">${q.unit === 'yield'
             ? `${sign}${fmt(q.change * 100, 1)}bp`
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
-           ${txLine}${meta}`;
+           ${txLower}`;
       return `
         <div class="card${chart ? ' has-k' : ''}${q.id === 'txf' ? ' txf' : q.id === 'twii' ? ' twii' : ''}">
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
@@ -1334,7 +1349,14 @@
   });
   // 2330／0056／00878 下半部：切換第 1 頁（K 線或外/投）↔ 第 2 頁（月季線／近一年殖利率）
   $list.addEventListener('click', (e) => {
-    const mw = e.target.closest('.maw:not(.tx-sep)');
+    const tw2 = e.target.closest('.tw2.sw');
+    if (tw2) {
+      txKPage = 1 - txKPage;
+      tw2.dataset.p = txKPage;
+      tw2.parentElement.querySelector('.tw2-foot').dataset.p = txKPage;
+      return;
+    }
+    const mw = e.target.closest('.maw');
     if (mw) {
       maPage = 1 - maPage;
       mw.dataset.p = maPage;
