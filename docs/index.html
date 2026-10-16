@@ -69,6 +69,14 @@
     color: #d6e4ff; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
   .section .sec-tg { color: #9fb4d6; font-size: 14px; letter-spacing: 0; }
   .sec-hidden { display: none !important; }
+  /* 盤後還沒開獎的卡片：黑色亮漆（上半部高光＋水平反光線、很淡的斜向微光、上亮下暗的邊），字還看得到 */
+  .card.pend { position: relative; }
+  .card.pend::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background:
+      linear-gradient(112deg, rgba(255,255,255,0) 10%, rgba(255,255,255,.045) 24%, rgba(255,255,255,0) 40%),
+      linear-gradient(180deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,.06) 44%, rgba(255,255,255,0) 44.6%),
+      linear-gradient(180deg, rgba(2,3,6,.50) 0%, rgba(2,3,6,.66) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(0,0,0,.7), inset 0 0 18px rgba(0,0,0,.5); }
   /* 最後一行（時間）貼齊卡片底部，同一排的時間才會對齊 */
   .card:not(.cal) > :last-child { margin-top: auto; }
   /* 加權卡片（有 K 線）：漲跌幅要緊接在漲跌下面，不把最後一列推到底 */
@@ -1235,6 +1243,18 @@
       + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
     applyCollapsed();
     fitNames();
+    markPending();
+  }
+
+  // 台股盤後「還沒開獎」：交易日 13:30 後，卡片的「M/D 盤後」還不是今天 → 蓋一層半透明鋼琴烤漆，資料一更新就拿掉
+  function markPending() {
+    const tw = new Date(Date.now() + 8 * 3600000);
+    const due = !isMarketHoliday('tw') && tw.getUTCHours() * 60 + tw.getUTCMinutes() >= 13 * 60 + 30;
+    const today = `${tw.getUTCMonth() + 1}/${tw.getUTCDate()}`;
+    for (const card of $list.querySelectorAll('.card')) {
+      const m = [...card.querySelectorAll('.meta')].map((x) => x.textContent).join(' ').match(/(\d+\/\d+) 盤後/);
+      card.classList.toggle('pend', due && !!m && m[1] !== today);
+    }
   }
 
   let lastLoad = 0;
