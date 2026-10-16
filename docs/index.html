@@ -94,8 +94,12 @@
   .badge.warn { background: var(--warn); color: var(--bg); }
   .badge.fuel, .badge.sell { background: var(--down); color: var(--bg); }
   .badge.buy { background: var(--up); color: var(--bg); }
-  .ma-row { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; font-size: clamp(13px, 4.2vw, 16px); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .ma-row .k { font-size: inherit; }
+  /* 加權卡片的月／季線一行：跟時間同樣大小的淡色字，上面一條細線跟 K 線隔開，點一下切換 */
+  .maw { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 4px; padding-top: 3px; border-top: 1px solid var(--line); font-size: clamp(12px, 3.5vw, 14px); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  .maw .k { color: var(--muted); }
+  .maw[data-p="0"] .k1, .maw[data-p="1"] .k0 { display: none; }
+  /* 加權多一行月/季線：同一排的台指期一起放寬，兩張卡底部才對齊 */
+  .card.twii, .card.txf { max-height: 190px; }
   /* 川寶快訊：一次一則，其他頁隱藏；標題最多 3 行 */
   .pager { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   .pager .jp, .pager .pg { display: none; }
@@ -206,6 +210,7 @@
     /* 加權的 15 分 K 在 PC 上放大，卡片高度上限跟著放寬 */
     .kchart { height: 40px; }
     .card:not(.cal) { max-height: 176px; }
+    .card.twii, .card.txf { max-height: 206px; }
     /* 持股標題：PC 欄寬大，私人增減貼在「我的自選股」旁邊，不要懸在欄位右側 */
     .hhead .hcol:first-child { justify-content: flex-start; }
   }
@@ -678,7 +683,7 @@
     const pressed = twii?.change > 0 && tw2330?.changePct <= 0 && exPct >= 0.5 && q.up > q.down;
     const badge = pulled ? '<span class="badge warn">拉雞盤</span>' : pressed ? '<span class="badge warn">壓雞盤</span>' : '';
     return `
-      <div class="card">
+      <div class="card wide">
         <div class="head"><div class="name">${q.name}</div>${badge}</div>
         <div class="price tight"><span class="up">▲${q.up}</span> <span class="down">▼${q.down}</span></div>
         <div class="chg brd"><span class="seg up"><i>漲停</i>${q.limitUp}</span><span class="seg down"><i>跌停</i>${q.limitDown}</span><span class="seg"><i>平</i>${q.flat}</span></div>
@@ -944,32 +949,21 @@
     return (twii.price / (series.reduce((a, b) => a + b, 0) / 20) - 1) * 100;
   }
 
-  function maHtml(twii) {
+  // 加權卡片 K 線下面一行：月線／季線與乖離，點一下切換（大盤均線卡片已併進來）
+  let maPage = 0;
+  function maLine(twii) {
     const closes = taiexHistory?.closes;
     if (!twii?.price || !closes?.length) return '';
     const day = new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10);
-    const prior = closes.filter((c) => c.date < day).map((c) => c.close);
-    if (prior.length < 59) return '';
-    const series = [...prior, twii.price];
-    const avg = (n) => series.slice(-n).reduce((a, b) => a + b, 0) / n;
-    const [ma20, ma60, p] = [avg(20), avg(60), twii.price];
-    // 均線排列（乖離過熱 / 超跌的 badge 已拿掉：20 年回測過熱後繼續漲、超跌後也不特別好）
-    const label = p > ma20 && ma20 > ma60 ? ['多頭排列', 'up'] : p < ma20 && ma20 < ma60 ? ['空頭排列', 'down'] : ['盤整', ''];
-    // 扣抵：明天均線會扣掉 series.at(-n) 那天的收盤。現價高於它 → 價格持平的話均線明天上彎（⤴），低於 → 下彎（⤵）
-    const row = (name, ma, n) => {
-      const gap = ((p - ma) / ma) * 100;
-      const ded = series.at(-n);
-      const arrow = p > ded ? '<span class="up">⤴</span>' : p < ded ? '<span class="down">⤵</span>' : '';
-      return `<div class="ma-row"><span><span class="k">${name}</span> ${fmt(ma, 0)}${arrow ? ' ' + arrow : ''}</span>`
-        + `<b class="${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</b></div>`;
+    const series = [...closes.filter((c) => c.date < day).map((c) => c.close), twii.price];
+    if (series.length < 60) return '';
+    const one = (name, n, k) => {
+      const ma = series.slice(-n).reduce((a, b) => a + b, 0) / n;
+      const gap = ((twii.price - ma) / ma) * 100;
+      return `<span class="${k}"><span class="k">${name}</span> ${fmt(ma, 0)}</span>`
+        + `<b class="${k} ${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</b>`;
     };
-    const closed = twii.state && twii.state !== 'open';
-    return `
-      <div class="card">
-        <div class="head"><div class="name">大盤均線</div><span class="badge ${label[1]}">${label[0]}</span></div>
-        ${row('月', ma20, 20)}${row('季', ma60, 60)}
-        <div class="meta">${timeState(twii.time, closed ? twii.state : null)}</div>
-      </div>`;
+    return `<div class="maw" data-p="${maPage}">${one('月', 20, 'k0')}${one('季', 60, 'k1')}</div>`;
   }
 
   // 各卡片所屬市場，用行事曆的休市日判斷「休市」或「收盤」
@@ -1128,7 +1122,7 @@
     }
     const bars = weeks.map((w) => [w.o, w.h, w.l, w.c]).slice(-18);
     if (bars.length < 2) return '';
-    // 虛線＝月線（20 日均線）：每根週 K 對應該週最後一個交易日當時的月線，本週那點＝現在的月線（跟大盤均線卡片同一個數）
+    // 虛線＝月線（20 日均線）：每根週 K 對應該週最後一個交易日當時的月線，本週那點＝現在的月線（跟加權卡片下面的月線同一個數）
     const closes = days.map((d) => d.c);
     const ma20At = (i) => (i >= 19 ? closes.slice(i - 19, i + 1).reduce((a, b) => a + b, 0) / 20 : null);
     const lastIdx = [];
@@ -1169,10 +1163,9 @@
       retailRatio: section('台股盤後'),
     };
     // 插在某張卡片後面的卡片：台指期後接我的持股（全寬，排在加權、台指期那一排下面）；
-    // 漲跌家數後接大盤均線；外資淨OI 後接台指VIX、八大行庫
+    // 外資淨OI 後接台指VIX、八大行庫
     const after = {
       txf: holdingsHtml(data.holdings, byId.twii, data.flows),
-      breadth: maHtml(byId.twii),
       // 散戶多空比、外資淨OI 一排在最上面，接著三大法人（全寬），再來台指VIX、八大行庫
       foreignOi: institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii) + govBanksHtml(data.govBanks, byId.twii),
     };
@@ -1224,6 +1217,7 @@
            ${q.id === 'twii'
              // 加權：點 K 線在 15 分 K ↔ 週 K 之間切換，右下標示跟著換
              ? `<div class="kw" data-p="${taiexKPage}"><div class="krow k0">${chart}</div><div class="krow k1">${weeklyCandles(q)}</div></div>
+           ${maLine(q)}
            <div class="foot kw-foot" data-p="${taiexKPage}">${meta}<span class="klabel k0">15分K</span><span class="klabel k1">週K · 月線</span></div>`
              : `<div class="krow">${chart}</div>
            <div class="foot">${meta}<span class="klabel">30分K</span></div>`}`
@@ -1232,7 +1226,7 @@
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
            ${txLine}${meta}`;
       return `
-        <div class="card${chart ? ' has-k' : ''}${q.id === 'txf' ? ' txf' : ''}">
+        <div class="card${chart ? ' has-k' : ''}${q.id === 'txf' ? ' txf' : q.id === 'twii' ? ' twii' : ''}">
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
           <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}</div>
           ${body}
@@ -1312,6 +1306,12 @@
   });
   // 2330／0056／00878 下半部：切換第 1 頁（K 線或外/投）↔ 第 2 頁（月季線／近一年殖利率）
   $list.addEventListener('click', (e) => {
+    const mw = e.target.closest('.maw');
+    if (mw) {
+      maPage = 1 - maPage;
+      mw.dataset.p = maPage;
+      return;
+    }
     const kw = e.target.closest('.kw');
     if (kw) {
       taiexKPage = 1 - taiexKPage;
