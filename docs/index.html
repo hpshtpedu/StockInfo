@@ -651,10 +651,10 @@
   }
 
   // 月線（20 日均線）距離（%）
-  function monthLineGap(q) {
-    const series = dailySeries(q).slice(-20);
-    if (series.length < 20) return null;
-    return (q.price / (series.reduce((a, b) => a + b, 0) / 20) - 1) * 100;
+  function monthLineGap(q, n = 20) {
+    const series = dailySeries(q).slice(-n);
+    if (series.length < n) return null;
+    return (q.price / (series.reduce((a, b) => a + b, 0) / n) - 1) * 100;
   }
 
   // USD/TWD 5 個交易日的變動（%），正＝美元漲＝台幣貶（外匯日線對不上昨收，不補昨收）
@@ -663,11 +663,13 @@
     return !q?.price || closes.length < 5 ? null : (q.price / closes.at(-5) - 1) * 100;
   }
 
-  // 國際指數的月線（20 日均線）距離
+  // 國際指數的均線距離：月線（20 日）、季線（60 日）哪條離現價近就顯示哪條（跌離月線、靠近季線時改看季線）
   function monthLineBadge(q) {
-    const gap = monthLineGap(q);
-    if (gap == null) return '';
-    return `<span class="badge ${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">月線${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</span>`;
+    const m = monthLineGap(q);
+    const s = monthLineGap(q, 60);
+    if (m == null) return '';
+    const [name, gap] = s != null && Math.abs(s) < Math.abs(m) ? ['季線', s] : ['月線', m];
+    return `<span class="badge ${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">${name}${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</span>`;
   }
 
   // USD/TWD：5 個交易日的變動（每晚存的日收盤 + 即時報價）。台幣貶超過 1% 且外資連賣 3 天以上＝資金外流；
