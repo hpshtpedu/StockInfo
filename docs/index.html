@@ -65,8 +65,10 @@
   /* 分類標題：橫跨兩欄 */
   /* 分類標題：扁平的深藍色條（紅綠橘已用於漲跌和警示，藍色不會被誤讀成訊號） */
   /* 左邊亮藍色在前 48px 內漸層融入較淺的深藍，後面整條同色 */
-  .section { grid-column: 1 / -1; margin-top: 6px; padding: 5px 12px; border-radius: 8px; background: linear-gradient(90deg, #5b8fd6 0, #2b4166 48px, #2b4166 100%);
+  .section { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; grid-column: 1 / -1; margin-top: 6px; padding: 5px 12px; border-radius: 8px; background: linear-gradient(90deg, #5b8fd6 0, #2b4166 48px, #2b4166 100%);
     color: #d6e4ff; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+  .section .sec-tg { color: #9fb4d6; font-size: 14px; letter-spacing: 0; }
+  .sec-hidden { display: none !important; }
   /* 最後一行（時間）貼齊卡片底部，同一排的時間才會對齊 */
   .card:not(.cal) > :last-child { margin-top: auto; }
   /* 加權卡片（有 K 線）：漲跌幅要緊接在漲跌下面，不把最後一列推到底 */
@@ -1024,6 +1026,22 @@
 
   // 卡片名稱的可省略部分（例如「八大行庫買賣超」的「買賣超」）：實際量測放不下右上 badge 才隱藏，
   // 不用固定的螢幕寬度判斷（同一支手機的縮放比例不同，空間也不同）
+  // 分類（台股盤中／國際市場／台股盤後）可以收合：點標題列切換，收合狀態記在這台裝置
+  let collapsed = new Set();
+  try { collapsed = new Set(JSON.parse(localStorage.getItem('collapsedSections') ?? '[]')); } catch {}
+  function applyCollapsed() {
+    let hide = false;
+    for (const el of $list.children) {
+      if (el.classList.contains('section')) {
+        hide = collapsed.has(el.dataset.sec);
+        el.classList.toggle('closed', hide);
+        el.querySelector('.sec-tg').textContent = hide ? '▸' : '▾';
+      } else if (!el.classList.contains('cal')) {
+        el.classList.toggle('sec-hidden', hide);
+      }
+    }
+  }
+
   function fitNames() {
     for (const x of $list.querySelectorAll('.nm-x')) {
       x.hidden = false;
@@ -1135,7 +1153,7 @@
       nikkei: monthLineBadge(byId.nikkei),
     };
     // 分類：台股盤中（加權起）、國際市場（費半起）、台股盤後（三大法人全寬卡片、台指VIX 起）
-    const section = (title) => `<div class="section">${title}</div>`;
+    const section = (title) => `<div class="section" data-sec="${title}"><span>${title}</span><span class="sec-tg">▾</span></div>`;
     const before = {
       twii: section('台股盤中'),
       sox: section('國際市場'),
@@ -1214,6 +1232,7 @@
     $list.innerHTML = calendarHtml() + jin10Html(data.jin10)
       + quotes.map((q) => (before[q.id] ?? '') + cardFor(q) + (after[q.id] ?? '')).join('')
       + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
+    applyCollapsed();
     fitNames();
   }
 
@@ -1295,6 +1314,15 @@
     if (!w) return;
     lowerPage[w.dataset.code] = 1 - (lowerPage[w.dataset.code] ?? 0);
     w.dataset.p = lowerPage[w.dataset.code];
+  });
+  $list.addEventListener('click', (e) => {
+    const sec = e.target.closest('.section');
+    if (!sec) return;
+    const name = sec.dataset.sec;
+    if (collapsed.has(name)) collapsed.delete(name); else collapsed.add(name);
+    try { localStorage.setItem('collapsedSections', JSON.stringify([...collapsed])); } catch {}
+    applyCollapsed();
+    if (!collapsed.has(name)) fitNames();  // 展開後重新量字寬（收合時量不到）
   });
   document.getElementById('ju')?.addEventListener('click', () => { location.href = 'private.html'; });
   document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
