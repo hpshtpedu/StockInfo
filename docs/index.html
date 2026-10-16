@@ -96,7 +96,7 @@
   .badge.buy { background: var(--up); color: var(--bg); }
   /* 加權卡片的月／季線一行：放在漲跌下面、K 線上面（K 線跟右下「15分K」才連在一起），點一下切換 */
   .maw { display: flex; justify-content: space-between; gap: 6px; margin-top: 2px; padding-bottom: 4px; border-bottom: 1px solid var(--line); font-size: clamp(12px, 3.5vw, 14px); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
-  .maw .k { color: var(--muted); }
+  .maw { color: var(--muted); }  /* 月／季線和數值都灰字，只有乖離 % 紅綠 */
   .maw[data-p="0"] .k1, .maw[data-p="1"] .k0 { display: none; }
   /* 加權多一行月/季線：同一排的台指期一起放寬，兩張卡底部才對齊 */
   .card.twii, .card.txf { max-height: 190px; }
