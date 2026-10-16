@@ -19,9 +19,9 @@ KEEP = 30
 SYMBOLS = {'sox': '^SOX', 'nq': 'NQ=F', 'kospi': '^KS11', 'nikkei': '^N225', 'usdtwd': 'TWD=X', 'us10y': '^TNX',
            'tw2330': '2330.TW', 'tsm': 'TSM'}
 # 台積電和國際指數要算季線（60 日），多抓一點
-LONG = {'tw2330': ('6mo', 70), 'sox': ('6mo', 120), 'tsm': ('6mo', 120),
+LONG = {'tw2330': ('6mo', 70), 'sox': ('1y', 160), 'tsm': ('1y', 160),
         'nq': ('6mo', 70), 'kospi': ('6mo', 70), 'nikkei': ('6mo', 70)}  # 國際指數的季線 badge
-# 週K 要開高低（18 週＋往前 20 天算月線）
+# 週K 要開高低（18 週＋往前 60 天算季線）
 OHLC = {'sox', 'tsm'}
 
 

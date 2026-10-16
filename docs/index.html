@@ -663,12 +663,19 @@
     return !q?.price || closes.length < 5 ? null : (q.price / closes.at(-5) - 1) * 100;
   }
 
-  // 國際指數的均線距離：月線（20 日）、季線（60 日）哪條離現價近就顯示哪條（跌離月線、靠近季線時改看季線）
-  function monthLineBadge(q) {
+  // 月線（20 日）、季線（60 日）哪條離現價近：badge 和週K的虛線都用這條（跌離月線、靠近季線時改看季線）
+  function nearerMa(q) {
     const m = monthLineGap(q);
     const s = monthLineGap(q, 60);
-    if (m == null) return '';
-    const [name, gap] = s != null && Math.abs(s) < Math.abs(m) ? ['季線', s] : ['月線', m];
+    return s != null && m != null && Math.abs(s) < Math.abs(m) ? 60 : 20;
+  }
+
+  // 國際指數的均線距離
+  function monthLineBadge(q) {
+    const n = nearerMa(q);
+    const gap = monthLineGap(q, n);
+    if (gap == null) return '';
+    const name = n === 60 ? '季線' : '月線';
     return `<span class="badge ${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">${name}${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</span>`;
   }
 
@@ -1169,7 +1176,8 @@
   let taiexKPage = 0;
   const usKPage = {};  // 費半、TSM 的 30分K ↔ 週K
   // 加權、費半、TSM 共用：hist＝每晚存的日開高低收，today＝即時報價所屬的交易日（美股用美東日期）
-  function weeklyCandles(twii, hist = taiexHistory?.closes, today = twii?.time ? new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10) : null) {
+  // n＝虛線用的均線天數（20 月線、60 季線）
+  function weeklyCandles(twii, hist = taiexHistory?.closes, today = twii?.time ? new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10) : null, n = 20) {
     const days = (hist ?? []).filter((c) => !today || c.date < today)
       .map((c) => ({ date: c.date, o: c.open ?? c.close, h: c.high ?? c.close, l: c.low ?? c.close, c: c.close }));
     if (today && twii.price) {
@@ -1189,7 +1197,7 @@
     if (bars.length < 2) return '';
     // 虛線＝月線（20 日均線）：每根週 K 對應該週最後一個交易日當時的月線，本週那點＝現在的月線（跟加權卡片下面的月線同一個數）
     const closes = days.map((d) => d.c);
-    const ma20At = (i) => (i >= 19 ? closes.slice(i - 19, i + 1).reduce((a, b) => a + b, 0) / 20 : null);
+    const ma20At = (i) => (i >= n - 1 ? closes.slice(i - n + 1, i + 1).reduce((a, b) => a + b, 0) / n : null);
     const lastIdx = [];
     days.forEach((d, i) => {
       const t = new Date(`${d.date}T00:00:00Z`);
@@ -1292,15 +1300,17 @@
            ${q.id === 'twii'
              // 加權：點 K 線在 15 分 K ↔ 週 K 之間切換，右下標示跟著換
              ? `${maLine(q)}
-           <div class="kw" data-p="${taiexKPage}"><div class="krow k0">${chart}</div><div class="krow k1">${weeklyCandles(q)}</div></div>
-           <div class="foot kw-foot" data-p="${taiexKPage}">${meta}<span class="klabel k0">15分K</span><span class="klabel k1">週K · 月線</span></div>`
+           <div class="kw" data-p="${taiexKPage}"><div class="krow k0">${chart}</div><div class="krow k1">${weeklyCandles(q, undefined, undefined, maPage ? 60 : 20)}</div></div>
+           <div class="foot kw-foot" data-p="${taiexKPage}">${meta}<span class="klabel k0">15分K</span><span class="klabel k1">週K · ${maPage ? '季線' : '月線'}</span></div>`
              // 費半、TSM：點 K 線在 30 分 K ↔ 週 K · 月線之間切換（週K 用每晚存的日開高低＋即時報價）
              : (() => {
-               const wk = weeklyCandles(q, globalHistory?.[q.id], new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(q.time)));
+               // 虛線跟右上 badge 同一條（TSM 沒有均線 badge，也用離現價較近的那條）
+               const n = nearerMa(q);
+               const wk = weeklyCandles(q, globalHistory?.[q.id], new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(q.time)), n);
                const p = usKPage[q.id] ?? 0;
                return wk
                  ? `<div class="kw" data-id="${q.id}" data-p="${p}"><div class="krow k0">${chart}</div><div class="krow k1">${wk}</div></div>
-           <div class="foot kw-foot" data-p="${p}">${meta}<span class="klabel k0">30分K</span><span class="klabel k1">週K · 月線</span></div>`
+           <div class="foot kw-foot" data-p="${p}">${meta}<span class="klabel k0">30分K</span><span class="klabel k1">週K · ${n === 60 ? '季線' : '月線'}</span></div>`
                  : `<div class="krow">${chart}</div>
            <div class="foot">${meta}<span class="klabel">30分K</span></div>`;
              })()}`
@@ -1416,6 +1426,7 @@
     if (mw) {
       maPage = 1 - maPage;
       mw.dataset.p = maPage;
+      if (lastRenderArgs) render(...lastRenderArgs);  // 週K 的虛線和標籤跟著換月線／季線
       return;
     }
     const kw = e.target.closest('.kw');
