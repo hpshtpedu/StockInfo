@@ -95,7 +95,7 @@
   .badge.fuel, .badge.sell { background: var(--down); color: var(--bg); }
   .badge.buy { background: var(--up); color: var(--bg); }
   /* 加權卡片的月／季線一行：放在漲跌下面、K 線上面（K 線跟右下「15分K」才連在一起），點一下切換 */
-  .maw { display: flex; justify-content: space-between; gap: 6px; margin-top: 2px; font-size: clamp(12px, 3.5vw, 14px); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  .maw { display: flex; justify-content: space-between; gap: 6px; margin-top: 2px; padding-bottom: 4px; border-bottom: 1px solid var(--line); font-size: clamp(12px, 3.5vw, 14px); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   .maw .k { color: var(--muted); }
   .maw[data-p="0"] .k1, .maw[data-p="1"] .k0 { display: none; }
   /* 加權多一行月/季線：同一排的台指期一起放寬，兩張卡底部才對齊 */
@@ -173,11 +173,9 @@
   .card.txf .txcost { margin-top: 2px; color: var(--muted); font-size: clamp(11.5px, 3.3vw, 13px); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .card.txf .txcost b { display: block; color: var(--text); font-size: clamp(17px, 5.2vw, 22px); font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
   .price small { font-size: 13px; font-weight: 600; }
-  .price.tight { font-size: clamp(16px, 4.6vw, 22px); }
   .seg + .seg { margin-left: 10px; }
-  /* 漲跌家數第二行：標籤細字、數字粗體，間距收緊才放得下三位數的平盤家數 */
-  .brd .seg + .seg { margin-left: 8px; }
-  .brd i { font-style: normal; font-weight: 400; margin-right: 1px; }
+  /* 漲跌家數（全寬，排版跟三大法人一樣）：上漲、下跌家數之間留寬一點 */
+  .brd-dn { margin-left: 14px; }
   .seg .k { color: var(--muted); font-weight: 400; margin-right: 2px; }
   .up { color: var(--up); }
   .down { color: var(--down); }
@@ -685,9 +683,9 @@
     return `
       <div class="card wide">
         <div class="head"><div class="name">${q.name}</div>${badge}</div>
-        <div class="price tight"><span class="up">▲${q.up}</span> <span class="down">▼${q.down}</span></div>
-        <div class="chg brd"><span class="seg up"><i>漲停</i>${q.limitUp}</span><span class="seg down"><i>跌停</i>${q.limitDown}</span><span class="seg"><i>平</i>${q.flat}</span></div>
-        <div class="meta">${timeState(twii?.time ?? q.time, twii?.state)}</div>
+        <div class="price"><span class="up">▲${q.up}</span><span class="down brd-dn">▼${q.down}</span></div>
+        <div class="chg"><span class="txt">漲停</span> <span class="up">${q.limitUp}</span> · <span class="txt">跌停</span> <span class="down">${q.limitDown}</span> · <span class="txt">平盤</span> ${q.flat}</div>
+        <div class="foot inst-foot"><div class="meta">${timeState(twii?.time ?? q.time, twii?.state)}</div></div>
       </div>`;
   }
 
