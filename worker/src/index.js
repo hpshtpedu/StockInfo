@@ -687,9 +687,14 @@ async function fetchYahooTw() {
     // Yahoo's trading period for WTX& covers only the day session, so judge TXF by its last
     // trade instead: trading if it printed within 10 minutes, and 15:00-05:00 is the night session.
     if (id === 'txf') {
+      // Between sessions (13:45-15:00, 05:00-08:45) it is closed even while the last print is under
+      // 10 minutes old; otherwise 13:45-13:55 showed 「慢N分」 instead of 收盤.
       const recent = out[id].time && Date.now() - out[id].time < 10 * 60 * 1000;
-      const hour = new Date(Date.now() + 8 * 3600 * 1000).getUTCHours();
-      out[id].state = !recent ? 'closed' : hour >= 15 || hour < 5 ? 'night' : 'open';
+      const tw = new Date(Date.now() + 8 * 3600 * 1000);
+      const hour = tw.getUTCHours();
+      const mins = hour * 60 + tw.getUTCMinutes();
+      const gap = (mins >= 13 * 60 + 45 && mins < 15 * 60) || (mins >= 5 * 60 && mins < 8 * 60 + 45);
+      out[id].state = !recent || gap ? 'closed' : hour >= 15 || hour < 5 ? 'night' : 'open';
     }
     // Holdings: TSMC's closing call auction (for the 尾盤拉雞/殺雞 badge).
     if (id.startsWith('tw')) {
