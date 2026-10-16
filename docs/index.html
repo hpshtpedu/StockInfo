@@ -197,7 +197,8 @@
   .card.flat { gap: 0; }
   .card.flat .head { justify-content: flex-start; gap: 12px; }
   .card.flat .bcnt { font-size: clamp(15px, 4.6vw, 18px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .card.flat .head .badge { margin-left: auto; }
+  /* 右邊緣跟下面我的自選股標題列的增減 badge 切齊（同樣內縮 8px，窄螢幕 6px） */
+  .card.flat .head .badge { margin-left: auto; margin-right: 8px; }
   .seg .k { color: var(--muted); font-weight: 400; margin-right: 2px; }
   .up { color: var(--up); }
   .down { color: var(--down); }
@@ -239,6 +240,7 @@
     .card { padding-left: 5px; padding-right: 5px; }
     .hold { padding-left: 5px; padding-right: 5px; }
     .hhead .badges { padding-right: 6px; }
+    .card.flat .head .badge { margin-right: 6px; }
     .badge { padding: 0 3px; }
   }
 </style>
