@@ -923,8 +923,12 @@
     // 這行固定顯示（版面不跳動）；還沒公布或盤中就寫灰色「未公布」
     const flowSeg = (label, t, code) => {
       const v = t?.net?.[code];
+      // 台積電改顯示金額（億）：證交所只公布張數，用 張數 × 收盤價 估算，跟實際成交均價差約當天的波動幅度
+      const price = code === '2330' ? list.find((x) => x.code === code)?.price : null;
+      const yi = v != null && price ? (v * 1000 * price) / 1e8 : null;
+      const text = yi != null ? `${fmt(yi, Math.abs(yi) >= 100 ? 0 : 1)}億` : fmt(v, 0);  // 百億以上不帶小數，窄螢幕才放得下
       const val = v == null ? '<span class="fp">未公布</span>'
-        : `<span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${v > 0 ? '+' : ''}${fmt(v, 0)}</span>`;
+        : `<span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${v > 0 ? '+' : ''}${text}</span>`;
       return `<span><span class="fk">${label}</span>${val}</span>`;
     };
     // 盤中（交易日 09:00-15:00）整行隱藏但保留高度：卡片大小不變，也不會看到一排「未公布」的雜訊
