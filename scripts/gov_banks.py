@@ -68,8 +68,11 @@ def main():
         known[d['date']] = d
     merged = [known[k] for k in sorted(known)][-KEEP:]
     got_today = merged[-1]['date'] == today
-    OUT.write_text(json.dumps({'fetched': today if got_today else old.get('fetched'), 'days': merged}) + '\n',
-                   encoding='utf-8')
+    # TSMC: only when it is in the page's top-30 buy or sell list (萬元 -> 億元); otherwise None
+    g = re.search(r'title="(\d{4}-\d\d-\d\d) [^"]*?\(2330\)[^"]*?(-?[\d,]+)萬', html)
+    tsmc = {'date': g.group(1), 'net': round(int(g.group(2).replace(',', '')) / 10000, 1)} if g else None
+    OUT.write_text(json.dumps({'fetched': today if got_today else old.get('fetched'), 'days': merged,
+                               'tsmc': tsmc}) + '\n', encoding='utf-8')
     if not got_today:
         print('HiStock has no figure for today yet; the next run will try again')
     days = merged

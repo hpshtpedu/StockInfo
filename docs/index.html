@@ -69,6 +69,8 @@
     color: #d6e4ff; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
   .section .sec-tg { color: #9fb4d6; font-size: 14px; letter-spacing: 0; }
   .sec-hidden { display: none !important; }
+  /* 八大行庫卡片：台積電的八大買賣超（有上排行才出現） */
+  .gg { font-size: clamp(13px, 4vw, 15px); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
   /* 盤後還沒開獎的卡片：黑色亮漆（上半部高光＋水平反光線、很淡的斜向微光、上亮下暗的邊），字還看得到 */
   .card.pend { position: relative; }
   .card.pend::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
@@ -466,10 +468,14 @@
     // 右上：連買/賣（狀態）；右下：護盤（有觸發才出現，灰色說明）；大數字放大跟左邊卡片對齊
     const streak = sign ? `<span class="badge ${sign > 0 ? 'up' : 'down'}">連${n}${sign > 0 ? '買' : '賣'}</span>` : '';
     const note = rescue ? '<span class="badge note">護盤</span>' : '';
+    // 台積電：當天有進八大買超／賣超前 30 名才顯示（排程的 JSON 和 Worker 取當天那筆）
+    const tsmc = [govBanks?.tsmc, live?.tsmc].filter((t) => t?.date === last.date).at(-1);
+    const gg = tsmc ? `<div class="gg">台積電 <b class="${tsmc.net > 0 ? 'up' : tsmc.net < 0 ? 'down' : ''}">${tsmc.net > 0 ? '+' : ''}${fmt(tsmc.net, 1)}億</b></div>` : '';
     return `
       <div class="card roomy">
         <div class="head"><div class="name">八大行庫<span class="nm-x">買賣超</span></div>${streak}</div>
         <div class="price ${dir}">${last.net > 0 ? '+' : ''}${fmt(last.net, 1)}<small> 億</small></div>
+        ${gg}
         <div class="foot"><div class="meta">${mm}/${dd} 盤後</div>${note}</div>
       </div>`;
   }

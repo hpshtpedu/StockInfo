@@ -197,13 +197,17 @@ async function fetchGovBanks(origin, ctx) {
     try {
       const res = await fetch('https://histock.tw/stock/broker8.aspx', { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
       if (!res.ok) throw new Error(`HiStock HTTP ${res.status}`);
-      const m = (await res.text()).match(/loadChart\(([\s\S]*?)\);/);
+      const html = await res.text();
+      const m = html.match(/loadChart\(([\s\S]*?)\);/);
       const series = m ? JSON.parse(JSON.parse(m[1]).SumMoney) : [];
       // 沒交易的日子是 0（真實交易日不會剛好 0）
       const days = series.filter(([, v]) => v !== 0)
         .map(([t, v]) => ({ date: new Date(t + 8 * 3600 * 1000).toISOString().slice(0, 10), net: Math.round(v * 100) / 100 }))
         .slice(-10);
-      if (days.length) { value = { days }; saveLast(origin, ctx, 'govbanks', value); }
+      // 台積電：同一頁的買超／賣超前 30 名裡有它才有數字（萬元 → 億元），沒上榜就是 null
+      const g = html.match(/title="(\d{4}-\d\d-\d\d) [^"]*?\(2330\)[^"]*?(-?[\d,]+)萬/);
+      const tsmc = g ? { date: g[1], net: Math.round(Number(g[2].replace(/,/g, '')) / 1000) / 10 } : null;
+      if (days.length) { value = { days, tsmc }; saveLast(origin, ctx, 'govbanks', value); }
     } catch (err) {
       flowErrors.govbanks = `${new Date().toISOString()} ${err?.message || err}`;
     }
