@@ -109,7 +109,11 @@
   /* 台指期下半部：淡分隔線下面，預設外資空單成本，點一下換 60 分K（K 線比加權的高，用掉分隔線省下的那一行） */
   .tw2 { margin-top: 6px; padding-top: 2px; border-top: 1px solid var(--line); }
   .tw2.sw { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
-  .tw2[data-p="0"] .k1, .tw2[data-p="1"] .k0, .tw2-foot[data-p="0"] .k1, .tw2-foot[data-p="1"] .k0 { display: none; }
+  /* 兩頁疊在同一格、只切換看不看得到：高度固定是兩頁中較高的，點一下卡片（和同排的加權）不會跳 */
+  .tw2.sw { display: grid; }
+  .tw2.sw > * { grid-area: 1 / 1; }
+  .tw2[data-p="0"] .k1, .tw2[data-p="1"] .k0 { visibility: hidden; }
+  .tw2-foot[data-p="0"] .k1, .tw2-foot[data-p="1"] .k0 { visibility: hidden; }
   .tw2 .krow { margin: 6px 0 4px; }
   .card.txf .tw2 .kchart { height: 52px; }
   /* 加權多一行月/季線：同一排的台指期一起放寬，兩張卡底部才對齊 */
