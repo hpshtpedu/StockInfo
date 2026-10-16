@@ -86,6 +86,9 @@
   .kw[data-p="0"] .k1, .kw[data-p="1"] .k0, .kw-foot[data-p="0"] .k1, .kw-foot[data-p="1"] .k0 { display: none; }
   /* 加權的 15 分 K：整行寬，上下跟文字隔開；「15分K」放在時間那一行的最右邊 */
   .krow { margin: 8px 0 4px; }
+  /* 費半、TSM：漲跌和 K 線之間一條淡分隔線（跟加權一樣） */
+  .card.has-k:not(.twii) > .kw { margin-top: 4px; border-top: 1px solid var(--line); }
+  .card.has-k:not(.twii) > .krow { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
   .card.has-k .foot { align-items: center; }
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .price { font-size: clamp(17px, 5.2vw, 24px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
