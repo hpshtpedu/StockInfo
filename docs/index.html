@@ -924,10 +924,15 @@
     const flowSeg = (label, t, code) => {
       const v = t?.net?.[code];
       // 顯示金額（億）：證交所只公布張數，用 張數 × 收盤價 估算（Goodinfo 也是估），跟實際成交均價差約當天的波動幅度。
-      // 百億以上不帶小數（窄螢幕才放得下）、十億以上一位、以下兩位（00685L 這種小額才不會變 0.0）
+      // 單位依大小：1 億以上用億（百億以上不帶小數，窄螢幕才放得下；十億以上一位、以下兩位），
+      // 不到 1 億用千萬、不到 1 千萬用百萬（一位小數；不到 1 百萬兩位）
       const price = list.find((x) => x.code === code)?.price;
       const yi = v != null && price ? (v * 1000 * price) / 1e8 : null;
-      const text = yi != null ? `${fmt(yi, Math.abs(yi) >= 100 ? 0 : Math.abs(yi) >= 10 ? 1 : 2)}億` : fmt(v, 0);
+      const a = Math.abs(yi ?? 0);
+      const text = yi == null ? fmt(v, 0) : yi === 0 ? '0'
+        : a >= 1 ? `${fmt(yi, a >= 100 ? 0 : a >= 10 ? 1 : 2)}億`
+        : a >= 0.1 ? `${fmt(yi * 10, 1)}千萬`
+        : `${fmt(yi * 100, a >= 0.01 ? 1 : 2)}百萬`;
       const val = v == null ? '<span class="fp">未公布</span>'
         : `<span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${v > 0 ? '+' : ''}${text}</span>`;
       return `<span><span class="fk">${label}</span>${val}</span>`;
