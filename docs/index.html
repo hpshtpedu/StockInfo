@@ -670,7 +670,11 @@
     const tsmcPoints = weight && tw2330?.changePct != null && twii?.prev
       ? twii.prev * (weight / 100) * (tw2330.changePct / 100) : null;
     const pulled = twii?.change > 0 && tw2330?.changePct >= 1 && tsmcPoints != null && twii.change - tsmcPoints <= 0 && q.down > q.up;
-    const badge = pulled ? '<span class="badge warn">拉雞盤</span>' : '';
+    // 「壓雞盤」＝反過來：台積電沒漲（≤ 0%）、加權漲，扣掉台積電後的指數漲 0.5% 以上，且上漲家數較多。
+    // 回測 2025/10–2026/10：241 個交易日中 25 天（約 10%），2026/10/16 就是（加權 +0.95%、台積電平盤、976 漲 129 跌）
+    const exPct = tsmcPoints != null && twii?.prev ? ((twii.change - tsmcPoints) / (twii.prev * (1 - weight / 100))) * 100 : null;
+    const pressed = twii?.change > 0 && tw2330?.changePct <= 0 && exPct >= 0.5 && q.up > q.down;
+    const badge = pulled ? '<span class="badge warn">拉雞盤</span>' : pressed ? '<span class="badge warn">壓雞盤</span>' : '';
     return `
       <div class="card">
         <div class="head"><div class="name">${q.name}</div>${badge}</div>
