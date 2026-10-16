@@ -908,8 +908,10 @@
       const sign = h.change > 0 ? '+' : '';
       // 平盤用「■」當錨點、數字固定寫 0.00，跟其他檔的寬度一致
       const arrow = h.change > 0 ? '▲ ' : h.change < 0 ? '▼ ' : h.change === 0 ? '■ ' : '';
-      const digits = h.price >= 1000 ? 0 : 2;
-      const chgText = h.change === 0 ? '0.00' : fmt(h.change == null ? null : Math.abs(h.change), digits);
+      // 千元以上（2330）的漲跌補到 3 位數，寬度跟其他檔一致：5 → 5.00、20 → 20.0、100 → 100
+      const abs = h.change == null ? null : Math.abs(h.change);
+      const digits = h.price < 1000 ? 2 : abs < 10 ? 2 : abs < 100 ? 1 : 0;
+      const chgText = h.change === 0 ? '0.00' : fmt(abs, digits);
       return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${chgText}</span></div>`
         + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div>`
         + lowerToggle(h, flowLine(h)) + '</div>';
