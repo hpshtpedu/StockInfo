@@ -1243,7 +1243,7 @@
         && (txCost.side === 'short' || txCost.side === 'long') ? txCost : null;
       // 台指期跟加權同一排：先放一行空白＋淡分隔線（跟加權月／季線那行同高），外資成本放在線下面
       const txLine = tc ? `<div class="txcost" title="${esc(`資料截至 ${tc.asOf}（結算日 ${tc.cycleStart} 起，依外資淨部位與三日轉倉均價推估，不是真實成本）`)}">`
-        + `外資${tc.side === 'short' ? '空' : '多'}單成本(估)<b>${fmt(Math.round(tc.cost), 0)}</b></div>` : '';
+        + `外資${tc.side === 'short' ? '空' : '多'}單成本 (估)<b>${fmt(Math.round(tc.cost), 0)}</b></div>` : '';
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
       // 台指期下半部（淡分隔線下）：外資空單成本 ↔ 60 分K（夜盤＋日盤），兩個都有才能點一下切換
       const k60 = q.id === 'txf' && q.k60?.some(Boolean) ? miniCandles(q.k60, q.prev) : '';
