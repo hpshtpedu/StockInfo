@@ -955,16 +955,19 @@
     const [ma20, ma60, p] = [avg(20), avg(60), twii.price];
     // 均線排列（乖離過熱 / 超跌的 badge 已拿掉：20 年回測過熱後繼續漲、超跌後也不特別好）
     const label = p > ma20 && ma20 > ma60 ? ['多頭排列', 'up'] : p < ma20 && ma20 < ma60 ? ['空頭排列', 'down'] : ['盤整', ''];
-    const row = (name, ma) => {
+    // 扣抵：明天均線會扣掉 series.at(-n) 那天的收盤。現價高於它 → 價格持平的話均線明天上彎（⤴），低於 → 下彎（⤵）
+    const row = (name, ma, n) => {
       const gap = ((p - ma) / ma) * 100;
-      return `<div class="ma-row"><span><span class="k">${name}</span> ${fmt(ma, 0)}</span>`
+      const ded = series.at(-n);
+      const arrow = p > ded ? '<span class="up">⤴</span>' : p < ded ? '<span class="down">⤵</span>' : '';
+      return `<div class="ma-row"><span><span class="k">${name}</span> ${fmt(ma, 0)}${arrow}</span>`
         + `<b class="${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</b></div>`;
     };
     const closed = twii.state && twii.state !== 'open';
     return `
       <div class="card">
         <div class="head"><div class="name">大盤均線</div><span class="badge ${label[1]}">${label[0]}</span></div>
-        ${row('月線', ma20)}${row('季線', ma60)}
+        ${row('月', ma20, 20)}${row('季', ma60, 60)}
         <div class="meta">${timeState(twii.time, closed ? twii.state : null)}</div>
       </div>`;
   }
