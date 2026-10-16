@@ -1032,9 +1032,9 @@
       const cut = (el) => el.scrollWidth > el.clientWidth;
       if (head && (cut(head) || [...head.children].some(cut))) x.hidden = true;
     }
-    // 漲跌那一行（例如加權跌破千點「-1,061.66 (-2.15%)」）放不下時，字自動縮小到剛好放得下（最小 11px）；
+    // 漲跌那一行、較前日那一行（例如加權跌破千點「-1,061.66 (-2.15%)」、「淨空增10,768口」）放不下時，字自動縮小到剛好放得下（最小 11px）；
     // 每次重畫都先恢復原本大小再量，所以漲跌變小時會自動變回來
-    for (const el of $list.querySelectorAll('.card .chg')) {
+    for (const el of $list.querySelectorAll('.card .chg, .card .cmp')) {
       el.style.fontSize = '';
       let size = parseFloat(getComputedStyle(el).fontSize);
       while (el.scrollWidth > el.clientWidth && size > 11) {
@@ -1139,14 +1139,15 @@
     const before = {
       twii: section('台股盤中'),
       sox: section('國際市場'),
-      retailRatio: section('台股盤後') + institutionalHtml(data.institutional, instHistory),
+      retailRatio: section('台股盤後'),
     };
     // 插在某張卡片後面的卡片：台指期後接我的持股（全寬，排在加權、台指期那一排下面）；
     // 漲跌家數後接大盤均線；外資淨OI 後接台指VIX、八大行庫
     const after = {
       txf: holdingsHtml(data.holdings, byId.twii, data.flows),
       breadth: maHtml(byId.twii),
-      foreignOi: vixHtml(data.vix, byId.twii) + govBanksHtml(data.govBanks, byId.twii),
+      // 散戶多空比、外資淨OI 一排在最上面，接著三大法人（全寬），再來台指VIX、八大行庫
+      foreignOi: institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii) + govBanksHtml(data.govBanks, byId.twii),
     };
     // USD/TWD 是國際外匯報價，排到國際市場最後（美債後面）
     const quotes = data.quotes.filter((q) => q.id !== 'usdtwd');
