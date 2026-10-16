@@ -226,7 +226,7 @@ async function fetchStockFlows(origin, ctx) {
   return { foreign, trust };
 }
 async function flowTable(origin, ctx, table, publishHour, netOf) {
-  const key = new Request(`${origin}/_flows_v1/${table}`);
+  const key = new Request(`${origin}/_flows_v2/${table}`);
   const hit = await caches.default.match(key);
   if (hit) return hit.json();
   const get = async (day) => {
