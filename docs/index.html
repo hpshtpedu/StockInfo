@@ -192,8 +192,12 @@
   .card.txf .txcost b { display: block; color: inherit; font-size: clamp(17px, 5.2vw, 22px); font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
   .price small { font-size: 13px; font-weight: 600; }
   .seg + .seg { margin-left: 10px; }
-  /* 漲跌家數（全寬，排版跟三大法人一樣）：上漲、下跌家數之間留寬一點 */
-  .brd-dn { margin-left: 14px; }
+  /* 漲跌家數：一行的扁卡片（名稱、▲上漲 ▼下跌、最右邊壓雞盤／拉雞盤） */
+  .brd-dn { margin-left: 10px; }
+  .card.flat { gap: 0; }
+  .card.flat .head { justify-content: flex-start; gap: 12px; }
+  .card.flat .bcnt { font-size: clamp(15px, 4.6vw, 18px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .card.flat .head .badge { margin-left: auto; }
   .seg .k { color: var(--muted); font-weight: 400; margin-right: 2px; }
   .up { color: var(--up); }
   .down { color: var(--down); }
@@ -735,11 +739,8 @@
     const pressed = twii?.change > 0 && tw2330?.changePct <= 0 && exPct >= 0.5 && q.up > q.down;
     const badge = pulled ? '<span class="badge warn">拉雞盤</span>' : pressed ? '<span class="badge warn">壓雞盤</span>' : '';
     return `
-      <div class="card wide">
-        <div class="head"><div class="name">${q.name}</div>${badge}</div>
-        <div class="price"><span class="up">▲${q.up}</span><span class="down brd-dn">▼${q.down}</span></div>
-        <div class="chg"><span class="txt">漲停</span> <span class="up">${q.limitUp}</span> · <span class="txt">跌停</span> <span class="down">${q.limitDown}</span> · <span class="txt">平盤</span> ${q.flat}</div>
-        <div class="foot inst-foot"><div class="meta">${timeState(twii?.time ?? q.time, twii?.state)}</div></div>
+      <div class="card wide flat">
+        <div class="head"><div class="name">${q.name}</div><span class="bcnt"><span class="up">▲${q.up}</span><span class="down brd-dn">▼${q.down}</span></span>${badge}</div>
       </div>`;
   }
 
@@ -977,8 +978,9 @@
       const arrow = h.change > 0 ? '▲ ' : h.change < 0 ? '▼ ' : h.change === 0 ? '■ ' : '';
       // 千元以上（2330）的漲跌補到 3 位數，寬度跟其他檔一致：5 → 5.00、20 → 20.0、100 → 100
       const abs = h.change == null ? null : Math.abs(h.change);
-      const digits = h.price < 1000 ? 2 : abs < 10 ? 2 : abs < 100 ? 1 : 0;
-      const chgText = h.change === 0 ? '0.00' : fmt(abs, digits);
+      const digits = h.price >= 1000 ? 0 : 2;  // 股價
+      const chgDigits = h.price < 1000 ? 2 : abs < 10 ? 2 : abs < 100 ? 1 : 0;
+      const chgText = h.change === 0 ? '0.00' : fmt(abs, chgDigits);
       return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${chgText}</span></div>`
         + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div>`
         + lowerToggle(h, flowLine(h)) + '</div>';
@@ -1226,7 +1228,9 @@
     // 插在某張卡片後面的卡片：台指期後接我的持股（全寬，排在加權、台指期那一排下面）；
     // 外資淨OI 後接台指VIX、八大行庫
     const after = {
-      txf: holdingsHtml(data.holdings, byId.twii, data.flows),
+      // 漲跌家數（一行的扁卡片）放在我的自選股上面
+      txf: (byId.breadth && !byId.breadth.error ? breadthHtml(byId.breadth, byId.twii, data.holdings?.find((h) => h.code === '2330')) : '')
+        + holdingsHtml(data.holdings, byId.twii, data.flows),
       // 散戶多空比、外資淨OI 一排在最上面，接著三大法人（全寬），再來台指VIX、八大行庫
       foreignOi: institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii) + govBanksHtml(data.govBanks, byId.twii),
     };
@@ -1245,7 +1249,7 @@
         return `<div class="card"><div class="name">${q.name}</div><div class="meta" title="${esc(q.error)}"><span class="lag">故障</span></div></div>`;
       }
       if (q.kind === 'daily') return dailyHtml(q, data.institutional, data.flows, byId.twii);
-      if (q.kind === 'breadth') return breadthHtml(q, byId.twii, data.holdings?.find((h) => h.code === '2330'));
+      if (q.kind === 'breadth') return '';  // 已經放在台指期後面（我的自選股上面）
       const dir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
       const sign = q.change > 0 ? '+' : '';
       const ageMin = Math.round((Date.now() - q.time) / 60000);
