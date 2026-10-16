@@ -960,7 +960,7 @@
       const gap = ((p - ma) / ma) * 100;
       const ded = series.at(-n);
       const arrow = p > ded ? '<span class="up">⤴</span>' : p < ded ? '<span class="down">⤵</span>' : '';
-      return `<div class="ma-row"><span><span class="k">${name}</span> ${fmt(ma, 0)}${arrow}</span>`
+      return `<div class="ma-row"><span><span class="k">${name}</span> ${fmt(ma, 0)}${arrow ? ' ' + arrow : ''}</span>`
         + `<b class="${gap > 0 ? 'up' : gap < 0 ? 'down' : ''}">${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</b></div>`;
     };
     const closed = twii.state && twii.state !== 'open';
