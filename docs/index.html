@@ -522,16 +522,26 @@
 
   // 外資期現同向：同一天現貨賣超 300 億以上、台指淨 OI 又減少 2,000 口以上＝期現雙空；反向＝期現雙多。
   // 門檻約為各自日變動的中位數，盤整時的小額買賣不算
-  function futuresSpotBadge(q, inst) {
+  // 賣現補空（跟上面兩個互斥）：現貨賣超 100 億以上、外資賣台積電、淨空單減少 1,000 口以上、加權收跌，結算日不算。
+  // 回測 2023/11-2026/10：38 天（約每月一次），隔天加權平均 +1.00%、66% 上漲（一般下跌日 +0.11%、55%），
+  // 2024-2026 每年都成立；20 天後沒有優勢。拿掉最大的三次反彈（含 2025/4/9）就不顯著，所以只當描述
+  function futuresSpotBadge(q, inst, flows, twii) {
     if (q.change == null || !inst?.date || !q.time) return '';
     const day = new Date(q.time + 8 * 3600000).toISOString().slice(0, 10);
     if (inst.date !== day) return '';
     if (inst.foreign <= -300 && q.change <= -2000) return '<span class="badge sell">期現雙空</span>';
     if (inst.foreign >= 300 && q.change >= 2000) return '<span class="badge buy">期現雙多</span>';
+    const d = new Date(day + 'T00:00:00Z');
+    const settlement = d.getUTCDay() === 3 && d.getUTCDate() >= 15 && d.getUTCDate() <= 21;  // 第三個星期三
+    const tsmc = flows?.foreign?.date === day ? flows.foreign.net?.['2330'] : null;
+    const taiex = taiexChangePct(day, twii);
+    if (!settlement && inst.foreign <= -100 && tsmc < 0 && q.price < 0 && q.change >= 1000 && taiex < 0) {
+      return '<span class="badge warn">賣現補空</span>';
+    }
     return '';
   }
 
-  function dailyHtml(q, inst) {
+  function dailyHtml(q, inst, flows, twii) {
     const dir = q.price > 0 ? 'up' : q.price < 0 ? 'down' : '';
     const sign = q.price > 0 ? '+' : '';
     const value = q.unit === 'ratio' ? `${sign}${fmt(q.price, q.digits)}%` : `${sign}${fmt(q.price, q.digits)}<small> 口</small>`;
@@ -548,7 +558,7 @@
     }
     // 散戶多空比是反向指標（2020-2026 回測）：< 0 散戶轉淨空＝燃料充足（綠），之後 10 / 20 日加權平均
     // +1.3% / +2.4%（全部 +1.0% / +1.9%）。≥ +30% 的 FOMO 後續跟平常差不多，不標
-    const badge = q.unit !== 'ratio' ? futuresSpotBadge(q, inst)
+    const badge = q.unit !== 'ratio' ? futuresSpotBadge(q, inst, flows, twii)
       : q.price < 0 ? '<span class="badge fuel">燃料充足</span>' : '';
     return `
       <div class="card roomy">
@@ -1206,7 +1216,7 @@
         // 抓不到又沒有舊資料可用：只寫「故障」，錯誤細節放在 title（長按 / 滑過可看）
         return `<div class="card"><div class="name">${q.name}</div><div class="meta" title="${esc(q.error)}"><span class="lag">故障</span></div></div>`;
       }
-      if (q.kind === 'daily') return dailyHtml(q, data.institutional);
+      if (q.kind === 'daily') return dailyHtml(q, data.institutional, data.flows, byId.twii);
       if (q.kind === 'breadth') return breadthHtml(q, byId.twii, data.holdings?.find((h) => h.code === '2330'));
       const dir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
       const sign = q.change > 0 ? '+' : '';
@@ -1233,7 +1243,7 @@
         && (txCost.side === 'short' || txCost.side === 'long') ? txCost : null;
       // 台指期跟加權同一排：先放一行空白＋淡分隔線（跟加權月／季線那行同高），外資成本放在線下面
       const txLine = tc ? `<div class="txcost" title="${esc(`資料截至 ${tc.asOf}（結算日 ${tc.cycleStart} 起，依外資淨部位與三日轉倉均價推估，不是真實成本）`)}">`
-        + `外資${tc.side === 'short' ? '空' : '多'}單成本（估）<b>${fmt(Math.round(tc.cost), 0)}</b></div>` : '';
+        + `外資${tc.side === 'short' ? '空' : '多'}單成本(估)<b>${fmt(Math.round(tc.cost), 0)}</b></div>` : '';
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
       // 台指期下半部（淡分隔線下）：外資空單成本 ↔ 60 分K（夜盤＋日盤），兩個都有才能點一下切換
       const k60 = q.id === 'txf' && q.k60?.some(Boolean) ? miniCandles(q.k60, q.prev) : '';
