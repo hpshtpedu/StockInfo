@@ -87,8 +87,8 @@
   .kw[data-p="0"] .k1, .kw[data-p="1"] .k0, .kw-foot[data-p="0"] .k1, .kw-foot[data-p="1"] .k0 { display: none; }
   /* 加權的 15 分 K：整行寬，上下跟文字隔開；「15分K」放在時間那一行的最右邊 */
   .krow { margin: 8px 0 4px; }
-  /* 費半、TSM：漲跌和 K 線之間一條淡分隔線（跟加權一樣） */
-  .card.has-k:not(.twii) > .kw { margin-top: 4px; border-top: 1px solid var(--line); }
+  /* 加權、費半、TSM：漲跌和 K 線之間一條淡分隔線 */
+  .card.has-k > .kw { margin-top: 4px; border-top: 1px solid var(--line); }
   .card.has-k:not(.twii) > .krow { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
   .card.has-k .foot { align-items: center; }
   .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -106,14 +106,8 @@
   .badge.warn { background: var(--warn); color: var(--bg); }
   .badge.fuel, .badge.sell { background: var(--down); color: var(--bg); }
   .badge.buy { background: var(--up); color: var(--bg); }
-  /* 加權卡片的月／季線一行：放在漲跌下面、K 線上面（K 線跟右下「15分K」才連在一起），點一下切換 */
-  .maw { display: flex; justify-content: space-between; gap: 6px; margin-top: 2px; padding-bottom: 4px; border-bottom: 1px solid var(--line); font-size: clamp(12px, 3.5vw, 14px); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
-  .maw { color: var(--muted); }  /* 月／季線、數值、乖離 % 全部灰字，不搶加權本身的漲跌 */
-  .maw[data-p="0"] .k1, .maw[data-p="1"] .k0 { display: none; }
-  /* 台指期下半部：淡分隔線下面，預設外資空單成本，點一下換 60 分K（K 線比加權的高，用掉分隔線省下的那一行） */
-  /* 分隔線跟加權月／季線底下那條同高（前面墊一行空白）；K 線填滿外資空單成本那兩行的高度，卡片高度不變 */
-  .tw2 { margin-top: 0; }
-  .maw.tx-sep { cursor: default; }
+  /* 台指期下半部：淡分隔線（跟加權的同高）下面，預設外資空單成本，點一下換 60 分K，K 線填滿成本那兩行的高度 */
+  .tw2 { margin-top: 4px; border-top: 1px solid var(--line); }
   .tw2.sw { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   /* 兩頁疊在同一格、只切換看不看得到：高度固定是兩頁中較高的，點一下卡片（和同排的加權）不會跳 */
   .tw2.sw { display: grid; }
@@ -1019,22 +1013,16 @@
     return (twii.price / (series.reduce((a, b) => a + b, 0) / 20) - 1) * 100;
   }
 
-  // 加權卡片 K 線下面一行：月線／季線與乖離，點一下切換（大盤均線卡片已併進來）
-  let maPage = 0;
   let txKPage = 0;  // 台指期下半部：0 外資空單成本、1 60 分K
-  function maLine(twii) {
+  // 加權的月線（20 日）、季線（60 日）哪條離現價近：週K 的虛線畫這條（跟費半、TSM 同一個規則）
+  function twiiNearerMa(twii) {
     const closes = taiexHistory?.closes;
-    if (!twii?.price || !closes?.length) return '';
+    if (!twii?.price || !closes?.length) return 20;
     const day = new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10);
     const series = [...closes.filter((c) => c.date < day).map((c) => c.close), twii.price];
-    if (series.length < 60) return '';
-    const one = (name, n, k) => {
-      const ma = series.slice(-n).reduce((a, b) => a + b, 0) / n;
-      const gap = ((twii.price - ma) / ma) * 100;
-      return `<span class="${k}"><span class="k">${name}</span> ${fmt(ma, 0)}</span>`
-        + `<b class="${k}">${gap > 0 ? '+' : ''}${fmt(gap, 1)}%</b>`;
-    };
-    return `<div class="maw" data-p="${maPage}">${one('月', 20, 'k0')}${one('季', 60, 'k1')}</div>`;
+    if (series.length < 60) return 20;
+    const gap = (n) => Math.abs(twii.price / (series.slice(-n).reduce((a, b) => a + b, 0) / n) - 1);
+    return gap(60) < gap(20) ? 60 : 20;
   }
 
   // 各卡片所屬市場，用行事曆的休市日判斷「休市」或「收盤」
@@ -1287,21 +1275,19 @@
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
       // 台指期下半部（淡分隔線下）：外資空單成本 ↔ 60 分K（夜盤＋日盤），兩個都有才能點一下切換
       const k60 = q.id === 'txf' && q.k60?.some(Boolean) ? miniCandles(q.k60, q.prev) : '';
-      const sep = '<div class="maw tx-sep" aria-hidden="true">&nbsp;</div>';
       const txLower = txLine && k60
-        ? `${sep}<div class="tw2 sw" data-p="${txKPage}"><div class="k0">${txLine}</div><div class="krow k1">${k60}</div></div>
+        ? `<div class="tw2 sw" data-p="${txKPage}"><div class="k0">${txLine}</div><div class="krow k1">${k60}</div></div>
            <div class="foot tw2-foot" data-p="${txKPage}">${meta}<span class="klabel k1">60分K</span></div>`
-        : txLine ? `${sep}<div class="tw2">${txLine}</div>${meta}`
-        : k60 ? `${sep}<div class="tw2"><div class="krow">${k60}</div></div><div class="foot">${meta}<span class="klabel">60分K</span></div>`
+        : txLine ? `<div class="tw2">${txLine}</div>${meta}`
+        : k60 ? `<div class="tw2"><div class="krow">${k60}</div></div><div class="foot">${meta}<span class="klabel">60分K</span></div>`
         : meta;
       // 有 K 線的卡片（加權 15 分 K；費半、TSM 30 分 K）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K／30分K」
       const body = chart
         ? `<div class="chg ${dir}">${sign}${fmt(q.change, q.digits)} ${pct}</div>
            ${q.id === 'twii'
              // 加權：點 K 線在 15 分 K ↔ 週 K 之間切換，右下標示跟著換
-             ? `${maLine(q)}
-           <div class="kw" data-p="${taiexKPage}"><div class="krow k0">${chart}</div><div class="krow k1">${weeklyCandles(q, undefined, undefined, maPage ? 60 : 20)}</div></div>
-           <div class="foot kw-foot" data-p="${taiexKPage}">${meta}<span class="klabel k0">15分K</span><span class="klabel k1">週K · ${maPage ? '季線' : '月線'}</span></div>`
+             ? `<div class="kw" data-p="${taiexKPage}"><div class="krow k0">${chart}</div><div class="krow k1">${weeklyCandles(q, undefined, undefined, twiiNearerMa(q))}</div></div>
+           <div class="foot kw-foot" data-p="${taiexKPage}">${meta}<span class="klabel k0">15分K</span><span class="klabel k1">週K · ${twiiNearerMa(q) === 60 ? '季線' : '月線'}</span></div>`
              // 費半、TSM：點 K 線在 30 分 K ↔ 週 K · 月線之間切換（週K 用每晚存的日開高低＋即時報價）
              : (() => {
                // 虛線跟右上 badge 同一條（TSM 沒有均線 badge，也用離現價較近的那條）
@@ -1420,13 +1406,6 @@
       txKPage = 1 - txKPage;
       tw2.dataset.p = txKPage;
       tw2.parentElement.querySelector('.tw2-foot').dataset.p = txKPage;
-      return;
-    }
-    const mw = e.target.closest('.maw:not(.tx-sep)');
-    if (mw) {
-      maPage = 1 - maPage;
-      mw.dataset.p = maPage;
-      if (lastRenderArgs) render(...lastRenderArgs);  // 週K 的虛線和標籤跟著換月線／季線
       return;
     }
     const kw = e.target.closest('.kw');
