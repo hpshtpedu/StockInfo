@@ -658,18 +658,13 @@ async function fetchYahooTw() {
     if (!meta || meta.regularMarketPrice == null) continue;
     const price = meta.regularMarketPrice;
     const prev = meta.previousClose ?? meta.chartPreviousClose;
-    // Yahoo stamps TXF's night session with the next trading day's date (Fri 10/16 17:28 came as Sun
-    // 10/18 17:28), so every night bar looked "ahead" and was dropped. In the night session, a time
-    // that is whole days ahead with the same time of day is shifted back by those days.
-    let shift = 0;
-    const twHour = new Date(Date.now() + 8 * 3600 * 1000).getUTCHours();
-    const ahead = meta.regularMarketTime * 1000 - Date.now();
-    if (id === 'txf' && (twHour >= 15 || twHour < 5) && ahead > 120000) {
-      const k = Math.round(ahead / 86400000);
-      const rest = ahead - k * 86400000;  // the feed can lag (慢N分), so allow up to 45 min behind
-      if (k >= 1 && rest > -45 * 60000 && rest < 120000) shift = k * 86400;
-    }
-    meta.regularMarketTime -= shift;
+    // Yahoo puts a trading day's night session on the calendar day before it (Monday's starts "Sun
+    // 15:00"), but the real night session starts on the previous trading day (Fri 15:00). Night bars
+    // then look days ahead and were dropped, and each Cloudflare location fell back to its own old
+    // copy (10/16-17). Shift only the night part (start .. start+14h) back to the previous trading
+    // day; 0 on Mon-Thu nights, 2 days after a Friday, more after holidays. Day-session bars are right.
+    const fix = nightFix(id === 'txf' ? meta.tradingPeriods?.[0]?.[0]?.start : null);
+    meta.regularMarketTime -= fix(meta.regularMarketTime);
     out[id] = {
       name,
       symbol,
@@ -689,7 +684,7 @@ async function fetchYahooTw() {
     // so the remembered 12:16 quote was shown as 收盤). The minute bars are the ground truth: use the
     // last bar that actually traded, if it is newer than what the meta says.
     {
-      const ts = (chart.timestamp ?? []).map((t) => t - shift);
+      const ts = (chart.timestamp ?? []).map((t) => t - fix(t));
       const closes = chart.indicators?.quote?.[0]?.close ?? [];
       let i = ts.length - 1;
       while (i >= 0 && (closes[i] == null || ts[i] * 1000 > Date.now() + 60000)) i--;
@@ -734,7 +729,7 @@ async function fetchYahooTw() {
     // 15 分 K：加權卡片和持股方塊（盤中）都用，同一個 Yahoo 請求裡的分鐘線，不多抓
     if (id === 'twii' || id.startsWith('tw')) out[id].candles = candles15(chart);
     // 台指期 60 分K（夜盤＋日盤，同一個請求的分鐘線），點卡片下半部才看得到
-    if (id === 'txf') out[id].k60 = candles60(chart, shift);
+    if (id === 'txf') out[id].k60 = candles60(chart, fix);
   }
   return out;
 }
@@ -806,15 +801,15 @@ function candles30(chart) {
 // null where no trades yet). The 13:30 closing auction is folded into the last slot.
 // TXF 1-minute bars of the trading day (15:00 night open .. 13:45 day close) -> 19 hourly
 // [open, high, low, close] slots: 14 for the night (15:00-05:00), 5 for the day (08:45-13:45).
-// shift: seconds Yahoo stamped the night session ahead (see fetchYahooTw).
-function candles60(chart, shift) {
+// fix(t): seconds Yahoo stamped a night bar ahead (see nightFix).
+function candles60(chart, fix) {
   const ts = chart.timestamp ?? [];
   const q = chart.indicators?.quote?.[0] ?? {};
   const slots = Array(19).fill(null);
   ts.forEach((t, i) => {
     const [o, h, l, c] = [q.open?.[i], q.high?.[i], q.low?.[i], q.close?.[i]];
     if ([o, h, l, c].some((v) => v == null)) return;
-    const tw = new Date((t - shift + 8 * 3600) * 1000);
+    const tw = new Date((t - fix(t) + 8 * 3600) * 1000);
     const m = tw.getUTCHours() * 60 + tw.getUTCMinutes();
     const slot = m >= 15 * 60 ? Math.floor((m - 900) / 60) : m < 5 * 60 ? 9 + Math.floor(m / 60)
       : m >= 8 * 60 + 45 && m <= 13 * 60 + 45 ? 14 + Math.min(4, Math.floor((m - 525) / 60)) : -1;
@@ -823,6 +818,23 @@ function candles60(chart, shift) {
     slots[slot] = s ? [s[0], Math.max(s[1], h), Math.min(s[2], l), c] : [o, h, l, c];
   });
   return slots.map((s) => s && s.map((v) => Math.round(v)));
+}
+
+const isTwTradingDay = (ymd) => {
+  const wd = new Date(`${ymd}T00:00:00Z`).getUTCDay();
+  return wd >= 1 && wd <= 5 && !twHolidays.has(ymd);
+};
+
+// start: Yahoo's trading-period start for TXF (the night session, stamped on the day before the
+// trading day). Returns t -> seconds to subtract: the days back to the previous real trading day for
+// bars inside the night session, 0 for everything else.
+function nightFix(start) {
+  if (!start) return () => 0;
+  let day = new Date((start + 8 * 3600) * 1000);
+  let k = 0;
+  while (k < 15 && !isTwTradingDay(day.toISOString().slice(0, 10))) { day = new Date(day - 86400000); k++; }
+  const shift = k * 86400;
+  return (t) => (t >= start && t <= start + 14 * 3600 ? shift : 0);  // 05:00 close included
 }
 
 function candles15(chart) {
