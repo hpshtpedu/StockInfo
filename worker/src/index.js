@@ -330,10 +330,10 @@ async function cached(origin, ctx, path, ttlFor, compute) {
 let toTw = null;
 async function fetchJin10(origin, ctx) {
   // 抓失敗或沒東西時只快取 5 分鐘（10/17 有機房抓失敗、清單是空的，整張卡消失半小時）
-  return cached(origin, ctx, '/_jin10_v7', (v) => (v?.items?.length && !v.error ? 1800 : 300), async () => {
+  return cached(origin, ctx, '/_jin10_v8', (v) => (v?.items?.length && !v.error ? 1800 : 300), async () => {
     const kept = (await loadLast(origin, 'news3')) ?? [];
     try {
-      // 三個來源一起抓（xnews 首頁、特朗普專題、快訊的重要事件）；有一個成功就用，全部失敗才算錯誤
+      // 三個來源一起抓（xnews 首頁、特朗普專題、有標題的快訊）；有一個成功就用，全部失敗才算錯誤
       const pages = await Promise.allSettled([
         ...NEWS_URLS.map(async (url) => {
           const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
