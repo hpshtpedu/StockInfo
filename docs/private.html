@@ -60,14 +60,14 @@
       <button type="button" class="plain" id="lockBtn">鎖定</button>
     </div>
     <div class="msg" id="lotsMsg"></div>
-    <div class="note">單位是「張」，0 代表沒有；零股可填到小數 3 位（0.001 張＝1 股）。兩平價選填，填券商 App 的「損益兩平價」（含手續費、稅），首頁就會多一個總損益。張數和兩平價只加密存在這個瀏覽器，換手機或電腦要重新設定。</div>
+    <div class="note">單位是「張」，0 代表沒有；零股可填到小數 3 位（0.001 張＝1 股）。投入成本選填，填券商庫存頁的「投入成本」（整數金額），首頁就會多一個總損益，算法跟券商一樣。張數和投入成本只加密存在這個瀏覽器，換手機或電腦要重新設定。</div>
   </form>
 
   <div id="noSetup" class="card" hidden>
     尚未設定密碼：請在電腦上執行 <code>python scripts/make_private_verifier.py</code>，把產生的 docs/private-verifier.json 推上去。
   </div>
 </main>
-<script src="private-vault.js?v=2"></script>
+<script src="private-vault.js?v=3"></script>
 <script>
   const PV = window.PrivateVault;
   const $ = (id) => document.getElementById(id);
@@ -77,11 +77,11 @@
     $('login').hidden = true;
     $('lots').hidden = false;
     const lots = (await PV.readLots()) ?? {};
-    const cost = lots.cost ?? {};
+    const inv = lots.inv ?? {};
     $('fields').innerHTML = PV.CODES.map((c) => `<div class="row"><label for="l-${c}">${c}</label>`
       + `<input id="l-${c}" type="number" min="0" step="0.001" inputmode="decimal" value="${Number(lots[c] ?? 0)}"><span class="unit">張</span></div>`
-      + `<div class="row sub"><label for="c-${c}">兩平價</label>`
-      + `<input id="c-${c}" type="number" min="0" step="any" inputmode="decimal" placeholder="選填" value="${cost[c] ? Number(cost[c]) : ''}"><span class="unit">元</span></div>`).join('');
+      + `<div class="row sub"><label for="c-${c}">投入成本</label>`
+      + `<input id="c-${c}" type="number" min="0" step="1" inputmode="numeric" placeholder="選填" value="${inv[c] ? Number(inv[c]) : ''}"><span class="unit">元</span></div>`).join('');
   }
 
   $('login').addEventListener('submit', async (e) => {
@@ -102,9 +102,9 @@
   $('lots').addEventListener('submit', async (e) => {
     e.preventDefault();
     const lots = Object.fromEntries(PV.CODES.map((c) => [c, $(`l-${c}`).value === '' ? 0 : Number($(`l-${c}`).value)]));
-    const cost = Object.fromEntries(PV.CODES.map((c) => [c, $(`c-${c}`).value === '' ? 0 : Number($(`c-${c}`).value)]));
+    const inv = Object.fromEntries(PV.CODES.map((c) => [c, $(`c-${c}`).value === '' ? 0 : Number($(`c-${c}`).value)]));
     try {
-      await PV.saveLots(lots, cost);
+      await PV.saveLots(lots, inv);
       home();
     } catch (err) {
       $('lotsMsg').textContent = err.message || '儲存失敗';

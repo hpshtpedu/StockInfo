@@ -265,7 +265,7 @@
 </header>
 <main id="list"></main>
 <footer id="source">資料來源：Yahoo、證交所、期交所、HiStock、金十數據</footer>
-<script src="private-vault.js?v=2"></script>
+<script src="private-vault.js?v=3"></script>
 <script>
   const API = 'https://stockinfo-quotes.hpshtpedu.workers.dev/quotes';
   const POLL_MS = 120 * 1000;
@@ -1204,7 +1204,7 @@
     let total = 0;
     let held = 0;
     for (const [code, lots] of Object.entries(privateLots)) {
-      if (code === 'cost' || !(lots > 0)) continue;
+      if (code === 'cost' || code === 'inv' || !(lots > 0)) continue;
       held++;
       const h = list.find((x) => x.code === code);
       const day = h?.time ? new Date(h.time + 8 * 3600000).toISOString().slice(0, 10) : null;
@@ -1226,20 +1226,21 @@
     return t && d ? `<span class="pnl">${t}${d}</span>` : t || d;
   }
 
-  // 總損益 = Σ（現價 − 損益兩平價）× 股數 ×（1 − 證交稅），單位萬。兩平價裡的賣出稅是用兩平價算的，
-  // 現價比兩平價高時多出來的價差也要課稅（股票 0.3%、ETF 0.1%），券商的預估損益有扣，這裡也扣，才對得上。
+  // 總損益：跟券商庫存頁同一個算法——參考淨值（市值 ×（1 − 手續費 0.1425% − 證交稅））− 投入成本，單位萬。
+  // 證交稅股票 0.3%、ETF 0.1%。舊版存的是損益兩平價：（現價 − 兩平價）× 股數 ×（1 − 手續費 − 稅），只到小數兩位會有誤差
   // 只算有填兩平價（私人頁）的；一檔都沒填就不顯示。賺紅、虧綠
   function totalPnlBadge(list) {
-    const cost = privateLots?.cost;
-    if (!cost) return '';
+    const inv = privateLots?.inv ?? {};
+    const cost = privateLots?.cost ?? {};
     let total = 0;
     let n = 0;
-    for (const [code, lots] of Object.entries(privateLots)) {
-      if (code === 'cost' || !(lots > 0) || !(cost[code] > 0)) continue;
+    for (const [code, lots] of Object.entries(privateLots ?? {})) {
+      if (code === 'cost' || code === 'inv' || !(lots > 0) || !(inv[code] > 0 || cost[code] > 0)) continue;
       const h = list.find((x) => x.code === code);
       if (!h || h.fault || !Number.isFinite(h.price)) return '';
-      const tax = code.startsWith('00') ? 0.001 : 0.003;  // 00 開頭是 ETF
-      total += (h.price - cost[code]) * lots * 1000 * (1 - tax);
+      const keep = 1 - 0.001425 - (code.startsWith('00') ? 0.001 : 0.003);  // 00 開頭是 ETF
+      const shares = lots * 1000;
+      total += inv[code] > 0 ? h.price * shares * keep - inv[code] : (h.price - cost[code]) * shares * keep;
       n++;
     }
     if (!n) return '';

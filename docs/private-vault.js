@@ -1,4 +1,4 @@
-// 私人自選股張數（和選填的損益兩平價）：只存在這個瀏覽器，用密碼加密（Web Crypto：PBKDF2-SHA256 衍生金鑰 + AES-GCM）。
+// 私人自選股張數（和選填的投入成本）：只存在這個瀏覽器，用密碼加密（Web Crypto：PBKDF2-SHA256 衍生金鑰 + AES-GCM）。
 // localStorage 只放 salt、iv、密文；不放密碼、不放明文張數。解鎖後的金鑰放在 sessionStorage，
 // 同一分頁重新整理不用再輸入；按「鎖定」或關掉分頁就要重新輸入（瀏覽器的「還原分頁」可能例外）。
 // 張數不會送到任何伺服器，也不會進公開的 /quotes。
@@ -50,18 +50,18 @@
     }
   }
 
-  // lots：{代號: 張數}；cost：{代號: 損益兩平價}（選填，0 或空白＝不算總損益），一起加密存
-  async function saveLots(lots, cost = {}) {
+  // lots：{代號: 張數}；inv：{代號: 投入成本（元，券商庫存頁那欄）}（選填，0 或空白＝不算總損益），一起加密存
+  async function saveLots(lots, inv = {}) {
     const key = await sessionKey();
     if (!key) throw new Error('尚未解鎖');
-    const clean = { cost: {} };
+    const clean = { inv: {} };
     for (const c of CODES) {
       const n = Number(lots[c] ?? 0);
       if (!Number.isFinite(n) || n < 0 || n > 1e6 || Math.round(n * 1000) !== n * 1000) throw new Error(`${c} 張數不正確`);
       clean[c] = n;
-      const p = Number(cost[c] ?? 0);
-      if (!Number.isFinite(p) || p < 0 || p > 1e5) throw new Error(`${c} 兩平價不正確`);
-      if (p > 0) clean.cost[c] = Math.round(p * 10000) / 10000;
+      const v = Number(inv[c] ?? 0);
+      if (!Number.isFinite(v) || v < 0 || v > 1e11) throw new Error(`${c} 投入成本不正確`);
+      if (v > 0) clean.inv[c] = Math.round(v);
     }
     const iv = crypto.getRandomValues(new Uint8Array(12));  // 每次存都用新的 IV
     const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(clean)));
