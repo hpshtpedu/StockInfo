@@ -92,7 +92,7 @@ async function buildQuotes(origin, ctx) {
   const twNow = new Date(Date.now() + 8 * 3600 * 1000);
   const quiet = twMarketClosedToday() && twNow.getUTCHours() >= 5;
   const day = twNow.toISOString().slice(0, 10);
-  const tw = quiet ? cached(origin, ctx, `/_tw_quiet/${day}`, () => 3600, fetchYahooTw) : fetchYahooTw();
+  const tw = quiet ? cached(origin, ctx, `/_tw_quiet2/${day}`, () => 3600, fetchYahooTw) : fetchYahooTw();
   const chips = fetchChips(origin, ctx);
   const pick = (promise, id) => promise.then((m) => m[id] ?? Promise.reject(new Error(`${id} no data`)));
   const jobs = {
