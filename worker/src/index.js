@@ -393,7 +393,8 @@ async function fetchJin10(origin, ctx) {
     const stored = await kv.get('news', 'json').catch(() => null);
     if (stored?.at && Date.now() - stored.at < NEWS_REFRESH) return { items: stored.items.slice(0, 10) };
     try {
-      const out = await refreshNews(stored?.items ?? []);
+      // KV 第一次用（還是空的）：拿這個機房原本記住的清單當底，不從零開始
+      const out = await refreshNews(stored?.items ?? (await loadLast(origin, 'news4')) ?? []);
       if (!out.error) ctx.waitUntil(kv.put('news', JSON.stringify({ at: Date.now(), items: out.items })));
       return { ...out, items: out.items.slice(0, 10) };
     } catch (err) {
