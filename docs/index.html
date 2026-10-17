@@ -194,6 +194,8 @@
   .seg + .seg { margin-left: 10px; }
   /* 漲跌家數：一行的扁卡片（名稱、▲上漲 ▼下跌、最右邊壓雞盤／拉雞盤） */
   .brd-dn { margin-left: 10px; }
+  /* TSM：ADR 溢價 badge 放在價格右邊，字級跟一般 badge 一樣 */
+  .price .badge.pb { margin-left: 8px; vertical-align: 3px; }
   .card.flat { gap: 0; }
   .card.flat .head { justify-content: flex-start; gap: 12px; }
   .card.flat .bcnt { font-size: clamp(15px, 4.6vw, 18px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -608,13 +610,31 @@
     return `<span class="badge ${sign > 0 ? 'up' : 'down'}">連${n}${n === days.length ? '+' : ''}${sign > 0 ? '增' : '減'}</span>`;
   }
 
+  // 右上沒有 badge 時放一個看不見的，標題列高度才跟隔壁一樣，大數字上下對齊
+  const BADGE_SPACER = '<span class="badge" style="visibility:hidden">連0</span>';
+
+  // 融資維持率連 N 天升／降（每晚存的每日維持率，2026/10/16 起累積），升紅降綠
+  function marginRatioBadge(m) {
+    const ratios = (m.history ?? []).filter((h) => h.date < m.date && h.ratio != null).map((h) => h.ratio);
+    ratios.push(m.ratio);
+    const diffs = ratios.slice(1).map((r, i) => r - ratios[i]);
+    const sign = Math.sign(diffs.at(-1) ?? 0);
+    let n = 0;
+    while (n < diffs.length && sign && Math.sign(diffs[diffs.length - 1 - n]) === sign) n++;
+    if (n < 2) return '';
+    return `<span class="badge ${sign > 0 ? 'up' : 'down'}">連${n}${sign > 0 ? '增' : '減'}</span>`;
+  }
+
   // 上市融資維持率
   function marginHtml(m) {
     const [, mm, dd] = m.date.split('-').map(Number);
+    const d = m.prev != null ? m.ratio - m.prev : null;
+    const cmp = d == null ? '' : `<div class="cmp"><span class="txt">較前日</span> <span class="${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '+' : ''}${fmt(d, 2)}個百分點</span></div>`;
     return `
       <div class="card roomy">
-        <div class="name">上市融資維持率</div>
+        <div class="head"><div class="name">上市融資維持率</div>${marginRatioBadge(m) || BADGE_SPACER}</div>
         <div class="price">${fmt(m.ratio, 2)}%</div>
+        ${cmp}
         <div class="foot"><div class="meta">${mm}/${dd} 盤後</div><span class="badge ${m.ratio < 140 ? 'warn' : 'note'}">警戒線140%</span></div>
       </div>`;
   }
@@ -754,7 +774,7 @@
     const dir = c > 0 ? 'up' : c < 0 ? 'down' : '';
     return `
       <div class="card roomy">
-        <div class="head"><div class="name">上市融資增減</div>${marginStreakBadge(m)}</div>
+        <div class="head"><div class="name">上市融資增減</div>${marginStreakBadge(m) || BADGE_SPACER}</div>
         <div class="price ${dir}">${c > 0 ? '+' : ''}${fmt(c, 1)}<small> 億</small></div>
         <div class="foot"><div class="meta">${mm}/${dd} 盤後</div><span class="badge note">餘額${fmt(m.balance, 0)}億</span></div>
       </div>`;
@@ -1134,6 +1154,12 @@
         el.style.fontSize = `${size}px`;
       }
     }
+    // TSM 價格右邊的溢價 badge：放不下就寫「溢+13.0%」（拿掉「價」）
+    for (const b of $list.querySelectorAll('.price .pb')) {
+      b.textContent = b.textContent.replace(/^溢(?!價)/, '溢價').replace(/^折(?!價)/, '折價');
+      const row = b.parentElement;
+      if (row.scrollWidth > row.clientWidth) b.textContent = b.textContent.replace('價', '');
+    }
   }
   window.addEventListener('resize', () => fitNames());
 
@@ -1220,7 +1246,7 @@
     const badges = {
       twii: turnoverBadge(byId.twii, profile),
       txf: basisBadge(byId.txf, byId.twii),
-      tsm: adrBadge(byId.tsm),
+      tsm: monthLineBadge(byId.tsm),  // ADR 溢價移到價格右邊
       us10y: us10yBadge(byId.us10y),
       usdtwd: usdtwdBadge(byId.usdtwd, data.institutional, instHistory),
       sox: monthLineBadge(byId.sox),
@@ -1326,7 +1352,7 @@
       return `
         <div class="card${chart ? ' has-k' : ''}${q.id === 'txf' ? ' txf' : q.id === 'twii' ? ' twii' : ''}">
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
-          <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}</div>
+          <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}${q.id === 'tsm' ? adrBadge(q).replace('class="badge', 'class="badge pb') : ''}</div>
           ${body}
         </div>`;
     };

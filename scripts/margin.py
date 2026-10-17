@@ -11,7 +11,7 @@ import time
 import urllib.request
 
 OUT = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'margin.json'
-HISTORY = 15  # days of balance changes kept for the 連N增/減 badge
+HISTORY = 15  # days of balance changes (and ratios) kept for the 連N增/減 badges
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
 
 
@@ -90,7 +90,13 @@ def main():
 
     # Daily balance changes, oldest first; the first run backfills the previous days.
     history = [h for h in old.get('history', []) if h['date'] < date] or backfill(date)
-    result['history'] = (history + [{'date': date, 'balanceChange': result['balanceChange']}])[-HISTORY:]
+    # The ratio is kept per day too (連N增/減 of the ratio); it starts accumulating from 2026-10-16,
+    # backfilling would need a full-market recalculation per day.
+    for h in history:
+        if h['date'] == old.get('date') and 'ratio' not in h and old.get('ratio') is not None:
+            h['ratio'] = old['ratio']
+    result['history'] = (history + [{'date': date, 'balanceChange': result['balanceChange'],
+                                     'ratio': result['ratio']}])[-HISTORY:]
 
     OUT.write_text(json.dumps(result, ensure_ascii=False) + '\n', encoding='utf-8')
     print(result)
