@@ -67,7 +67,7 @@
     尚未設定密碼：請在電腦上執行 <code>python scripts/make_private_verifier.py</code>，把產生的 docs/private-verifier.json 推上去。
   </div>
 </main>
-<script src="private-vault.js"></script>
+<script src="private-vault.js?v=2"></script>
 <script>
   const PV = window.PrivateVault;
   const $ = (id) => document.getElementById(id);
@@ -81,7 +81,7 @@
     $('fields').innerHTML = PV.CODES.map((c) => `<div class="row"><label for="l-${c}">${c}</label>`
       + `<input id="l-${c}" type="number" min="0" step="0.001" inputmode="decimal" value="${Number(lots[c] ?? 0)}"><span class="unit">張</span></div>`
       + `<div class="row sub"><label for="c-${c}">兩平價</label>`
-      + `<input id="c-${c}" type="number" min="0" step="0.0001" inputmode="decimal" placeholder="選填" value="${cost[c] ? Number(cost[c]) : ''}"><span class="unit">元</span></div>`).join('');
+      + `<input id="c-${c}" type="number" min="0" step="any" inputmode="decimal" placeholder="選填" value="${cost[c] ? Number(cost[c]) : ''}"><span class="unit">元</span></div>`).join('');
   }
 
   $('login').addEventListener('submit', async (e) => {
