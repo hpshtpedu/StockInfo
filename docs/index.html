@@ -202,10 +202,10 @@
   .card.flat .bcnt { font-size: clamp(15px, 4.6vw, 18px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* 右邊緣跟下面我的自選股標題列的增減 badge 切齊（同樣內縮 8px，窄螢幕 6px） */
   .card.flat .head .badge { margin-left: auto; margin-right: 8px; }
-  /* 損益分段膠囊：外框一個圓角，左段（總損益）正常字級，右段（今日增減）小一號，中間細深色線 */
+  /* 損益分段膠囊：外框一個圓角，左段總損益、右段今日增減（字一樣大），中間細深色線 */
   .pnl { display: inline-flex; align-items: stretch; border-radius: 999px; overflow: hidden; flex-shrink: 0; }
   .pnl .badge { border-radius: 0; display: inline-flex; align-items: center; }
-  .pnl .badge + .badge { font-size: clamp(9.5px, 3.2vw, 12.7px); border-left: 1px solid var(--bg); padding: 0 6px 0 5px; }
+  .pnl .badge + .badge { border-left: 1px solid var(--bg); padding: 0 6px 0 5px; }
   .card.flat .bcnt.pend-txt { color: var(--muted); font-weight: 400; font-size: clamp(13px, 4vw, 15px); }
   .seg .k { color: var(--muted); font-weight: 400; margin-right: 2px; }
   .up { color: var(--up); }
