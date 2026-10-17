@@ -1226,7 +1226,8 @@
     return t && d ? `<span class="pnl">${t}${d}</span>` : t || d;
   }
 
-  // 總損益 = Σ（現價 − 損益兩平價）× 張數 × 1000，單位萬（跟券商 App 的預估損益一致）。
+  // 總損益 = Σ（現價 − 損益兩平價）× 股數 ×（1 − 證交稅），單位萬。兩平價裡的賣出稅是用兩平價算的，
+  // 現價比兩平價高時多出來的價差也要課稅（股票 0.3%、ETF 0.1%），券商的預估損益有扣，這裡也扣，才對得上。
   // 只算有填兩平價（私人頁）的；一檔都沒填就不顯示。賺紅、虧綠
   function totalPnlBadge(list) {
     const cost = privateLots?.cost;
@@ -1237,7 +1238,8 @@
       if (code === 'cost' || !(lots > 0) || !(cost[code] > 0)) continue;
       const h = list.find((x) => x.code === code);
       if (!h || h.fault || !Number.isFinite(h.price)) return '';
-      total += (h.price - cost[code]) * lots * 1000;
+      const tax = code.startsWith('00') ? 0.001 : 0.003;  // 00 開頭是 ETF
+      total += (h.price - cost[code]) * lots * 1000 * (1 - tax);
       n++;
     }
     if (!n) return '';
