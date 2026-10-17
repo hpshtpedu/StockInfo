@@ -8,7 +8,7 @@ export const JIN10_URL = 'https://xnews.jin10.com/topic/418';
 export const FLASH_URL = 'https://flash-api.jin10.com/get_flash_list?channel=-8200&vip=1';
 export const FLASH_HEADERS = { 'x-app-id': 'bVBF4FyRTn5NJF5n', 'x-version': '1.0.0', Referer: 'https://www.jin10.com/' };
 const KEYWORDS = ['美联储', '黄仁勋', '特朗普', 'Anthropic'];
-const EXCLUDE = ['国内新闻'];
+const EXCLUDE = ['国内新闻', '精选：'];
 
 // API 的 JSON -> [{ id, title, time }]（簡體，新到舊）；time 是北京時間（UTC+8）的字串
 export function parseFlash(json) {
