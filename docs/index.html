@@ -202,6 +202,10 @@
   .card.flat .bcnt { font-size: clamp(15px, 4.6vw, 18px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* 右邊緣跟下面我的自選股標題列的增減 badge 切齊（同樣內縮 8px，窄螢幕 6px） */
   .card.flat .head .badge { margin-left: auto; margin-right: 8px; }
+  /* 損益分段膠囊：外框一個圓角，左段（總損益）正常字級，右段（今日增減）小一號，中間細深色線 */
+  .pnl { display: inline-flex; align-items: stretch; border-radius: 999px; overflow: hidden; flex-shrink: 0; }
+  .pnl .badge { border-radius: 0; display: inline-flex; align-items: center; }
+  .pnl .badge + .badge { font-size: clamp(9.5px, 3.2vw, 12.7px); border-left: 1px solid var(--bg); padding: 0 6px 0 5px; }
   .card.flat .bcnt.pend-txt { color: var(--muted); font-weight: 400; font-size: clamp(13px, 4vw, 15px); }
   .seg .k { color: var(--muted); font-weight: 400; margin-right: 2px; }
   .up { color: var(--up); }
@@ -1025,7 +1029,7 @@
     const body = Array.from({ length: rows }, (_, i) => groups.map((g) => (g[i] ? row(g[i]) : '<div></div>')).join('')).join('');
     return `
       <div class="card wide holdings">
-        <div class="head hhead"><div class="name">我的自選股</div><div class="badges">${badge}${totalPnlBadge(list)}${privateBadge(list)}</div></div>
+        <div class="head hhead"><div class="name">我的自選股</div><div class="badges">${badge}${pnlCapsule(list)}</div></div>
         <div class="holds">${body}</div>
         <div class="foot"><div class="meta">${timeState(list[0].time, list[0].fault ? 'fault' : twii?.state)}</div>${kMode ? '<span class="klabel">15分K</span>' : ''}</div>
       </div>`;
@@ -1210,9 +1214,16 @@
     }
     if (!held) return '';
     const wan = Math.abs(total) / 10000;
-    if (Math.round(total) === 0) return '<span class="badge note">■ 0.0萬</span>';
-    const amount = wan < 0.05 ? '<0.1' : wan.toFixed(1);
+    if (Math.round(total) === 0) return '<span class="badge note">■ 0.00萬</span>';
+    const amount = wan < 0.005 ? '<0.01' : wan.toFixed(2);
     return `<span class="badge ${total > 0 ? 'buy' : 'sell'}">${total > 0 ? '▲' : '▼'} ${amount}萬</span>`;
+  }
+
+  // 總損益（左、大）和今日增減（右、小）合成一顆分段膠囊：同一個外框才會切齊，中間一條細線分開
+  function pnlCapsule(list) {
+    const t = totalPnlBadge(list);
+    const d = privateBadge(list);
+    return t && d ? `<span class="pnl">${t}${d}</span>` : t || d;
   }
 
   // 總損益 = Σ（現價 − 損益兩平價）× 張數 × 1000，單位萬（跟券商 App 的預估損益一致）。
@@ -1231,8 +1242,8 @@
     }
     if (!n) return '';
     const wan = Math.abs(total) / 10000;
-    if (Math.round(total) === 0) return '<span class="badge note">總 0.0萬</span>';
-    const amount = wan < 0.05 ? '<0.1' : wan >= 1000 ? wan.toFixed(0) : wan.toFixed(1);
+    if (Math.round(total) === 0) return '<span class="badge note">總 0.00萬</span>';
+    const amount = wan < 0.005 ? '<0.01' : wan.toFixed(2);
     return `<span class="badge ${total > 0 ? 'buy' : 'sell'}">總 ${amount}萬</span>`;  // 不加 ▲▼，賺虧看顏色
   }
 
