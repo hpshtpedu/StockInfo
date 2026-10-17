@@ -1137,6 +1137,20 @@
       if (data.jin10?.items?.length) localStorage.setItem('newsNewest', JSON.stringify(data.jin10));
       else data.jin10 = JSON.parse(localStorage.getItem('newsNewest') ?? 'null') ?? data.jin10;
     } catch {}
+    // 時間定住：每則新聞用這台裝置第一次看到的時間（不同機房估的「N小時前」不一樣，順序會跳），
+    // 除非原本是估的、現在拿到精確時間；記最近 60 則
+    try {
+      const seen = JSON.parse(localStorage.getItem('newsTimes') ?? '{}');
+      const items = (data.jin10?.items ?? []).map((x) => {
+        const s = seen[x.title];
+        if (s && !(s.approx && !x.approx)) return { ...x, time: s.time };
+        seen[x.title] = { time: x.time, approx: !!x.approx, at: Date.now() };
+        return x;
+      });
+      if (data.jin10) data.jin10 = { ...data.jin10, items: items.sort((a, b) => b.time - a.time) };
+      const keep = Object.entries(seen).sort((a, b) => b[1].at - a[1].at).slice(0, 60);
+      localStorage.setItem('newsTimes', JSON.stringify(Object.fromEntries(keep)));
+    } catch {}
     return data;
   }
 

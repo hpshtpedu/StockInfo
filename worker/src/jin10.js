@@ -72,8 +72,9 @@ export function parseJin10(html, now = Date.now()) {
     const raw = m[3].trim();
     let time = null;
     let r;
+    let approx = false;  // 「N小时前」只準到小時：合併時沿用第一次看到的時間，拿到精確時間再換
     if ((r = raw.match(/^(\d+)\s*分钟前$/))) time = now - r[1] * 60000;
-    else if ((r = raw.match(/^(\d+)\s*小时前$/))) time = now - r[1] * 3600000;
+    else if ((r = raw.match(/^(\d+)\s*小时前$/))) { time = now - r[1] * 3600000; approx = true; }
     else if (/^刚刚|秒前$/.test(raw)) time = now;
     else if ((r = raw.match(/^(?:(\d{4})-)?(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/))) {
       let year = r[1] ? Number(r[1]) : tw.getUTCFullYear();
@@ -81,7 +82,7 @@ export function parseJin10(html, now = Date.now()) {
       time = Date.UTC(year, r[2] - 1, r[3], r[4] - 8, r[5]);
     }
     const title = m[2].replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'").trim();
-    if (title && time) out.push({ title, time, url: m[1] });
+    if (title && time) out.push({ title, time, url: m[1], approx });
   }
   return out.sort((a, b) => b.time - a.time);
 }
