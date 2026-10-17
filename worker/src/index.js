@@ -351,14 +351,16 @@ async function fetchJin10(origin, ctx) {
       toTw ??= makeConverter(S2T);
       const fresh = got.filter((x) => newsMatch(x.title))
         .map((x) => ({ id: x.url, title: toTw(x.title), time: x.time, ...(x.approx ? { approx: true } : {}) }));
-      // 三個來源常有同一篇：標題相同（去掉空白和引號後）只留一則。時間定住：沿用第一次看到的（xnews 的「N小时前」
-      // 每次換算都不同，順序會跳），除非原本是估的、這次拿到精確時間。之前記住的也套用後來加的排除字「金十」
+      // 三個來源常有同一篇：標題相同（去掉空白和引號後）只留一則。時間定住：精確的時間不變；xnews 的「N小时前」
+      // 只代表「至少 N 小時前」（換算的時間只會偏晚），所以取看過最早的那個，越抓越接近真的；拿到精確時間就換。
+      // 之前記住的也套用後來加的排除字「金十」
       const norm = (t) => t.replace(/[\s"“”‘’'「」『』]/g, '');
       const byTitle = new Map();
       for (const x of [...kept.filter((k) => !k.title.includes('金十')), ...fresh]) {
         const old = byTitle.get(norm(x.title));
         if (!old) byTitle.set(norm(x.title), x);
         else if (old.approx && !x.approx) byTitle.set(norm(x.title), { ...old, time: x.time, approx: undefined });
+        else if (old.approx && x.time < old.time) byTitle.set(norm(x.title), { ...old, time: x.time });
       }
       const items = [...byTitle.values()].sort((a, b) => b.time - a.time).slice(0, 10);
       if (fresh.length) saveLast(origin, ctx, 'news3', items);
