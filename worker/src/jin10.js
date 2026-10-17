@@ -1,8 +1,8 @@
 // 金十 xnews（xnews.jin10.com）的文章列表：xnews 沒有 robots.txt；頁面是伺服器輸出的 HTML，標題、時間、連結都在列表裡。
 
-// 新聞快訊：金十 xnews 首頁（文章列表，每則都有標題，伺服器輸出的 HTML，一頁 20 則約涵蓋半天）。
-// 標題含關鍵字才留，含排除字的不要（比對簡體原文）
-export const NEWS_URL = 'https://xnews.jin10.com/';
+// 新聞快訊：金十 xnews 首頁＋「特朗普動態」專題（文章列表，每則都有標題，伺服器輸出的 HTML，各 20 則）。
+// 兩邊都套同一套規則：標題含關鍵字才留，含排除字的不要（比對簡體原文），合併後依時間排
+export const NEWS_URLS = ['https://xnews.jin10.com/', 'https://xnews.jin10.com/topic/418'];
 const KEYWORDS = ['美联储', '黄仁勋', '特朗普', 'Anthropic', '英伟达', '马斯克'];
 const EXCLUDE = ['国内新闻', '精选：', '日程一览', '黄金头条', '早餐', '分析汇总', 'Plus日报', '夜读', '财料', '一图读懂',
   '看点', '速递', '决战', '复盘', '数据表'];

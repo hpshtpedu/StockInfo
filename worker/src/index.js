@@ -45,7 +45,7 @@ const CHIPS_RETRY_SECONDS = 600;  // retry every 10 min after 14:00 until the da
 const HOLIDAYS_CACHE_SECONDS = 86400;
 
 import S2T from './s2t.json';
-import { NEWS_URL, makeConverter, newsMatch, parseJin10 } from './jin10.js';
+import { NEWS_URLS, makeConverter, newsMatch, parseJin10 } from './jin10.js';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
@@ -324,20 +324,25 @@ async function cached(origin, ctx, path, ttlFor, compute) {
   return value;
 }
 
-// 新聞快訊：金十 xnews 首頁標題含關鍵字的（簡轉繁）。一頁約涵蓋半天，30 分鐘抓一次，
+// 新聞快訊：金十 xnews 首頁＋特朗普專題，標題含關鍵字的（簡轉繁），合併去重、依時間新到舊。30 分鐘抓一次（兩頁），
 // 符合的累積記住最近 10 則（這個機房），一陣子沒有新的也不會空白。
 // 金十掛掉不能拖累其他報價：5 秒逾時，任何錯誤都回傳記住的那幾則（沒有就空清單，網頁隱藏這張卡）
 let toTw = null;
 async function fetchJin10(origin, ctx) {
   // 抓失敗或沒東西時只快取 5 分鐘（10/17 有機房抓失敗、清單是空的，整張卡消失半小時）
-  return cached(origin, ctx, '/_jin10_v4', (v) => (v?.items?.length && !v.error ? 1800 : 300), async () => {
+  return cached(origin, ctx, '/_jin10_v5', (v) => (v?.items?.length && !v.error ? 1800 : 300), async () => {
     const kept = (await loadLast(origin, 'news3')) ?? [];
     try {
-      const res = await fetch(NEWS_URL, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
-      if (!res.ok) return { error: `HTTP ${res.status}`, items: kept };
+      // 兩頁一起抓；其中一頁失敗就只用另一頁，兩頁都失敗才算錯誤
+      const pages = await Promise.allSettled(NEWS_URLS.map(async (url) => {
+        const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return parseJin10(await res.text());
+      }));
+      const got = pages.filter((p) => p.status === 'fulfilled').flatMap((p) => p.value);
+      if (!pages.some((p) => p.status === 'fulfilled')) return { error: String(pages[0].reason), items: kept };
       toTw ??= makeConverter(S2T);
-      const fresh = parseJin10(await res.text()).filter((x) => newsMatch(x.title))
-        .map((x) => ({ id: x.url, title: toTw(x.title), time: x.time }));
+      const fresh = got.filter((x) => newsMatch(x.title)).map((x) => ({ id: x.url, title: toTw(x.title), time: x.time }));
       const byId = new Map([...kept, ...fresh].map((x) => [x.id ?? `${x.time}|${x.title}`, x]));
       const items = [...byId.values()].sort((a, b) => b.time - a.time).slice(0, 10);
       if (fresh.length) saveLast(origin, ctx, 'news3', items);
