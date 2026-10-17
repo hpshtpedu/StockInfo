@@ -203,7 +203,8 @@
   /* 右邊緣跟下面我的自選股標題列的增減 badge 切齊（同樣內縮 8px，窄螢幕 6px） */
   .card.flat .head .badge { margin-left: auto; margin-right: 8px; }
   /* 損益分段膠囊：外框一個圓角，左段總損益、右段今日增減（字一樣大），中間細深色線 */
-  .pnl { display: inline-flex; align-items: stretch; border-radius: 999px; overflow: hidden; flex-shrink: 0; }
+  /* 外框一圈淡色細線：兩段顏色不同時，眼睛會覺得紅色那段比較高，共用一個框才看得出是同一高度 */
+  .pnl { display: inline-flex; align-items: stretch; border-radius: 999px; overflow: hidden; flex-shrink: 0; border: 1px solid #8b93a1; }
   .pnl .badge { border-radius: 0; display: inline-flex; align-items: center; }
   .pnl .badge + .badge { border-left: 1px solid var(--bg); padding: 0 6px 0 5px; }
   .card.flat .bcnt.pend-txt { color: var(--muted); font-weight: 400; font-size: clamp(13px, 4vw, 15px); }
