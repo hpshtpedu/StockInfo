@@ -391,12 +391,12 @@ async function fetchJin10(origin, ctx) {
   const kv = ENV?.NEWS_KV;
   if (kv) {
     const stored = await kv.get('news', 'json').catch(() => null);
-    if (stored?.at && Date.now() - stored.at < NEWS_REFRESH) return { items: stored.items.slice(0, 10) };
+    if (stored?.at && Date.now() - stored.at < NEWS_REFRESH) return { src: 'kv', items: stored.items.slice(0, 10) };
     try {
       // KV 第一次用（還是空的）：拿這個機房原本記住的清單當底，不從零開始
       const out = await refreshNews(stored?.items ?? (await loadLast(origin, 'news4')) ?? []);
       if (!out.error) ctx.waitUntil(kv.put('news', JSON.stringify({ at: Date.now(), items: out.items })));
-      return { ...out, items: out.items.slice(0, 10) };
+      return { ...out, src: 'kv-refresh', items: out.items.slice(0, 10) };
     } catch (err) {
       return { error: String(err), items: (stored?.items ?? []).slice(0, 10) };
     }
@@ -407,7 +407,7 @@ async function fetchJin10(origin, ctx) {
     try {
       const out = await refreshNews(kept);
       if (!out.error && out.items.length) saveLast(origin, ctx, 'news4', out.items);
-      return { ...out, items: out.items.slice(0, 10) };
+      return { ...out, src: 'cache', items: out.items.slice(0, 10) };
     } catch (err) {
       return { error: String(err), items: kept.slice(0, 10) };
     }
