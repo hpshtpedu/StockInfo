@@ -3,8 +3,9 @@
 // 新聞快訊：金十 xnews 首頁（文章列表，每則都有標題，伺服器輸出的 HTML，一頁 20 則約涵蓋半天）。
 // 標題含關鍵字才留，含排除字的不要（比對簡體原文）
 export const NEWS_URL = 'https://xnews.jin10.com/';
-const KEYWORDS = ['美联储', '黄仁勋', '特朗普', 'Anthropic', '英伟达'];
-const EXCLUDE = ['国内新闻', '精选：', '日程一览'];
+const KEYWORDS = ['美联储', '黄仁勋', '特朗普', 'Anthropic', '英伟达', '马斯克'];
+const EXCLUDE = ['国内新闻', '精选：', '日程一览', '黄金头条', '早餐', '分析汇总', 'Plus日报', '夜读', '财料', '一图读懂',
+  '看点', '速递', '决战', '复盘', '数据表'];
 export const newsMatch = (title) => KEYWORDS.some((k) => title.includes(k)) && !EXCLUDE.some((k) => title.includes(k));
 
 // 譯名與台灣用語：OpenCC 的字詞表不會處理人名，這裡先蓋過去（在簡體原文上比對，最長優先）
