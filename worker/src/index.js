@@ -329,10 +329,11 @@ async function cached(origin, ctx, path, ttlFor, compute) {
 // 金十掛掉不能拖累其他報價：5 秒逾時，任何錯誤都回傳記住的那幾則（沒有就空清單，網頁隱藏這張卡）
 let toTw = null;
 async function fetchJin10(origin, ctx) {
-  return cached(origin, ctx, '/_jin10_v4', () => 1800, async () => {
+  // 抓失敗或沒東西時只快取 5 分鐘（10/17 有機房抓失敗、清單是空的，整張卡消失半小時）
+  return cached(origin, ctx, '/_jin10_v4', (v) => (v?.items?.length && !v.error ? 1800 : 300), async () => {
     const kept = (await loadLast(origin, 'news3')) ?? [];
     try {
-      const res = await fetch(NEWS_URL, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(5000) });
+      const res = await fetch(NEWS_URL, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
       if (!res.ok) return { error: `HTTP ${res.status}`, items: kept };
       toTw ??= makeConverter(S2T);
       const fresh = parseJin10(await res.text()).filter((x) => newsMatch(x.title))

@@ -1128,6 +1128,11 @@
     const flows = { foreign: pick('flows:foreign', data.flows?.foreign, (x) => x.date), trust: pick('flows:trust', data.flows?.trust, (x) => x.date) };
     data.flows = flows.foreign || flows.trust ? flows : data.flows;
     try { if (flows.foreign || flows.trust) localStorage.setItem('flowsNewest', JSON.stringify(flows)); } catch {}
+    // 新聞快訊：某個機房剛好抓失敗回空清單時，沿用這台裝置上次看到的，不讓整張卡消失
+    try {
+      if (data.jin10?.items?.length) localStorage.setItem('newsNewest', JSON.stringify(data.jin10));
+      else data.jin10 = JSON.parse(localStorage.getItem('newsNewest') ?? 'null') ?? data.jin10;
+    } catch {}
     return data;
   }
 
