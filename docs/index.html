@@ -118,7 +118,7 @@
   .card.txf .tw2.sw .kchart { height: 36px; }
   /* 加權多一行月/季線：同一排的台指期一起放寬，兩張卡底部才對齊 */
   .card.twii, .card.txf { max-height: 190px; }
-  /* 川寶快訊：一次一則，其他頁隱藏；標題最多 3 行 */
+  /* 新聞快訊：一次一則，其他頁隱藏 */
   .pager { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   .pager .jp, .pager .pg { display: none; }
   .pager[data-p="0"] [data-i="0"], .pager[data-p="1"] [data-i="1"], .pager[data-p="2"] [data-i="2"] { display: block; }
@@ -866,7 +866,7 @@
 
   // 我的持股：代號、價格、漲跌幅
 
-  // 川寶快訊（純娛樂）：金十「特朗普動態」最新 3 則標題（Worker 簡轉繁、一小時抓一次），一次一則、點卡片換下一則
+  // 新聞快訊：金十快訊裡標題含關鍵字的最新 3 則（Worker 篩選、簡轉繁、15 分鐘抓一次），一次一則、點卡片換下一則
   let jin10Page = 0;
   let jin10Key = null;
   let jin10Keys = [];
@@ -888,7 +888,7 @@
     const times = items.map((x, i) => `<span class="jtime" data-i="${i}">${mdhm(x.time)}</span>`).join('');
     return `
       <div class="card wide jin10 pager" data-p="${jin10Page}" data-n="${items.length}">
-        <div class="head"><div class="name">川寶快訊</div>${times}${items.length > 1 ? items.map((_, i) => `<span class="pg" data-i="${i}">${i + 1}/${items.length}</span>`).join('') : ''}</div>
+        <div class="head"><div class="name">新聞快訊</div>${times}${items.length > 1 ? items.map((_, i) => `<span class="pg" data-i="${i}">${i + 1}/${items.length}</span>`).join('') : ''}</div>
         ${pages}
       </div>`;
   }

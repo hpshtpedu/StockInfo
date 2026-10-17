@@ -3,6 +3,28 @@
 
 export const JIN10_URL = 'https://xnews.jin10.com/topic/418';
 
+// 新聞快訊：金十快訊（jin10.com 首頁自己用的快訊 API，robots.txt 沒有限制；沒有公開文件，改版可能失效）。
+// 一次回最近約 1 小時的 20 則。標題（有【】取【】裡的字，沒有就是第一句）含關鍵字才留，含排除字的不要
+export const FLASH_URL = 'https://flash-api.jin10.com/get_flash_list?channel=-8200&vip=1';
+export const FLASH_HEADERS = { 'x-app-id': 'bVBF4FyRTn5NJF5n', 'x-version': '1.0.0', Referer: 'https://www.jin10.com/' };
+const KEYWORDS = ['美联储', '黄仁勋', '特朗普', 'Anthropic'];
+const EXCLUDE = ['国内新闻'];
+
+// API 的 JSON -> [{ id, title, time }]（簡體，新到舊）；time 是北京時間（UTC+8）的字串
+export function parseFlash(json) {
+  const out = [];
+  for (const x of json?.data ?? []) {
+    const raw = String(x?.data?.content ?? x?.data?.title ?? '').replace(/<[^>]+>/g, '')
+      .replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').trim();
+    // 沒有【】的快訊只取第一句（「冲突情况：1. … 2. …」這種摘要，關鍵字在後面幾條就不算標題）
+    const title = (raw.match(/^【(.+?)】/)?.[1] ?? raw.split('。')[0]).trim();
+    const t = String(x?.time ?? '').match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+    if (!title || !t || !KEYWORDS.some((k) => title.includes(k)) || EXCLUDE.some((k) => title.includes(k))) continue;
+    out.push({ id: String(x.id), title, time: Date.UTC(t[1], t[2] - 1, t[3], t[4] - 8, t[5], t[6]) });
+  }
+  return out.sort((a, b) => b.time - a.time);
+}
+
 // 譯名與台灣用語：OpenCC 的字詞表不會處理人名，這裡先蓋過去（在簡體原文上比對，最長優先）
 const NAMES = {
   特朗普: '川普', 美联储: '聯準會', 普京: '普丁', 泽连斯基: '澤倫斯基', 内塔尼亚胡: '納坦雅胡',

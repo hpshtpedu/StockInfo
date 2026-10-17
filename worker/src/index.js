@@ -45,7 +45,7 @@ const CHIPS_RETRY_SECONDS = 600;  // retry every 10 min after 14:00 until the da
 const HOLIDAYS_CACHE_SECONDS = 86400;
 
 import S2T from './s2t.json';
-import { JIN10_URL, makeConverter, parseJin10 } from './jin10.js';
+import { FLASH_HEADERS, FLASH_URL, makeConverter, parseFlash } from './jin10.js';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
@@ -324,19 +324,24 @@ async function cached(origin, ctx, path, ttlFor, compute) {
   return value;
 }
 
-// 金十「特朗普動態」最新 3 則標題（簡轉繁）。成功一小時抓一次；失敗快取 10 分鐘，不會每 2 分鐘重試。
-// 金十掛掉不能拖累其他報價：5 秒逾時，任何錯誤都回傳空清單（網頁就隱藏這張卡）
+// 新聞快訊：金十快訊裡標題含關鍵字的（簡轉繁）。API 一次只給約 1 小時，所以 15 分鐘抓一次，
+// 符合的累積記住最近 10 則（這個機房），一陣子沒有新的也不會空白。
+// 金十掛掉不能拖累其他報價：5 秒逾時，任何錯誤都回傳記住的那幾則（沒有就空清單，網頁隱藏這張卡）
 let toTw = null;
 async function fetchJin10(origin, ctx) {
-  return cached(origin, ctx, '/_jin10_v1', (v) => (v?.items?.length ? 3600 : 600), async () => {
+  return cached(origin, ctx, '/_jin10_v2', () => 900, async () => {
+    const kept = (await loadLast(origin, 'news')) ?? [];
     try {
-      const res = await fetch(JIN10_URL, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(5000) });
-      if (!res.ok) return { error: `HTTP ${res.status}`, items: [] };
+      const res = await fetch(FLASH_URL, { headers: { 'User-Agent': UA, ...FLASH_HEADERS }, signal: AbortSignal.timeout(5000) });
+      if (!res.ok) return { error: `HTTP ${res.status}`, items: kept };
       toTw ??= makeConverter(S2T);
-      const items = parseJin10(await res.text()).slice(0, 3).map((x) => ({ title: toTw(x.title), time: x.time }));
+      const fresh = parseFlash(await res.json()).map((x) => ({ ...x, title: toTw(x.title) }));
+      const byId = new Map([...kept, ...fresh].map((x) => [x.id ?? `${x.time}|${x.title}`, x]));
+      const items = [...byId.values()].sort((a, b) => b.time - a.time).slice(0, 10);
+      if (fresh.length) saveLast(origin, ctx, 'news', items);
       return { items };
     } catch (err) {
-      return { error: String(err), items: [] };
+      return { error: String(err), items: kept };
     }
   });
 }
