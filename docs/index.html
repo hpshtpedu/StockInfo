@@ -194,8 +194,9 @@
   .seg + .seg { margin-left: 10px; }
   /* 漲跌家數：一行的扁卡片（名稱、▲上漲 ▼下跌、最右邊壓雞盤／拉雞盤） */
   .brd-dn { margin-left: 10px; }
-  /* TSM：ADR 溢價 badge 放在價格右邊，字級跟一般 badge 一樣 */
-  .price .badge.pb { margin-left: 8px; vertical-align: 3px; }
+  /* TSM：ADR 溢價 badge 放在價格右邊、靠卡片右緣（跟上面月／季線 badge 切齊），字級跟一般 badge 一樣 */
+  .price:has(.pb) { display: flex; align-items: center; }
+  .price .badge.pb { margin-left: auto; padding-left: 5px; flex-shrink: 0; }
   .card.flat { gap: 0; }
   .card.flat .head { justify-content: flex-start; gap: 12px; }
   .card.flat .bcnt { font-size: clamp(15px, 4.6vw, 18px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
