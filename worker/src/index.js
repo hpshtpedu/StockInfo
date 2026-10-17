@@ -350,18 +350,31 @@ async function articleTime(url) {
   }
 }
 
-async function refreshNews(kept) {
+// 快訊一頁約 20 則（不到 1 小時）：從 since（上次更新）往前補，最多 3 頁，中間有空檔也不會漏
+async function flashSince(since) {
+  const all = [];
+  let maxTime = '';
+  for (let page = 0; page < 3; page++) {
+    const url = FLASH_URL + (maxTime ? `&max_time=${encodeURIComponent(maxTime)}` : '');
+    const res = await fetch(url, { headers: { 'User-Agent': UA, ...FLASH_HEADERS }, signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`flash HTTP ${res.status}`);
+    const data = (await res.json())?.data ?? [];
+    all.push(...data);
+    const oldest = data.at(-1)?.time;  // 北京時間 "YYYY-MM-DD HH:MM:SS"
+    if (!oldest || Date.parse(`${oldest.replace(' ', 'T')}+08:00`) <= since) break;
+    maxTime = oldest;
+  }
+  return parseImportant({ data: all });
+}
+
+async function refreshNews(kept, since = Date.now() - 3600000) {
   const pages = await Promise.allSettled([
     ...NEWS_URLS.map(async (url) => {
       const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return parseJin10(await res.text());
     }),
-    (async () => {
-      const res = await fetch(FLASH_URL, { headers: { 'User-Agent': UA, ...FLASH_HEADERS }, signal: AbortSignal.timeout(8000) });
-      if (!res.ok) throw new Error(`flash HTTP ${res.status}`);
-      return parseImportant(await res.json());
-    })(),
+    flashSince(since),
   ]);
   if (!pages.some((p) => p.status === 'fulfilled')) return { error: String(pages[0].reason), items: kept };
   toTw ??= makeConverter(S2T);
@@ -391,11 +404,13 @@ async function fetchJin10(origin, ctx) {
   const kv = ENV?.NEWS_KV;
   if (kv) {
     const stored = await kv.get('news', 'json').catch(() => null);
-    if (stored?.at && Date.now() - stored.at < NEWS_REFRESH) return { src: 'kv', items: stored.items.slice(0, 10) };
+    // v2：快訊會往前補抓；舊格式的清單重抓一次（往前補 3 小時，找回換版時漏掉的）
+    if (stored?.v === 2 && Date.now() - stored.at < NEWS_REFRESH) return { src: 'kv', items: stored.items.slice(0, 10) };
+    const since = stored?.v === 2 ? stored.at - 5 * 60000 : Date.now() - 3 * 3600000;
     try {
       // KV 第一次用（還是空的）：拿這個機房原本記住的清單當底，不從零開始
-      const out = await refreshNews(stored?.items ?? (await loadLast(origin, 'news4')) ?? []);
-      if (!out.error) ctx.waitUntil(kv.put('news', JSON.stringify({ at: Date.now(), items: out.items })));
+      const out = await refreshNews(stored?.items ?? (await loadLast(origin, 'news4')) ?? [], since);
+      if (!out.error) ctx.waitUntil(kv.put('news', JSON.stringify({ v: 2, at: Date.now(), items: out.items })));
       return { ...out, src: 'kv-refresh', items: out.items.slice(0, 10) };
     } catch (err) {
       return { error: String(err), items: (stored?.items ?? []).slice(0, 10) };
