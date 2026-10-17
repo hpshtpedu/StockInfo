@@ -1137,21 +1137,7 @@
       if (data.jin10?.items?.length) localStorage.setItem('newsNewest', JSON.stringify(data.jin10));
       else data.jin10 = JSON.parse(localStorage.getItem('newsNewest') ?? 'null') ?? data.jin10;
     } catch {}
-    // 時間定住：精確的時間不變；估的（「N小時前」換算，只會偏晚）取這台裝置看過最早的那個，
-    // 不同機房、不同時間抓的不會讓順序跳；拿到精確時間就換。記最近 60 則
-    try {
-      const seen = JSON.parse(localStorage.getItem('newsTimes') ?? '{}');
-      const items = (data.jin10?.items ?? []).map((x) => {
-        const s = seen[x.title];
-        const exact = s && !s.approx;
-        const time = !s ? x.time : exact ? s.time : !x.approx ? x.time : Math.min(s.time, x.time);
-        seen[x.title] = { time, approx: !exact && !!x.approx, at: s?.at ?? Date.now() };
-        return { ...x, time };
-      });
-      if (data.jin10) data.jin10 = { ...data.jin10, items: items.sort((a, b) => b.time - a.time) };
-      const keep = Object.entries(seen).sort((a, b) => b[1].at - a[1].at).slice(0, 60);
-      localStorage.setItem('newsTimes', JSON.stringify(Object.fromEntries(keep)));
-    } catch {}
+    try { localStorage.removeItem('newsTimes'); } catch {}  // 舊版「記住時間」：清單改存在 Worker 的 KV，全球一份，不需要了
     return data;
   }
 

@@ -73,6 +73,7 @@ export default {
     const cached = await cache.match(cacheKey);
     if (cached) return withCors(cached, env);
 
+    ENV = env;  // 新聞快訊用 KV
     const body = JSON.stringify(await buildQuotes(url.origin, ctx));
     const response = new Response(body, {
       headers: {
@@ -324,49 +325,90 @@ async function cached(origin, ctx, path, ttlFor, compute) {
   return value;
 }
 
-// 新聞快訊：金十 xnews 首頁＋特朗普專題，標題含關鍵字的（簡轉繁），合併去重、依時間新到舊。30 分鐘抓一次（兩頁），
-// 符合的累積記住最近 10 則（這個機房），一陣子沒有新的也不會空白。
-// 金十掛掉不能拖累其他報價：5 秒逾時，任何錯誤都回傳記住的那幾則（沒有就空清單，網頁隱藏這張卡）
+// 新聞快訊：金十 xnews 首頁＋特朗普專題＋有標題的快訊，標題含關鍵字的（簡轉繁），標題相同只留一則、依時間新到舊。
+// 清單存在 Cloudflare KV（NEWS_KV，全球共用一份）：30 分鐘以上沒更新才重抓，所有機房、手機電腦看到同一份。
+// 沒綁 KV 時退回每個機房自己的快取。
+// 時間：快訊有精確時間；xnews 列表只有「N小时前」（只代表至少 N 小時前），新文章另外抓一次內頁拿精確發布時間
+// （每次最多 3 篇；快訊型文章和外部連結抓不到，就沿用看過最早的估計值）
 let toTw = null;
+let ENV = null;
+const NEWS_KEEP = 30;
+const NEWS_REFRESH = 30 * 60 * 1000;
+const normTitle = (t) => t.replace(/[\s"“”‘’'「」『』]/g, '');
+
+async function articleTime(url) {
+  const m = url.match(/^https:\/\/xnews\.jin10\.com\/details\/(\d+)$/);
+  if (!m) return null;
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(6000) });
+    if (!res.ok) return null;
+    // 頁面裡的資料：發布時間緊接在文章 id 前面（"2026-10-17 13:17:45",232581）
+    const t = (await res.text()).match(new RegExp(String.raw`"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})",${m[1]}[,)\]]`));
+    return t ? Date.UTC(t[1], t[2] - 1, t[3], t[4] - 8, t[5], t[6]) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function refreshNews(kept) {
+  const pages = await Promise.allSettled([
+    ...NEWS_URLS.map(async (url) => {
+      const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return parseJin10(await res.text());
+    }),
+    (async () => {
+      const res = await fetch(FLASH_URL, { headers: { 'User-Agent': UA, ...FLASH_HEADERS }, signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`flash HTTP ${res.status}`);
+      return parseImportant(await res.json());
+    })(),
+  ]);
+  if (!pages.some((p) => p.status === 'fulfilled')) return { error: String(pages[0].reason), items: kept };
+  toTw ??= makeConverter(S2T);
+  const fresh = pages.filter((p) => p.status === 'fulfilled').flatMap((p) => p.value).filter((x) => newsMatch(x.title))
+    .map((x) => ({ id: x.url, title: toTw(x.title), time: x.time, ...(x.approx ? { approx: true } : {}) }));
+  // 合併：標題相同只留一則；精確時間不變，估的取看過最早的，拿到精確時間就換
+  const byTitle = new Map();
+  for (const x of [...kept.filter((k) => !k.title.includes('金十')), ...fresh]) {
+    const key = normTitle(x.title);
+    const old = byTitle.get(key);
+    if (!old) byTitle.set(key, x);
+    else if (old.approx && !x.approx) byTitle.set(key, { ...old, time: x.time, approx: undefined });
+    else if (old.approx && x.time < old.time) byTitle.set(key, { ...old, time: x.time });
+  }
+  let items = [...byTitle.values()];
+  // 還是估的 xnews 文章：抓內頁拿精確時間（每篇只試一次，每次最多 3 篇）
+  for (const x of items.filter((y) => y.approx && !y.tried).slice(0, 3)) {
+    const t = await articleTime(x.id);
+    x.tried = true;
+    if (t) { x.time = t; delete x.approx; }
+  }
+  items = items.sort((a, b) => b.time - a.time).slice(0, NEWS_KEEP);
+  return { items };
+}
+
 async function fetchJin10(origin, ctx) {
-  // 抓失敗或沒東西時只快取 5 分鐘（10/17 有機房抓失敗、清單是空的，整張卡消失半小時）
-  return cached(origin, ctx, '/_jin10_v9', (v) => (v?.items?.length && !v.error ? 1800 : 300), async () => {
-    const kept = (await loadLast(origin, 'news3')) ?? [];
+  const kv = ENV?.NEWS_KV;
+  if (kv) {
+    const stored = await kv.get('news', 'json').catch(() => null);
+    if (stored?.at && Date.now() - stored.at < NEWS_REFRESH) return { items: stored.items.slice(0, 10) };
     try {
-      // 三個來源一起抓（xnews 首頁、特朗普專題、有標題的快訊）；有一個成功就用，全部失敗才算錯誤
-      const pages = await Promise.allSettled([
-        ...NEWS_URLS.map(async (url) => {
-          const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          return parseJin10(await res.text());
-        }),
-        (async () => {
-          const res = await fetch(FLASH_URL, { headers: { 'User-Agent': UA, ...FLASH_HEADERS }, signal: AbortSignal.timeout(8000) });
-          if (!res.ok) throw new Error(`flash HTTP ${res.status}`);
-          return parseImportant(await res.json());
-        })(),
-      ]);
-      const got = pages.filter((p) => p.status === 'fulfilled').flatMap((p) => p.value);
-      if (!pages.some((p) => p.status === 'fulfilled')) return { error: String(pages[0].reason), items: kept };
-      toTw ??= makeConverter(S2T);
-      const fresh = got.filter((x) => newsMatch(x.title))
-        .map((x) => ({ id: x.url, title: toTw(x.title), time: x.time, ...(x.approx ? { approx: true } : {}) }));
-      // 三個來源常有同一篇：標題相同（去掉空白和引號後）只留一則。時間定住：精確的時間不變；xnews 的「N小时前」
-      // 只代表「至少 N 小時前」（換算的時間只會偏晚），所以取看過最早的那個，越抓越接近真的；拿到精確時間就換。
-      // 之前記住的也套用後來加的排除字「金十」
-      const norm = (t) => t.replace(/[\s"“”‘’'「」『』]/g, '');
-      const byTitle = new Map();
-      for (const x of [...kept.filter((k) => !k.title.includes('金十')), ...fresh]) {
-        const old = byTitle.get(norm(x.title));
-        if (!old) byTitle.set(norm(x.title), x);
-        else if (old.approx && !x.approx) byTitle.set(norm(x.title), { ...old, time: x.time, approx: undefined });
-        else if (old.approx && x.time < old.time) byTitle.set(norm(x.title), { ...old, time: x.time });
-      }
-      const items = [...byTitle.values()].sort((a, b) => b.time - a.time).slice(0, 10);
-      if (fresh.length) saveLast(origin, ctx, 'news3', items);
-      return { items };
+      const out = await refreshNews(stored?.items ?? []);
+      if (!out.error) ctx.waitUntil(kv.put('news', JSON.stringify({ at: Date.now(), items: out.items })));
+      return { ...out, items: out.items.slice(0, 10) };
     } catch (err) {
-      return { error: String(err), items: kept };
+      return { error: String(err), items: (stored?.items ?? []).slice(0, 10) };
+    }
+  }
+  // 沒綁 KV：每個機房自己的快取（抓失敗或沒東西時只快取 5 分鐘）
+  return cached(origin, ctx, '/_jin10_v10', (v) => (v?.items?.length && !v.error ? 1800 : 300), async () => {
+    const kept = (await loadLast(origin, 'news4')) ?? [];
+    try {
+      const out = await refreshNews(kept);
+      if (!out.error && out.items.length) saveLast(origin, ctx, 'news4', out.items);
+      return { ...out, items: out.items.slice(0, 10) };
+    } catch (err) {
+      return { error: String(err), items: kept.slice(0, 10) };
     }
   });
 }
