@@ -121,7 +121,7 @@
   /* 新聞快訊：一次一則，其他頁隱藏 */
   .pager { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   .pager .jp, .pager .pg { display: none; }
-  .pager[data-p="0"] [data-i="0"], .pager[data-p="1"] [data-i="1"], .pager[data-p="2"] [data-i="2"] { display: block; }
+  .pager[data-p="0"] [data-i="0"], .pager[data-p="1"] [data-i="1"], .pager[data-p="2"] [data-i="2"], .pager[data-p="3"] [data-i="3"], .pager[data-p="4"] [data-i="4"] { display: block; }
   .pager .pg { margin-left: auto; color: var(--muted); font-size: 13.2px; }
   /* 卡片高度固定 2 行（以最長的標題為準），換頁不跳動；塞不下就在第 2 行尾加「…」。時間放在卡片名稱右邊 */
   .jin10 .jt { font-size: clamp(16.5px, 5vw, 19.8px); font-weight: 600; line-height: 1.35; height: 2.7em;
@@ -130,7 +130,7 @@
   /* 卡片名稱跟標題一樣大，用橘色（娛樂卡片的識別色） */
   .jin10 .head .name { font-size: clamp(16.5px, 5vw, 19.8px); color: var(--warn); }
   .jin10 .head .jtime { color: var(--muted); font-size: clamp(12.5px, 3.6vw, 14.3px); margin-left: 6px; display: none; }
-  .jin10[data-p="0"] .jtime[data-i="0"], .jin10[data-p="1"] .jtime[data-i="1"], .jin10[data-p="2"] .jtime[data-i="2"] { display: inline; }
+  .jin10[data-p="0"] .jtime[data-i="0"], .jin10[data-p="1"] .jtime[data-i="1"], .jin10[data-p="2"] .jtime[data-i="2"], .jin10[data-p="3"] .jtime[data-i="3"], .jin10[data-p="4"] .jtime[data-i="4"] { display: inline; }
   /* 我的持股：全寬卡片，左欄 2330、00685L，右欄 0056、00878；每檔一個淡底小方塊當視覺錨點。
      第一行：股號（橘）＋漲跌（▲▼，靠右且切齊）；第二行：價格＋（漲跌幅），跟其他卡片的寫法一致 */
   /* 選擇器多一層，才蓋得過 PC 版 media query 裡的 .card:not(.cal) 高度上限 */
@@ -881,7 +881,7 @@
 
   // 我的持股：代號、價格、漲跌幅
 
-  // 新聞快訊：金十 xnews 標題含關鍵字的最新 3 則（Worker 篩選、簡轉繁、30 分鐘抓一次），一次一則、點卡片換下一則
+  // 新聞快訊：金十 xnews 標題含關鍵字的最新 5 則（Worker 篩選、簡轉繁、30 分鐘抓一次），一次一則、點卡片換下一則
   let jin10Page = 0;
   let jin10Key = null;
   let jin10Keys = [];
@@ -891,7 +891,7 @@
     try { return jin10Card(j); } catch { return ''; }
   }
   function jin10Card(j) {
-    const items = (Array.isArray(j?.items) ? j.items : []).filter((x) => x?.title && x.time).slice(0, 3);
+    const items = (Array.isArray(j?.items) ? j.items : []).filter((x) => x?.title && x.time).slice(0, 5);
     if (!items.length) return '';
     // 新聞更新後仍停在同一則（用時間＋標題當識別）；那則被擠掉了才回第一則
     const keyOf = (x) => `${x.time}|${x.title}`;
