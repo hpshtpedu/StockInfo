@@ -329,8 +329,8 @@ async function cached(origin, ctx, path, ttlFor, compute) {
 // 金十掛掉不能拖累其他報價：5 秒逾時，任何錯誤都回傳記住的那幾則（沒有就空清單，網頁隱藏這張卡）
 let toTw = null;
 async function fetchJin10(origin, ctx) {
-  return cached(origin, ctx, '/_jin10_v2', () => 900, async () => {
-    const kept = (await loadLast(origin, 'news')) ?? [];
+  return cached(origin, ctx, '/_jin10_v3', () => 900, async () => {
+    const kept = (await loadLast(origin, 'news2')) ?? [];
     try {
       const res = await fetch(FLASH_URL, { headers: { 'User-Agent': UA, ...FLASH_HEADERS }, signal: AbortSignal.timeout(5000) });
       if (!res.ok) return { error: `HTTP ${res.status}`, items: kept };
@@ -338,7 +338,7 @@ async function fetchJin10(origin, ctx) {
       const fresh = parseFlash(await res.json()).map((x) => ({ ...x, title: toTw(x.title) }));
       const byId = new Map([...kept, ...fresh].map((x) => [x.id ?? `${x.time}|${x.title}`, x]));
       const items = [...byId.values()].sort((a, b) => b.time - a.time).slice(0, 10);
-      if (fresh.length) saveLast(origin, ctx, 'news', items);
+      if (fresh.length) saveLast(origin, ctx, 'news2', items);
       return { items };
     } catch (err) {
       return { error: String(err), items: kept };
