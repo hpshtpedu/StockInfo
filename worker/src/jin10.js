@@ -5,7 +5,7 @@
 export const NEWS_URLS = ['https://xnews.jin10.com/', 'https://xnews.jin10.com/topic/418'];
 const KEYWORDS = ['美联储', '黄仁勋', '特朗普', 'Anthropic', '英伟达', '马斯克', '台积电'];
 const EXCLUDE = ['国内新闻', '精选：', '日程一览', '黄金头条', '早餐', '分析汇总', 'Plus日报', '夜读', '财料', '一图读懂',
-  '看点', '速递', '决战', '复盘', '数据表'];
+  '看点', '速递', '决战', '复盘', '数据表', '金十'];
 // 金十「重要事件」（topic17z2k407.jin10.com/topic/jin10_important_news.html）是前端混淆過的頁面，
 // 內容就是快訊裡標「重要」的那些：直接用 jin10.com 首頁自己的快訊 API（robots.txt 沒限制、沒有公開文件，
 // 改版可能失效），一次約 1 小時的 20 則，只留 important 而且有真正標題（【…】或 title 欄位）的

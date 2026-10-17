@@ -330,7 +330,7 @@ async function cached(origin, ctx, path, ttlFor, compute) {
 let toTw = null;
 async function fetchJin10(origin, ctx) {
   // 抓失敗或沒東西時只快取 5 分鐘（10/17 有機房抓失敗、清單是空的，整張卡消失半小時）
-  return cached(origin, ctx, '/_jin10_v6', (v) => (v?.items?.length && !v.error ? 1800 : 300), async () => {
+  return cached(origin, ctx, '/_jin10_v7', (v) => (v?.items?.length && !v.error ? 1800 : 300), async () => {
     const kept = (await loadLast(origin, 'news3')) ?? [];
     try {
       // 三個來源一起抓（xnews 首頁、特朗普專題、快訊的重要事件）；有一個成功就用，全部失敗才算錯誤
@@ -350,8 +350,11 @@ async function fetchJin10(origin, ctx) {
       if (!pages.some((p) => p.status === 'fulfilled')) return { error: String(pages[0].reason), items: kept };
       toTw ??= makeConverter(S2T);
       const fresh = got.filter((x) => newsMatch(x.title)).map((x) => ({ id: x.url, title: toTw(x.title), time: x.time }));
-      const byId = new Map([...kept, ...fresh].map((x) => [x.id ?? `${x.time}|${x.title}`, x]));
-      const items = [...byId.values()].sort((a, b) => b.time - a.time).slice(0, 10);
+      // 三個來源常有同一篇：標題相同（去掉空白和引號後）只留一則，留時間最新的；之前記住的也套用後來加的排除字「金十」
+      const norm = (t) => t.replace(/[\s"“”‘’'「」『』]/g, '');
+      const seen = new Set();
+      const items = [...kept.filter((x) => !x.title.includes('金十')), ...fresh].sort((a, b) => b.time - a.time)
+        .filter((x) => !seen.has(norm(x.title)) && seen.add(norm(x.title))).slice(0, 10);
       if (fresh.length) saveLast(origin, ctx, 'news3', items);
       return { items };
     } catch (err) {
