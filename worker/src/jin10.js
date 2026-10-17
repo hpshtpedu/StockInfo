@@ -1,29 +1,11 @@
-// 金十數據「特朗普動態」專題（xnews.jin10.com/topic/418）：純娛樂用的川普新聞標題。
-// xnews.jin10.com 沒有 robots.txt；頁面是伺服器輸出的 HTML，標題、時間、連結都在列表裡。
+// 金十 xnews（xnews.jin10.com）的文章列表：xnews 沒有 robots.txt；頁面是伺服器輸出的 HTML，標題、時間、連結都在列表裡。
 
-export const JIN10_URL = 'https://xnews.jin10.com/topic/418';
-
-// 新聞快訊：金十快訊（jin10.com 首頁自己用的快訊 API，robots.txt 沒有限制；沒有公開文件，改版可能失效）。
-// 一次回最近約 1 小時的 20 則。只看真正的標題（【】或 title 欄位），含關鍵字才留，含排除字的不要
-export const FLASH_URL = 'https://flash-api.jin10.com/get_flash_list?channel=-8200&vip=1';
-export const FLASH_HEADERS = { 'x-app-id': 'bVBF4FyRTn5NJF5n', 'x-version': '1.0.0', Referer: 'https://www.jin10.com/' };
-const KEYWORDS = ['美联储', '黄仁勋', '特朗普', 'Anthropic'];
+// 新聞快訊：金十 xnews 首頁（文章列表，每則都有標題，伺服器輸出的 HTML，一頁 20 則約涵蓋半天）。
+// 標題含關鍵字才留，含排除字的不要（比對簡體原文）
+export const NEWS_URL = 'https://xnews.jin10.com/';
+const KEYWORDS = ['美联储', '黄仁勋', '特朗普', 'Anthropic', '英伟达'];
 const EXCLUDE = ['国内新闻', '精选：', '日程一览'];
-
-// API 的 JSON -> [{ id, title, time }]（簡體，新到舊）；time 是北京時間（UTC+8）的字串
-export function parseFlash(json) {
-  const out = [];
-  for (const x of json?.data ?? []) {
-    const clean = (v) => String(v ?? '').replace(/<[^>]+>/g, '')
-      .replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').trim();
-    // 只認真正的標題：內文開頭的【…】，或 API 的 title 欄位（「金十数据整理：…」）；兩個都沒有的短訊不收
-    const title = (clean(x?.data?.content).match(/^【(.+?)】/)?.[1] ?? clean(x?.data?.title)).trim();
-    const t = String(x?.time ?? '').match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
-    if (!title || !t || !KEYWORDS.some((k) => title.includes(k)) || EXCLUDE.some((k) => title.includes(k))) continue;
-    out.push({ id: String(x.id), title, time: Date.UTC(t[1], t[2] - 1, t[3], t[4] - 8, t[5], t[6]) });
-  }
-  return out.sort((a, b) => b.time - a.time);
-}
+export const newsMatch = (title) => KEYWORDS.some((k) => title.includes(k)) && !EXCLUDE.some((k) => title.includes(k));
 
 // 譯名與台灣用語：OpenCC 的字詞表不會處理人名，這裡先蓋過去（在簡體原文上比對，最長優先）
 const NAMES = {
@@ -33,6 +15,7 @@ const NAMES = {
   中期选举: '期中選舉', 加息: '升息', 航母: '航艦', 导弹: '飛彈', 无人机: '無人機', 硅谷: '矽谷',
   芯片: '晶片', 社交媒体: '社群媒體', 朝鲜: '北韓', 韩国: '南韓', 悉尼: '雪梨',
   制裁: '制裁', 俄制裁: '俄制裁',  // 字典會把「俄制」轉成「俄製」
+  英伟达: '輝達', 黄仁勋: '黃仁勳',
 };
 // OpenCC 台灣詞表裡不適合新聞的條目（例如「聲明」會變「宣告」）
 const TW_SKIP = ['聲明'];
