@@ -6,6 +6,24 @@ export const NEWS_URLS = ['https://xnews.jin10.com/', 'https://xnews.jin10.com/t
 const KEYWORDS = ['美联储', '黄仁勋', '特朗普', 'Anthropic', '英伟达', '马斯克', '台积电'];
 const EXCLUDE = ['国内新闻', '精选：', '日程一览', '黄金头条', '早餐', '分析汇总', 'Plus日报', '夜读', '财料', '一图读懂',
   '看点', '速递', '决战', '复盘', '数据表'];
+// 金十「重要事件」（topic17z2k407.jin10.com/topic/jin10_important_news.html）是前端混淆過的頁面，
+// 內容就是快訊裡標「重要」的那些：直接用 jin10.com 首頁自己的快訊 API（robots.txt 沒限制、沒有公開文件，
+// 改版可能失效），一次約 1 小時的 20 則，只留 important 而且有真正標題（【…】或 title 欄位）的
+export const FLASH_URL = 'https://flash-api.jin10.com/get_flash_list?channel=-8200&vip=1';
+export const FLASH_HEADERS = { 'x-app-id': 'bVBF4FyRTn5NJF5n', 'x-version': '1.0.0', Referer: 'https://www.jin10.com/' };
+export function parseImportant(json) {
+  const clean = (v) => String(v ?? '').replace(/<[^>]+>/g, '')
+    .replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').trim();
+  const out = [];
+  for (const x of json?.data ?? []) {
+    if (!x?.important) continue;
+    const title = (clean(x.data?.content).match(/^【(.+?)】/)?.[1] ?? clean(x.data?.title)).trim();
+    const t = String(x.time ?? '').match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+    if (title && t) out.push({ title, time: Date.UTC(t[1], t[2] - 1, t[3], t[4] - 8, t[5], t[6]), url: `https://flash.jin10.com/detail/${x.id}` });
+  }
+  return out;
+}
+
 export const newsMatch = (title) => KEYWORDS.some((k) => title.includes(k)) && !EXCLUDE.some((k) => title.includes(k));
 
 // 譯名與台灣用語：OpenCC 的字詞表不會處理人名，這裡先蓋過去（在簡體原文上比對，最長優先）

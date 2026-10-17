@@ -45,7 +45,7 @@ const CHIPS_RETRY_SECONDS = 600;  // retry every 10 min after 14:00 until the da
 const HOLIDAYS_CACHE_SECONDS = 86400;
 
 import S2T from './s2t.json';
-import { NEWS_URLS, makeConverter, newsMatch, parseJin10 } from './jin10.js';
+import { FLASH_HEADERS, FLASH_URL, NEWS_URLS, makeConverter, newsMatch, parseImportant, parseJin10 } from './jin10.js';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
@@ -330,15 +330,22 @@ async function cached(origin, ctx, path, ttlFor, compute) {
 let toTw = null;
 async function fetchJin10(origin, ctx) {
   // 抓失敗或沒東西時只快取 5 分鐘（10/17 有機房抓失敗、清單是空的，整張卡消失半小時）
-  return cached(origin, ctx, '/_jin10_v5', (v) => (v?.items?.length && !v.error ? 1800 : 300), async () => {
+  return cached(origin, ctx, '/_jin10_v6', (v) => (v?.items?.length && !v.error ? 1800 : 300), async () => {
     const kept = (await loadLast(origin, 'news3')) ?? [];
     try {
-      // 兩頁一起抓；其中一頁失敗就只用另一頁，兩頁都失敗才算錯誤
-      const pages = await Promise.allSettled(NEWS_URLS.map(async (url) => {
-        const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return parseJin10(await res.text());
-      }));
+      // 三個來源一起抓（xnews 首頁、特朗普專題、快訊的重要事件）；有一個成功就用，全部失敗才算錯誤
+      const pages = await Promise.allSettled([
+        ...NEWS_URLS.map(async (url) => {
+          const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return parseJin10(await res.text());
+        }),
+        (async () => {
+          const res = await fetch(FLASH_URL, { headers: { 'User-Agent': UA, ...FLASH_HEADERS }, signal: AbortSignal.timeout(8000) });
+          if (!res.ok) throw new Error(`flash HTTP ${res.status}`);
+          return parseImportant(await res.json());
+        })(),
+      ]);
       const got = pages.filter((p) => p.status === 'fulfilled').flatMap((p) => p.value);
       if (!pages.some((p) => p.status === 'fulfilled')) return { error: String(pages[0].reason), items: kept };
       toTw ??= makeConverter(S2T);
