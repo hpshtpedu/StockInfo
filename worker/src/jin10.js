@@ -5,7 +5,7 @@
 export const NEWS_URLS = ['https://xnews.jin10.com/', 'https://xnews.jin10.com/topic/418'];
 const KEYWORDS = ['美联储', '黄仁勋', '特朗普', 'Anthropic', '英伟达', '马斯克', '台积电'];
 const EXCLUDE = ['国内新闻', '精选：', '日程一览', '黄金头条', '早餐', '分析汇总', 'Plus日报', '夜读', '财料', '一图读懂',
-  '看点', '速递', '决战', '复盘', '数据表', '金十', '（', '）', '？'];
+  '看点', '速递', '决战', '复盘', '数据表', '金十', '（', '）', '？', '(', ')', '|', '—', '图示', 'VIP', '一览', '秘书'];
 // 金十快訊（jin10.com 首頁自己用的快訊 API，robots.txt 沒限制、沒有公開文件，改版可能失效），一次約 1 小時的 20 則。
 // 不限「重要」（10/17 馬斯克談美債那則沒標重要，但有【】標題），只留有真正標題（【…】或 title 欄位）的；廣告不要
 export const FLASH_URL = 'https://flash-api.jin10.com/get_flash_list?channel=-8200&vip=1';
@@ -23,8 +23,8 @@ export function parseImportant(json) {
   return out;
 }
 
-// 已經記住（轉成繁體）的也套用排除字：標點和「金十」繁簡相同，其他字繁簡不同就比不到，影響不大
-export const newsExcluded = (title) => EXCLUDE.some((k) => title.includes(k));
+// 已經記住（轉成繁體）的也套用排除字：conv 是簡轉繁，排除字原樣和轉成繁體都比
+export const newsExcluded = (title, conv = (s) => s) => EXCLUDE.some((k) => title.includes(k) || title.includes(conv(k)));
 export const newsMatch = (title) => KEYWORDS.some((k) => title.includes(k)) && !EXCLUDE.some((k) => title.includes(k));
 
 // 譯名與台灣用語：OpenCC 的字詞表不會處理人名，這裡先蓋過去（在簡體原文上比對，最長優先）
