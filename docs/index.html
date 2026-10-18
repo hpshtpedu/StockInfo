@@ -901,7 +901,7 @@
     jin10Key = keyOf(items[jin10Page]);
     jin10Keys = items.map(keyOf);
     const pages = items.map((x, i) => `<div class="jp" data-i="${i}"><div class="jt">${esc(x.title)}</div></div>`).join('');
-    // 已讀：時間右邊一個淡藍色勾勾（Outlook 的藍）；未讀沒有。點卡片翻過去才算讀過
+    // 已讀：時間右邊一個淡藍色勾勾（Outlook 的藍）；未讀沒有。在畫面上顯示超過 2 秒就算讀過
     const read = readNews();
     if (!read.size) { for (const x of items) read.add(x.title); saveReadNews(read); }  // 第一次：當下的都算讀過
     const times = items.map((x, i) => `<span class="jtime" data-i="${i}">${mdhm(x.time)}`
@@ -921,8 +921,15 @@
   function saveReadNews(set) {
     try { localStorage.setItem('newsRead', JSON.stringify([...set].slice(-100))); } catch {}
   }
-  // 點卡片翻到下一則時，剛才顯示的那則才算讀過（像 Email）：記下來、加上藍勾。
-  // 不用「顯示幾秒就算讀過」：網頁開著放著時，新文章一進來排第 1 頁，人還沒看就被標成已讀
+  // 某則在畫面上顯示超過 2 秒（網頁在前景）就算讀過：記下來、加上藍勾
+  let readTimer = null;
+  function scheduleRead() {
+    clearTimeout(readTimer);
+    readTimer = setTimeout(() => {
+      const card = $list.querySelector('.jin10');
+      if (card && !document.hidden) markRead(card, card.dataset.p);
+    }, 2000);
+  }
   function markRead(card, i) {
     const title = card.querySelector(`.jp[data-i="${i}"] .jt`)?.textContent;
     const time = card.querySelector(`.jtime[data-i="${i}"]`);
@@ -1441,6 +1448,7 @@
     applyCollapsed();
     fitNames();
     markPending();
+    scheduleRead();
   }
 
   // 台股盤後「還沒開獎」：交易日 13:30 後，卡片的「M/D 盤後」還不是今天 → 蓋一層半透明鋼琴烤漆，資料一更新就拿掉
@@ -1519,10 +1527,10 @@
   $list.addEventListener('click', (e) => {
     const card = e.target.closest('.pager');
     if (!card) return;
-    markRead(card, card.dataset.p);
     jin10Page = (Number(card.dataset.p) + 1) % Number(card.dataset.n);
     card.dataset.p = jin10Page;
     jin10Key = jin10Keys[jin10Page] ?? null;
+    scheduleRead();
   });
   // 2330／0056／00878 下半部：切換第 1 頁（K 線或外/投）↔ 第 2 頁（月季線／近一年殖利率）
   $list.addEventListener('click', (e) => {
