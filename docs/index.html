@@ -393,6 +393,19 @@
     return `台積電${month}月營收`;
   }
 
+  // 配息發放日：登入（私人頁解鎖）後，依張數算出能領多少（現金股利 × 股數）。
+  // 台積電單筆 2 萬以上扣二代健保補充保費 2.11%；00878 扣匯費 10 元；其他不扣（照使用者的實際入帳情況）
+  const DIVIDEND_CODES = { 台積電: '2330', '0056': '0056', '00878': '00878' };
+  function dividendSuffix(e) {
+    const m = e.src === 'tw_stocks' && e.label.match(/^(.+?)配息([\d.]+)元$/);
+    const code = m && DIVIDEND_CODES[m[1]];
+    const lots = code && privateLots?.[code];
+    if (!(lots > 0)) return '';
+    const gross = Number(m[2]) * lots * 1000;
+    const net = Math.round(gross - (code === '2330' && gross >= 20000 ? gross * 0.0211 : 0) - (code === '00878' ? 10 : 0));
+    return `，可領 ${fmt(net, 0)}元`;
+  }
+
   function dayEvents(t) {
     const holiday = holidayLabel(t);
     const items = [
@@ -402,7 +415,7 @@
     for (const e of econEvents[key(t)] ?? []) {
       // 台灣國定假日：台股已標休市的日子就不重複（例如國慶日補假），週末或照常開市的日子才列出
       if (e.src === 'tw_holidays' && holiday) continue;
-      items.push({ text: e.label, settle: false, us: US_SOURCES.has(e.src) || e.label.startsWith('美股') });
+      items.push({ text: e.label + dividendSuffix(e), settle: false, us: US_SOURCES.has(e.src) || e.label.startsWith('美股') });
     }
     // 當天抓到的公告（Worker 提供）：營收換成帶年增/月增的版本，另外加上配息公告
     const ann = announcements?.date === key(t) ? announcements : null;
