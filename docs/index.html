@@ -1413,11 +1413,14 @@
         + `外資${tc.side === 'short' ? '空' : '多'}單成本 (估)<b>${fmt(Math.round(tc.cost), 0)}</b></div>` : '';
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
       // 台指期下半部（淡分隔線下）：外資空單成本 ↔ 60 分K（夜盤＋日盤），兩個都有才能點一下切換
-      // 夜盤結束的那天不開市（週末、連假）：日盤那 5 格拿掉，夜盤的 14 根填滿寬度，不會以為右邊還有；開市的日盤一開始就恢復 19 格
-      const twNow2 = new Date(Date.now() + 8 * 3600000);
-      const nightEnd = key(twNow2.getUTCHours() >= 15 ? addDays(twNow2, 1) : twNow2);
+      // 夜盤結束的那天不開市（週末、連假）：日盤那 5 格拿掉，夜盤的 14 根填滿寬度，不會以為右邊還有；開市的日盤一開始就恢復 19 格。
+      // 用最後一筆成交時間判斷這場夜盤哪天結束（不用現在時間：週日下午 3 點後會誤以為今晚有夜盤）
+      const last = new Date((q.time || Date.now()) + 8 * 3600000);
+      const lastMins = last.getUTCHours() * 60 + last.getUTCMinutes();
+      const inNight = lastMins >= 15 * 60 || lastMins <= 5 * 60;
+      const nightEnd = key(lastMins >= 15 * 60 ? addDays(last, 1) : last);
       const endWd = new Date(`${nightEnd}T00:00:00Z`).getUTCDay();
-      const noDaySession = endWd === 0 || endWd === 6 || holidays.has(nightEnd);
+      const noDaySession = inNight && (endWd === 0 || endWd === 6 || holidays.has(nightEnd));
       const k60 = q.id === 'txf' && q.k60?.some(Boolean) ? miniCandles(noDaySession ? q.k60.slice(0, 14) : q.k60, q.prev) : '';
       const txLower = txLine && k60
         ? `<div class="tw2 sw" data-p="${txKPage}"><div class="k0">${txLine}</div><div class="krow k1">${k60}</div></div>
