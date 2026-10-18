@@ -1530,10 +1530,10 @@
     if (!collapsed.has(name)) fitNames();  // 展開後重新量字寬（收合時量不到）
   });
   document.getElementById('ju')?.addEventListener('click', () => { location.href = 'private.html'; });
-  // 切到背景超過 1 分鐘再回來：新聞快訊回到第 1 頁（最新那則）；平常 2 分鐘一次的更新不動你正在看的頁
+  // 切到背景超過 5 分鐘再回來：新聞快訊回到第 1 頁（最新那則）；平常 2 分鐘一次的更新不動你正在看的頁
   let hiddenAt = null;
   const backFromIdle = () => {
-    if (hiddenAt && Date.now() - hiddenAt > 60000) { jin10Page = 0; jin10Key = null; }
+    if (hiddenAt && Date.now() - hiddenAt > 5 * 60000) { jin10Page = 0; jin10Key = null; }
     hiddenAt = null;
   };
   document.addEventListener('visibilitychange', () => {
