@@ -129,6 +129,7 @@
   .jin10 .head { justify-content: flex-start; align-items: baseline; }
   /* 卡片名稱跟標題一樣大，用橘色（娛樂卡片的識別色） */
   .jin10 .head .name { font-size: clamp(16.5px, 5vw, 19.8px); color: var(--warn); }
+  .jin10 .jtime .unread { width: 0.95em; height: 0.95em; margin-left: 4px; vertical-align: -0.1em; color: #479ef5; }
   .jin10 .head .jtime { color: var(--muted); font-size: clamp(12.5px, 3.6vw, 14.3px); margin-left: 6px; display: none; }
   .jin10[data-p="0"] .jtime[data-i="0"], .jin10[data-p="1"] .jtime[data-i="1"], .jin10[data-p="2"] .jtime[data-i="2"], .jin10[data-p="3"] .jtime[data-i="3"], .jin10[data-p="4"] .jtime[data-i="4"] { display: inline; }
   /* 我的持股：全寬卡片，左欄 2330、00685L，右欄 0056、00878；每檔一個淡底小方塊當視覺錨點。
@@ -900,12 +901,42 @@
     jin10Key = keyOf(items[jin10Page]);
     jin10Keys = items.map(keyOf);
     const pages = items.map((x, i) => `<div class="jp" data-i="${i}"><div class="jt">${esc(x.title)}</div></div>`).join('');
-    const times = items.map((x, i) => `<span class="jtime" data-i="${i}">${mdhm(x.time)}</span>`).join('');
+    // 未讀：時間右邊一個淡藍色勾勾（Outlook 的藍），讀過（在畫面上顯示超過 2 秒）就拿掉
+    const read = readNews();
+    if (!read.size) { for (const x of items) read.add(x.title); saveReadNews(read); }  // 第一次：當下的都算讀過
+    const times = items.map((x, i) => `<span class="jtime" data-i="${i}">${mdhm(x.time)}`
+      + `${read.has(x.title) ? '' : '<svg class="unread" viewBox="0 0 16 16" aria-label="未讀"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'}</span>`).join('');
     return `
       <div class="card wide jin10 pager" data-p="${jin10Page}" data-n="${items.length}">
         <div class="head"><div class="name">新聞快訊</div>${times}${items.length > 1 ? items.map((_, i) => `<span class="pg" data-i="${i}">${i + 1}/${items.length}</span>`).join('') : ''}</div>
         ${pages}
       </div>`;
+  }
+
+  // 新聞快訊的已讀紀錄（這台裝置，存標題，最多 100 則）
+  function readNews() {
+    try { return new Set(JSON.parse(localStorage.getItem('newsRead') ?? '[]')); } catch { return new Set(); }
+  }
+  function saveReadNews(set) {
+    try { localStorage.setItem('newsRead', JSON.stringify([...set].slice(-100))); } catch {}
+  }
+  // 目前這頁顯示超過 2 秒（網頁在前景）就算讀過：記下來、拿掉勾勾
+  let readTimer = null;
+  function scheduleRead() {
+    clearTimeout(readTimer);
+    readTimer = setTimeout(() => {
+      const card = $list.querySelector('.jin10');
+      if (!card || document.hidden) return;
+      const i = card.dataset.p;
+      const title = card.querySelector(`.jp[data-i="${i}"] .jt`)?.textContent;
+      const mark = card.querySelector(`.jtime[data-i="${i}"] .unread`);
+      if (!title || !mark) return;
+      const read = readNews();
+      read.delete(title);
+      read.add(title);
+      saveReadNews(read);
+      mark.remove();
+    }, 2000);
   }
 
   // 我的持股：全寬卡片分兩欄（2330、00685L | 0056、00878）
@@ -1416,6 +1447,7 @@
     applyCollapsed();
     fitNames();
     markPending();
+    scheduleRead();
   }
 
   // 台股盤後「還沒開獎」：交易日 13:30 後，卡片的「M/D 盤後」還不是今天 → 蓋一層半透明鋼琴烤漆，資料一更新就拿掉
@@ -1497,6 +1529,7 @@
     jin10Page = (Number(card.dataset.p) + 1) % Number(card.dataset.n);
     card.dataset.p = jin10Page;
     jin10Key = jin10Keys[jin10Page] ?? null;
+    scheduleRead();
   });
   // 2330／0056／00878 下半部：切換第 1 頁（K 線或外/投）↔ 第 2 頁（月季線／近一年殖利率）
   $list.addEventListener('click', (e) => {
