@@ -48,7 +48,10 @@
   <h1>股市大局觀</h1>
 
   <form id="login" class="card" hidden>
-    <div class="row"><input id="pw" type="password" autocomplete="current-password" placeholder="密碼"></div>
+    <!-- 給 iPhone「密碼」（iCloud 鑰匙圈）辨認的帳號欄：有帳號＋密碼，Safari 才會提議儲存，之後點密碼欄就能用 Face ID 自動填入 -->
+    <input type="text" name="username" autocomplete="username" value="stockinfo" readonly tabindex="-1" aria-hidden="true"
+      style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
+    <div class="row"><input id="pw" name="password" type="password" autocomplete="current-password" placeholder="密碼"></div>
     <div class="btns"><button type="submit">確認</button><button type="button" class="plain" id="back1">返回</button></div>
     <div class="msg" id="loginMsg"></div>
   </form>
