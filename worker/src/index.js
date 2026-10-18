@@ -45,7 +45,7 @@ const CHIPS_RETRY_SECONDS = 600;  // retry every 10 min after 14:00 until the da
 const HOLIDAYS_CACHE_SECONDS = 86400;
 
 import S2T from './s2t.json';
-import { FLASH_HEADERS, FLASH_URL, NEWS_URLS, makeConverter, newsMatch, parseImportant, parseJin10 } from './jin10.js';
+import { FLASH_HEADERS, FLASH_URL, NEWS_URLS, makeConverter, newsExcluded, newsMatch, parseImportant, parseJin10 } from './jin10.js';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
@@ -382,7 +382,7 @@ async function refreshNews(kept, since = Date.now() - 3600000) {
     .map((x) => ({ id: x.url, title: toTw(x.title), time: x.time, ...(x.approx ? { approx: true } : {}) }));
   // 合併：標題相同只留一則；精確時間不變，估的取看過最早的，拿到精確時間就換
   const byTitle = new Map();
-  for (const x of [...kept.filter((k) => !k.title.includes('金十')), ...fresh]) {
+  for (const x of [...kept.filter((k) => !newsExcluded(k.title)), ...fresh]) {
     const key = normTitle(x.title);
     const old = byTitle.get(key);
     if (!old) byTitle.set(key, x);
@@ -405,12 +405,12 @@ async function fetchJin10(origin, ctx) {
   if (kv) {
     const stored = await kv.get('news', 'json').catch(() => null);
     // v2：快訊會往前補抓；舊格式的清單重抓一次（往前補 3 小時，找回換版時漏掉的）
-    if (stored?.v === 2 && Date.now() - stored.at < NEWS_REFRESH) return { src: 'kv', items: stored.items.slice(0, 10) };
-    const since = stored?.v === 2 ? stored.at - 5 * 60000 : Date.now() - 3 * 3600000;
+    if (stored?.v === 3 && Date.now() - stored.at < NEWS_REFRESH) return { src: 'kv', items: stored.items.slice(0, 10) };
+    const since = stored?.v >= 2 ? stored.at - 5 * 60000 : Date.now() - 3 * 3600000;  // v3：排除字改了，重整一次
     try {
       // KV 第一次用（還是空的）：拿這個機房原本記住的清單當底，不從零開始
       const out = await refreshNews(stored?.items ?? (await loadLast(origin, 'news4')) ?? [], since);
-      if (!out.error) ctx.waitUntil(kv.put('news', JSON.stringify({ v: 2, at: Date.now(), items: out.items })));
+      if (!out.error) ctx.waitUntil(kv.put('news', JSON.stringify({ v: 3, at: Date.now(), items: out.items })));
       return { ...out, src: 'kv-refresh', items: out.items.slice(0, 10) };
     } catch (err) {
       return { error: String(err), items: (stored?.items ?? []).slice(0, 10) };
