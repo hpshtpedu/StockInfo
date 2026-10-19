@@ -899,6 +899,7 @@
   let jin10Page = 0;
   let jin10Key = null;
   let jin10Keys = [];
+  let jin10Top = null;  // 上次畫的時候最新那則，用來判斷有沒有新新聞
   const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // 防呆：金十資料有任何問題（沒資料、格式不對、畫卡片出錯）就整張不顯示，不影響其他卡片
   function jin10Html(j) {
@@ -907,10 +908,12 @@
   function jin10Card(j) {
     const items = (Array.isArray(j?.items) ? j.items : []).filter((x) => x?.title && x.time).slice(0, 5);
     if (!items.length) return '';
-    // 新聞更新後仍停在同一則（用時間＋標題當識別）；那則被擠掉了才回第一則
-    const keyOf = (x) => `${x.time}|${x.title}`;
+    // 有新的一則進來（最新那則換了）就跳到第一則；沒有新的就停在原本看的那則（用時間＋標題當識別），被擠掉了才回第一則
+    const keyOf = (x) => `${x.title}`;
+    const fresh = jin10Top != null && keyOf(items[0]) !== jin10Top;
+    jin10Top = keyOf(items[0]);
     const keep = items.findIndex((x) => keyOf(x) === jin10Key);
-    jin10Page = keep >= 0 ? keep : (jin10Page < items.length && jin10Key == null ? jin10Page : 0);
+    jin10Page = fresh ? 0 : keep >= 0 ? keep : (jin10Page < items.length && jin10Key == null ? jin10Page : 0);
     jin10Key = keyOf(items[jin10Page]);
     jin10Keys = items.map(keyOf);
     const pages = items.map((x, i) => `<div class="jp" data-i="${i}"><div class="jt">${esc(x.title)}</div></div>`).join('');
