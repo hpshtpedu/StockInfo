@@ -405,12 +405,12 @@ async function fetchJin10(origin, ctx) {
   if (kv) {
     const stored = await kv.get('news', 'json').catch(() => null);
     // v2：快訊會往前補抓；舊格式的清單重抓一次（往前補 3 小時，找回換版時漏掉的）
-    if (stored?.v === 6 && Date.now() - stored.at < NEWS_REFRESH) return { src: 'kv', items: stored.items.slice(0, 10) };
+    if (stored?.v === 7 && Date.now() - stored.at < NEWS_REFRESH) return { src: 'kv', items: stored.items.slice(0, 10) };
     const since = stored?.v >= 2 ? stored.at - 5 * 60000 : Date.now() - 3 * 3600000;  // 版本號：排除字改了就重整一次
     try {
       // KV 第一次用（還是空的）：拿這個機房原本記住的清單當底，不從零開始
       const out = await refreshNews(stored?.items ?? (await loadLast(origin, 'news4')) ?? [], since);
-      if (!out.error) ctx.waitUntil(kv.put('news', JSON.stringify({ v: 6, at: Date.now(), items: out.items })));
+      if (!out.error) ctx.waitUntil(kv.put('news', JSON.stringify({ v: 7, at: Date.now(), items: out.items })));
       return { ...out, src: 'kv-refresh', items: out.items.slice(0, 10) };
     } catch (err) {
       return { error: String(err), items: (stored?.items ?? []).slice(0, 10) };
