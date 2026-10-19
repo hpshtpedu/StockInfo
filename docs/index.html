@@ -1111,6 +1111,36 @@
     return gap(60) < gap(20) ? 60 : 20;
   }
 
+  // 外資空單成本（估）推到當天：每晚排程算到前一個交易日（tx_cost.json），15:00 期交所公布後，
+  // 用外資淨 OI 卡片那份日報裡外資台指期當天的多空成交，照同一個模型（3d_rollover_net_oi_proxy_v1）往前推一天：
+  // 淨部位同向加大 → 加大的口數用當天該方向成交均價加權；變小或持平 → 不變；歸零 → flat；翻向 → 用當天均價重新定錨。
+  // 只在日子剛好接續（排程的淨 OI＝今天的前一日）才推；結算日模型要重新定錨，當天照樣顯示排程的值
+  function txCostToday(tc, oi) {
+    const t = oi?.trade;
+    if (!t || oi.change == null || !oi.time) return tc;
+    const day = new Date(oi.time + 8 * 3600000).toISOString().slice(0, 10);
+    if (day <= tc.asOf || tc.netOi !== oi.price - oi.change) return tc;
+    if (settlements(new Date(`${day}T00:00:00Z`)).some((l) => l.startsWith('台指期貨'))) return tc;
+    const prev = tc.netOi;
+    const now = oi.price;
+    const side = now < 0 ? 'short' : 'long';
+    const vwap = (s) => {
+      const lots = s === 'short' ? t.shortLots : t.longLots;
+      const amt = s === 'short' ? t.shortAmt : t.longAmt;
+      return lots > 0 && amt > 0 ? (amt * 1000) / (lots * 200) : null;
+    };
+    let cost = tc.cost;
+    if (now === 0) return { ...tc, asOf: day, netOi: now, side: 'flat', status: 'flat' };
+    if (prev === 0 || (prev > 0) !== (now > 0)) cost = vwap(side);
+    else if (Math.abs(now) > Math.abs(prev)) {
+      const v = vwap(side);
+      if (v == null) return tc;
+      cost = (cost * Math.abs(prev) + v * (Math.abs(now) - Math.abs(prev))) / Math.abs(now);
+    }
+    if (!(cost > 0)) return tc;
+    return { ...tc, asOf: day, netOi: now, side, cost, live: true };
+  }
+
   // 各卡片所屬市場，用行事曆的休市日判斷「休市」或「收盤」
   const MARKET_OF = { twii: 'tw', txf: 'tw', breadth: 'tw', kospi: 'kr', nikkei: 'jp', sox: 'us', tsm: 'us', nq: 'us', us10y: 'us', brent: 'us' };
   const HOLIDAY_LABEL = { kr: '韓股休市', jp: '日股休市', us: '美股休市' };
@@ -1406,10 +1436,11 @@
       const when = q.time && q.state !== 'opening' && q.state !== 'holiday' && !(q.state === 'auction' && (!sameDay || q.id === 'txf')) ? (sameDay || STATE_LABELS[q.state] ? hhmm(q.time) : mdhm(q.time)) : '';
       const meta = `<div class="meta">${when}${when ? lag : lag.replace(/^ · /, '')}${stale}</div>`;
       // 台指期：外資淨部位的推估均價（估），只有 status ok 且數字合理才顯示；日期與模型說明放在 title
-      const tc = q.id === 'txf' && txCost?.status === 'ok' && Number.isFinite(txCost.cost) && txCost.cost > 0
+      const tc0 = q.id === 'txf' && txCost?.status === 'ok' && Number.isFinite(txCost.cost) && txCost.cost > 0
         && (txCost.side === 'short' || txCost.side === 'long') ? txCost : null;
+      const tc = tc0 ? txCostToday(tc0, byId.foreignOi) : null;
       // 台指期跟加權同一排：先放一行空白＋淡分隔線（跟加權月／季線那行同高），外資成本放在線下面
-      const txLine = tc ? `<div class="txcost" title="${esc(`資料截至 ${tc.asOf}（結算日 ${tc.cycleStart} 起，依外資淨部位與三日轉倉均價推估，不是真實成本）`)}">`
+      const txLine = tc ? `<div class="txcost" title="${esc(`資料截至 ${tc.asOf}${tc.live ? '（盤後即時推估）' : ''}（結算日 ${tc.cycleStart} 起，依外資淨部位與三日轉倉均價推估，不是真實成本）`)}">`
         + `外資${tc.side === 'short' ? '空' : '多'}單成本 (估)<b>${fmt(Math.round(tc.cost), 0)}</b></div>` : '';
       const pct = `(${sign}${fmt(q.changePct, 2)}%)`;
       // 台指期下半部（淡分隔線下）：外資空單成本 ↔ 60 分K（夜盤＋日盤），兩個都有才能點一下切換

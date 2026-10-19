@@ -968,8 +968,8 @@ async function fetchBreadth() {
 // = -(institutional MTX net OI) / (MTX total OI). Cached separately since it changes daily.
 async function fetchChips(origin, ctx) {
   const cache = caches.default;
-  const key = new Request(origin + '/_chips_v4');
-  const lastKey = new Request(origin + '/_chips_last_v2');
+  const key = new Request(origin + '/_chips_v5');
+  const lastKey = new Request(origin + '/_chips_last_v3');
   const cached = await cache.match(key);
   if (cached) return cached.json();
 
@@ -1184,6 +1184,21 @@ function parseChips(src) {
   const foreignOi = foreign ? Number(foreign.oiLong) + Number(foreign.oiShort) : 0;
   if (!foreignOi || !mtxOi || Number.isNaN(mtxInstNet)) throw new Error(`${src.source}: incomplete data`);
 
+  // 外資台指期當天的多空成交（口數、契約金額千元）：網頁拿來把「外資空單成本（估）」推到當天。
+  // 只有官網 CSV 有這幾欄，抓不到（OpenAPI 格式不同）就不帶
+  let trade = null;
+  try {
+    const t = parseTaifex(src.inst, {
+      contract: ['ContractCode', /^商品名稱$/], item: ['Item', /^身份/],
+      longLots: ['-', /^多方交易口數$/], longAmt: ['-', /^多方交易契約金額/],
+      shortLots: ['-', /^空方交易口數$/], shortAmt: ['-', /^空方交易契約金額/],
+    }).find((r) => r.contract === '臺股期貨' && r.item.startsWith('外資'));
+    const n = (v) => Number(String(v).replace(/,/g, ''));
+    if (t && n(t.longLots) >= 0 && n(t.shortLots) >= 0) {
+      trade = { longLots: n(t.longLots), longAmt: n(t.longAmt), shortLots: n(t.shortLots), shortAmt: n(t.shortAmt) };
+    }
+  } catch {}
+
   const date = foreign.date.replace(/\D/g, ''); // YYYYMMDD
   const dataDate = `${+date.slice(4, 6)}/${+date.slice(6, 8)}`;
   const time = Date.UTC(+date.slice(0, 4), +date.slice(4, 6) - 1, +date.slice(6, 8), 15 - 8);
@@ -1200,6 +1215,7 @@ function parseChips(src) {
       detail: `多${wan(foreign.oiLong)} 空${wan(foreign.oiShort)}`,
       dataDate,
       time,
+      ...(trade ? { trade } : {}),
     },
     retailRatio: {
       name: CHIPS.retailRatio.name,
