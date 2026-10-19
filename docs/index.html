@@ -1021,8 +1021,9 @@
     if (!list?.length) return '';
     // 台積電收盤集合競價（13:25-13:30）比盤中最後一筆漲 2 檔以上＝尾盤拉雞，跌 2 檔以上＝尾盤殺雞
     const auction = list.find((h) => h.code === '2330')?.auction;
-    const badge = auction?.ticks >= 2 ? '<span class="badge buy">尾盤拉雞</span>'
-      : auction?.ticks <= -2 ? '<span class="badge sell">尾盤殺雞</span>' : '';
+    // 橘色（提醒色）：描述尾盤集合競價的動作，不代表之後的方向
+    const badge = auction?.ticks >= 2 ? '<span class="badge warn">尾盤拉雞</span>'
+      : auction?.ticks <= -2 ? '<span class="badge warn">尾盤殺雞</span>' : '';
     const groups = HOLD_GROUPS.map((codes) => list.filter((h) => codes.includes(h.code))).filter((g) => g.length);
     const fo = flowVisible(flows?.foreign) ? flows.foreign : null;
     const tr = flowVisible(flows?.trust) ? flows.trust : null;
