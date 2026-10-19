@@ -577,7 +577,7 @@
     const tsmc = flows?.foreign?.date === day ? flows.foreign.net?.['2330'] : null;
     const taiex = taiexChangePct(day, twii);
     if (!settlement && inst.foreign <= -100 && tsmc < 0 && q.price < 0 && q.change >= 1000 && taiex < 0) {
-      return '<span class="badge warn">賣現補空</span>';
+      return '<span class="badge buy">賣現補空</span>';  // 紅：回測隔天偏多（跟期現雙空的綠相對）
     }
     return '';
   }
