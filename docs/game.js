@@ -254,12 +254,12 @@
     const bull = Math.random() < 0.5 + 0.4 * Math.tanh(pct / 0.8);
     const edge = Math.min(1, Math.abs(pct) / 1.5);                      // 情勢一面倒的程度
     const favored = bull === pct >= 0;
-    const crit = Math.random() < (favored ? 0.15 + 0.2 * edge : 0.08);
+    const crit = Math.random() < (favored ? 0.25 + 0.25 * edge : 0.12);  // 爆擊率：優勢方 25-50%、劣勢方 12%
     let dmg = Math.round((40 + Math.random() * 160) * (favored ? 1 + edge : 1 - 0.4 * edge));
     if (crit) dmg = Math.round(dmg * (2 + Math.random()));
     const x = bull ? Math.max(8, front - 6 - Math.random() * 10) : Math.min(92, front + 6 + Math.random() * 10);
     float(crit ? `${dmg}!` : String(dmg), bull ? 'up' : 'down', crit, x);
-    if (crit && Math.random() < 0.5) float(pick(bull ? D.floatBullCrit : D.floatBearCrit), bull ? 'up' : 'down', false, null, ' say');
+    if (crit && Math.random() < 0.8) float(pick(bull ? D.floatBullCrit : D.floatBearCrit), bull ? 'up' : 'down', false, null, ' say');
   }
   let hitTimer = null;
 
