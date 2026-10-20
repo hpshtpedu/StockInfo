@@ -43,14 +43,14 @@
   .wg-flash.on { animation: wg-flash .5s 1; }
   @keyframes wg-flash { 0% { opacity: .9; } 100% { opacity: 0; } }
   /* 魔獸世界風格戰鬥跳字：粗體黑描邊，從被打的一方頭上冒出往上飄；爆擊先放大彈出再縮回 */
-  .wg-float { position: absolute; z-index: 4; font: 900 14px/1 Impact, "Arial Black", "Microsoft JhengHei", sans-serif; white-space: nowrap;
+  .wg-float { position: absolute; z-index: 4; font: 900 28px/1 Impact, "Arial Black", "Microsoft JhengHei", sans-serif; white-space: nowrap;
     letter-spacing: .5px; pointer-events: none; --dx: 0px;
     text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 2px 3px rgba(0,0,0,.8);
     animation: wg-up 1.4s ease-out forwards; }
   .wg-float.up { color: #ff6a5c; } .wg-float.down { color: #3fdc8a; }
-  .wg-float.crit { font-size: 20px; animation: wg-crit 1.6s ease-out forwards; }
+  .wg-float.crit { font-size: 40px; animation: wg-crit 1.6s ease-out forwards; }
   .wg-float.crit.up { color: #ffd100; } .wg-float.crit.down { color: #8dff3a; }
-  .wg-float.say { font-size: 12px; font-weight: 800; }
+  .wg-float.say { font-size: 13px; font-weight: 800; }
   @keyframes wg-up { 0% { opacity: 0; transform: translate(-50%, 4px) scale(.7); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
     22% { transform: translate(-50%, -4px) scale(1); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -38px) scale(.95); } }
   @keyframes wg-crit { 0% { opacity: 0; transform: translate(-50%, 0) scale(2.4); } 10% { opacity: 1; transform: translate(-50%, -2px) scale(1.5); }
@@ -254,11 +254,11 @@
     const bull = Math.random() < 0.5 + 0.4 * Math.tanh(pct / 0.8);
     const edge = Math.min(1, Math.abs(pct) / 1.5);                      // 情勢一面倒的程度
     const favored = bull === pct >= 0;
-    const crit = Math.random() < (favored ? 0.1 + 0.15 * edge : 0.06);
+    const crit = Math.random() < (favored ? 0.15 + 0.2 * edge : 0.08);
     let dmg = Math.round((40 + Math.random() * 160) * (favored ? 1 + edge : 1 - 0.4 * edge));
     if (crit) dmg = Math.round(dmg * (2 + Math.random()));
     const x = bull ? Math.max(8, front - 6 - Math.random() * 10) : Math.min(92, front + 6 + Math.random() * 10);
-    float(String(dmg), bull ? 'up' : 'down', crit, x);
+    float(crit ? `${dmg}!` : String(dmg), bull ? 'up' : 'down', crit, x);
     if (crit && Math.random() < 0.5) float(pick(bull ? D.floatBullCrit : D.floatBearCrit), bull ? 'up' : 'down', false, null, ' say');
   }
   let hitTimer = null;
@@ -305,15 +305,17 @@
     if (done) setSrc(stamp, `${A}${bullWin ? 'win' : 'loss'}.webp`);
     stamp.onload = () => draw(false);  // 圖載完才知道比例，重排一次
     stamp.classList.toggle('on', done);
-    if (done) {  // 放進兩尊神中間：量出空間，置中、寬度不超過（高度也不超過上方區域）
+    if (done) {
+      // 以卡片中線置中，左右空隙一樣：寬度＝離中線最近的神祇邊緣到中線的距離 × 2。
+      // 用「收漲」那組立繪（帝皇勝利立繪最寬）算，收跌的 DEFEAT 也用同一個大小
       const a = arena.getBoundingClientRect();
-      const lo = guo.getBoundingClientRect().right - a.left;
-      const hi = emp.getBoundingClientRect().left - a.left;
-      if (a.width && hi > lo) {
+      if (a.width) {
+        const h = a.height * 0.68 - 14;                                    // 神祇顯示高度
+        const widest = Math.max(h * (343 / 240), h * (251 / 240));         // Emperor_win、GUO_loss 的寬高比
         const ratio = stamp.naturalWidth && stamp.naturalHeight ? stamp.naturalWidth / stamp.naturalHeight : 3;
-        const w = Math.min(hi - lo - 12, (a.height * 0.68 - 16) * ratio);
+        const w = Math.min(2 * (a.width / 2 - widest) - 12, (a.height * 0.68 - 16) * ratio);
         stamp.style.width = `${Math.max(40, w)}px`;
-        stamp.style.left = `${(lo + hi) / 2}px`;
+        stamp.style.left = '50%';
       }
     }
     if (done) {
