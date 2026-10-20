@@ -101,16 +101,16 @@
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
   function report(pct, hhmm, rare) {
-    if (hhmm >= '09:00' && hhmm <= '09:05') return `【${hhmm} 開盤】${D.open}`;
-    if (hhmm >= '13:25' && hhmm < '13:30') return `【${hhmm} 試撮】${D.climax}`;
+    if (hhmm >= '09:00' && hhmm <= '09:05') return `${D.open}`;
+    if (hhmm >= '13:25' && hhmm < '13:30') return `${D.climax}`;
     if (hhmm >= '13:30') return pct >= 0 ? D.bullWin : D.bearWin;
-    if (rare) return `【${hhmm}】${pick(D.rare[rare])}`;
+    if (rare) return pick(D.rare[rare]);
     const { bull, bear, stalemate } = D;
-    if (pct >= 0.8) return `【${hhmm} 戰報】${pick(bull.actors)}${pick(bull.major)}${pick(bull.targets)}，${pick(bull.results)}！`;
-    if (pct > 0.1) return `【${hhmm} 戰訊】${pick(bull.actors)}${pick(bull.minor)}${pick(bull.targets)}，多方持續推進。`;
-    if (pct <= -0.8) return `【${hhmm} 告急】${pick(bear.actors)}${pick(bear.major)}${pick(bear.targets)}，${pick(bear.results)}！`;
-    if (pct < -0.1) return `【${hhmm} 戰訊】${pick(bear.actors)}${pick(bear.minor)}${pick(bear.targets)}，多方陣線感受沉重壓迫。`;
-    return `【${hhmm} 膠著】${pick(stalemate.scenarios)}，${pick(stalemate.states)}！`;
+    if (pct >= 0.8) return `${pick(bull.actors)}${pick(bull.major)}${pick(bull.targets)}，${pick(bull.results)}！`;
+    if (pct > 0.1) return `${pick(bull.actors)}${pick(bull.minor)}${pick(bull.targets)}，多方持續推進。`;
+    if (pct <= -0.8) return `${pick(bear.actors)}${pick(bear.major)}${pick(bear.targets)}，${pick(bear.results)}！`;
+    if (pct < -0.1) return `${pick(bear.actors)}${pick(bear.minor)}${pick(bear.targets)}，多方陣線感受沉重壓迫。`;
+    return `${pick(stalemate.scenarios)}，${pick(stalemate.states)}！`;
   }
 
   // 罕見事件：台積電漲跌停、大盤 ±3%、長上／下影線（加權 15 分 K 的開高低；影線 ≥ 實體 2 倍且 ≥ 昨收 0.8%）
