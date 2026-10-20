@@ -19,9 +19,10 @@
   .wg-guo { left: 0; } .wg-emp { right: 0; }
   /* 帝皇敗北立繪比較大，縮成 8 成；往上抬，頭頂跟對面大不淨者切齊 */
   .wg-emp[src*="Emperor_loss"] { height: calc((68% - 14px) * .8); bottom: calc(32% + 8px + (68% - 14px) * .2); }
-  /* 收盤結果印章（win／loss）：亞空間條正中央，結算時才出現 */
-  .wg-result { left: 50%; bottom: 0; height: 32%; transform: translateX(-50%) scale(.6); opacity: 0; z-index: 3; transition: opacity .6s, transform .6s cubic-bezier(.2, 1.6, .4, 1); }
-  .wg-result.on { opacity: 1; transform: translateX(-50%) scale(1); }
+  /* 收盤結果印章（win／loss）：上方兩尊神中間的空白正中央，寬度依實際空間調整（不蓋到神），結算時才出現 */
+  .wg-result { left: 50%; top: calc((68% - 8px) / 2); width: 40%; height: auto; transform: translate(-50%, -50%) scale(.6); opacity: 0; z-index: 3;
+    transition: opacity .6s, transform .6s cubic-bezier(.2, 1.6, .4, 1); }
+  .wg-result.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
   .wg-troop { bottom: 0; height: 32%; transition: left 2s ease-in-out, opacity 1s, transform .6s; }
   .wg-tguo { transform: translateX(-100%); } .wg-temp { transform: translateX(0); }
   .wg-cloud { bottom: 0; height: 48%; transform: translateX(-50%); transition: left 2s ease-in-out, opacity 1s; z-index: 2; }
@@ -302,7 +303,19 @@
     cloud.style.opacity = fighting ? 1 : 0;
     const stamp = $('.wg-result');
     if (done) setSrc(stamp, `${A}${bullWin ? 'win' : 'loss'}.webp`);
+    stamp.onload = () => draw(false);  // 圖載完才知道比例，重排一次
     stamp.classList.toggle('on', done);
+    if (done) {  // 放進兩尊神中間：量出空間，置中、寬度不超過（高度也不超過上方區域）
+      const a = arena.getBoundingClientRect();
+      const lo = guo.getBoundingClientRect().right - a.left;
+      const hi = emp.getBoundingClientRect().left - a.left;
+      if (a.width && hi > lo) {
+        const ratio = stamp.naturalWidth && stamp.naturalHeight ? stamp.naturalWidth / stamp.naturalHeight : 3;
+        const w = Math.min(hi - lo - 12, (a.height * 0.68 - 16) * ratio);
+        stamp.style.width = `${Math.max(40, w)}px`;
+        stamp.style.left = `${(lo + hi) / 2}px`;
+      }
+    }
     if (done) {
       tg.style.opacity = te.style.opacity = 0;
       (bullWin ? te : tg).style.transform = bullWin ? 'translateX(-12px)' : 'translateX(calc(-100% + 12px))';
