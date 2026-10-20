@@ -17,7 +17,11 @@
   .wg img { position: absolute; display: block; pointer-events: none; user-select: none; -webkit-user-select: none; }
   .wg-god { bottom: calc(32% + 8px); height: calc(68% - 14px); transition: filter .6s; }  /* 跟亞空間條留 8px 空隙（素材已裁掉透明邊） */
   .wg-guo { left: 0; } .wg-emp { right: 0; }
-  .wg-emp[src*="Emperor_loss"] { height: calc((68% - 14px) * .8); }  /* 帝皇敗北立繪比較大，縮成 8 成（腳底一樣貼著亞空間條上方） */
+  /* 帝皇敗北立繪比較大，縮成 8 成；往上抬，頭頂跟對面大不淨者切齊 */
+  .wg-emp[src*="Emperor_loss"] { height: calc((68% - 14px) * .8); bottom: calc(32% + 8px + (68% - 14px) * .2); }
+  /* 收盤結果印章（win／loss）：亞空間條正中央，結算時才出現 */
+  .wg-result { left: 50%; bottom: 0; height: 32%; transform: translateX(-50%) scale(.6); opacity: 0; z-index: 3; transition: opacity .6s, transform .6s cubic-bezier(.2, 1.6, .4, 1); }
+  .wg-result.on { opacity: 1; transform: translateX(-50%) scale(1); }
   .wg-troop { bottom: 0; height: 32%; transition: left 2s ease-in-out, opacity 1s, transform .6s; }
   .wg-tguo { transform: translateX(-100%); } .wg-temp { transform: translateX(0); }
   .wg-cloud { bottom: 0; height: 48%; transform: translateX(-50%); transition: left 2s ease-in-out, opacity 1s; z-index: 2; }
@@ -94,6 +98,42 @@
       lowerShadow: ['【原體甦醒·馬庫拉格之光】 基里曼自萬年靜滯力場中赫然睜眼！', '【終局豪賭·突入復仇之魂】 帝皇率軍發動絕境傳送直插空頭心臟！',
         '【絕地突擊·渥姆伍德烈焰】 天際驟然爆發刺目空投火光！在暴跌廢墟上築起百點鋼鐵下影線！', '【999.M41·終焉時刻的咆哮】 百萬忠誠買盤築起永不陷落的奇蹟防線！'],
     },
+    // 擴充戰報（gemini-code 附件）：多方、空方情勢各一池，銀河快訊隨機穿插
+    bullNews: ['基因原體基里曼頒布《不屈遠征令》，百萬戰艦自泰拉全線啟航，多軍士氣突破天際！', '禁軍統領瓦洛里斯率領泰拉禁衛走出皇宮，以不可撼動之勢粉碎空方先鋒！',
+      '獅王萊恩·艾爾莊森自密林迷霧中甦醒，忠誠重誓響徹泰拉星區！', '聖吉列斯的血脈在戰場上爆發神聖狂怒，血天使黑色狂怒部隊將綠色賣壓徹底撕碎！',
+      '血鴉戰團『意外尋獲』遺失千年的帝皇級泰坦，反手將重砲對準空頭陣地！', '極限戰士一連老兵誓死固守極地堡壘，頑強粉碎空軍三輪猛烈攻勢！',
+      '太空狼雷狼騎兵撕裂亞空間凍土，以凶暴狂飆擊潰敵軍側翼！', '黑色聖堂發動永恆十字軍誓約，鏈鋸劍與熱熔火光將異端退路盡數封死！',
+      '暗黑天使內環部隊成功捕獲一名墮落天使，多方防線重歸絕對肅正！', '火蜥蜴戰團噴火小隊以救世之火清空戰壕，在暴跌邊緣守下平民據點！',
+      '白疤摩步連發動狂風閃電突擊，在空軍來不及撤單前完成萬手穿插！', '審判庭異端審問官拔槍處決內鬼交易員，肅清潛伏在多軍內部的空頭奸細！',
+      '大賢者考爾成功研發全新原鑄武裝，神聖產能指數級爆發！', '機械神教勘探隊挖掘出古老 STC 標準建造模板碎片，科技蠻力強勢拉盤！',
+      '戰將級泰坦『神聖復仇號』鳴響破天汽笛，火山砲一擊抹平空軍整條陣線！', '卡塔昌叢林鬥士在盤面密林佈下致命陷阱，空方追殺部隊全軍覆沒！',
+      '塔蘭沙漠騎兵奇襲截斷混沌補給線，綠色賣壓瞬間後繼無力！', '國教聖女賽勒斯汀展開金色羽翼降臨，以神聖真火淨化一切看空悲觀思潮！',
+      '刺客庭凡迪卡刺客於三千碼外精準爆頭空頭指揮官，空軍陣型大亂！'],
+    bearNews: ['掠奪者阿巴頓發動第十三次黑暗遠征，黑石要塞殘骸撞穿多方核心均線！', '安格隆在努西利亞的血誓中覺醒，紅砂奴隸狂怒引爆停損斷頭潮！',
+      '莫塔里安在查拉頓星區散播七重瘟疫，多軍戰壕全面潰爛流膿！', '馬格努斯在普羅斯佩羅燃燒的灰燼中吟唱咒文，千子靈能風暴撕裂多頭均線！',
+      '福格瑞姆沉溺於極致感官殺戮，紫金魔光所過之處多方陣容盡數瓦解！', '荷魯斯叛變了！半數軍團反戈一擊，伊斯塔梵三號軌道滅絕毒彈傾瀉而下！',
+      '懷言者在考斯星系點燃背叛之火，恆星輻射重創多軍主力艦隊！', '佩圖拉博佈設『鋼鐵之籠』死局，鋼鐵勇士重砲日夜轟擊將多頭碾成齏粉！',
+      '午夜領主在巢都散播極致恐懼，恐慌拋售情緒如瘟疫般光速擴散！', '『我是阿爾法瑞斯！』潛伏在多軍總部的休眠特工集體啟動，後台掛單全部逆轉！',
+      '恐虐嗜血狂魔率領放血鬼大軍突入獅門，泰拉外層防線血流成河！', '混沌騎士泰坦踏碎帝國聖堂，褻瀆鳴笛聲震散了所有抄底買盤！',
+      '奸奇命運編織者吹亂因果絲線，多方技術指標全面失真破底！', '色孽尋歡魔女奏響刺耳尖嘯，融資散戶心智崩潰引發踩踏！',
+      '亞空間大裂隙橫貫銀河，無數多軍補給艦隊迷失在虛空暴風雨中！', '腐敗的變異教派在鑄造世界地底暴動，多軍後勤彈藥全面告急！'],
+    galaxy: ['【銀河快訊】碎骨者高格庫爾向全銀河發動 WAAAGH！無數太空廢船正朝戰場全速前進！', '【銀河快訊】碎骨者在哈米吉多頓前線與亞瑞克政委隔空互瞪，雙方部隊暫時按兵不動！',
+      '【銀河快訊】技師小子發動『俺尋思之力』，用路邊撿來的廢鐵拼出了一架超大型古巨基！', '【銀河快訊】瘋狂飛行小子因方向盤卡死，直接駕機撞進了不知哪一邊的主力戰艦！',
+      '【銀河快訊】血斧氏族傭兵向路過的交戰雙方收取十袋牙齒，聲稱這是『合法過路費』！', '【銀河快訊】歐克獸人發現紅色載具跑得比較快，全軍正忙著把裝甲塗成大紅色！',
+      '【銀河快訊】機械神教勘探隊誤觸古老開關，地底深處整座太空死靈墓穴悄然甦醒！', '【銀河快訊】無盡者塔拉辛路過戰場，順手把交戰中的一整支連隊收進了靜滯立方體當展品！',
+      '【銀河快訊】神諭者歐拉坎夜觀星象，算出一萬年後的今天星圖排列極度不吉利！', '【銀河快訊】寂靜王薩雷赫率領巨型王權駁船自星系邊緣歸來，冷漠注視著下方的凡人廝殺！',
+      '【銀河快訊】索特克王朝法皇伊莫特克發出跨星系通訊，勒令交戰雙方立刻滾出他的領地！', '【銀河快訊】碎裂星神『欺詐者』的虛影在星圖中一閃而過，留下一串意味深長的冷笑！',
+      '【銀河快訊】審判庭在邊境星域發現蟲巢艦隊利維坦先遣觸角，整片星系生物質警報大作！', '【銀河快訊】巢都底層下水道爆發基因竊取者教團武裝起義，三臂礦工高呼四臂神皇聖名！',
+      '【銀河快訊】亞空間陰影籠罩戰場上空，全體靈能者集體偏頭痛！', '【銀河快訊】蟲巢艦隊克拉肯兵臨伊揚登方舟世界，靈族遊俠急召幽冥衛士出陣！',
+      '【銀河快訊】歐克蠻牛在奧克塔流斯星區狂扁泰倫蟲族，雙方打得難分難解忘了誰才是入侵者！', '【銀河快訊】死神軍團嘗試喚醒死神伊亞奈登，網道深處傳來未知靈能震顫！',
+      '【銀河快訊】科摩羅暗黑靈族突擊艦自陰影裂隙殺出，抓走了幾百名倒楣的後勤人員回去競技場！', '【銀河快訊】先知艾爾德拉德再次波動命運之線，沒人知道這老頭到底想坑誰！',
+      '【銀河快訊】遠見指揮官拔出黎明之刃，帶領遠見飛地戰隊脫離以太議會的控制！', '【銀河快訊】暗影之日指揮官運用隱形匿蹤戰術，在無人察覺之際滲透了側翼防禦塔！',
+      '【銀河快訊】帝皇在黃金王座深處持續開發網道，神聖靈能光芒在王座廳周圍忽明忽暗！', '【銀河快訊】馬格努斯自亞空間看到了未來！',
+      '【銀河快訊】奸奇正在亞空間深處偷偷注視著戰場', '【銀河快訊】帝國內務部經過三百年嚴格審核，終於將第一批爆彈槍彈藥送達早已覆滅的要塞！',
+      '【銀河快訊】審判官懷疑自己的機械左手可能被混沌腐化，正在召集審問庭開會調查自己！', '【銀河快訊】行商浪人艦隊宣稱發現一顆由純金打造的未開化星球，正私下向各方兜售座標！',
+      '【銀河快訊】導航員家族回報星炬光芒微幅晃動，建議全銀河艦長在亞空間航行時握緊扶手！',
+      '【爆彈神話】極限老兵馬拉姆·凱多單槍匹馬擊殺三隻大不淨者、四隻萬變魔君與五隻地獄獸！', '【個人秀時間】戰場傳來怒吼！馬拉姆·凱多手持爆彈槍突入空軍指揮所，三隻大不淨者慘遭鏈鋸劍原地大卸八塊！',
+      '【格拉亞大捷】監測到一名叫馬拉姆·凱多的阿斯塔特獨自踏平空軍重鎮，屠盡五隻地獄獸與四隻萬變魔君，多軍士氣突破天際！', '【忠誠暴走】馬拉姆·凱多：『我的仇恨就是我的護盾！』'],
     floatBull: ['忠誠推進！', '多單挺進！', '為了帝皇！', '神聖護盤！'],
     floatBullCrit: ['異端！通通淨化！', '神皇之怒！', '靈能滅絕！', '全面軋空！'],
     floatBear: ['慈父賜福！', '瘟疫蔓延！', '主力倒貨！', '賣壓湧現！'],
@@ -107,6 +147,11 @@
     if (hhmm >= '13:30') return pct >= 0 ? D.bullWin : D.bearWin;
     if (rare) return pick(D.rare[rare]);
     const { bull, bear, stalemate } = D;
+    // 兩成機率插播銀河快訊；有方向時一半用擴充戰報、一半用組句
+    if (Math.random() < 0.2) return pick(D.galaxy);
+    if (pct > 0.1 && Math.random() < 0.5) return pick(D.bullNews);
+    if (pct < -0.1 && Math.random() < 0.5) return pick(D.bearNews);
+    if (pct >= -0.1 && pct <= 0.1 && Math.random() < 0.5) return pick(D.galaxy);
     if (pct >= 0.8) return `${pick(bull.actors)}${pick(bull.major)}${pick(bull.targets)}，${pick(bull.results)}！`;
     if (pct > 0.1) return `${pick(bull.actors)}${pick(bull.minor)}${pick(bull.targets)}，多方持續推進。`;
     if (pct <= -0.8) return `${pick(bear.actors)}${pick(bear.major)}${pick(bear.targets)}，${pick(bear.results)}！`;
@@ -141,6 +186,7 @@
       <img class="wg-troop wg-tguo" src="${A}GUO_troops.webp" alt="">
       <img class="wg-troop wg-temp" src="${A}Emperor_troops.webp" alt="">
       <img class="wg-cloud" src="${A}fight-cloud.webp" alt="">
+      <img class="wg-result" alt="">
       <div class="wg-flash"></div>
     </div>
     <div class="wg-ticker"><span></span></div>
@@ -154,6 +200,7 @@
   let lastPrice = null;
   let resolvedShown = false;
   let lastTickerKey = '';
+  let tickerAt = 0;  // 盤中每 30 秒換一句戰報
   let visible = true;
   let timer = null;
 
@@ -253,6 +300,9 @@
     $('.wg-bar .edge').style.left = split == null ? '-10px' : `${split}%`;
     const fighting = phase === 'battle' || phase === 'tension';
     cloud.style.opacity = fighting ? 1 : 0;
+    const stamp = $('.wg-result');
+    if (done) setSrc(stamp, `${A}${bullWin ? 'win' : 'loss'}.webp`);
+    stamp.classList.toggle('on', done);
     if (done) {
       tg.style.opacity = te.style.opacity = 0;
       (bullWin ? te : tg).style.transform = bullWin ? 'translateX(-12px)' : 'translateX(calc(-100% + 12px))';
@@ -279,7 +329,8 @@
 
     // 戰報：資料更新或階段改變才換一句
     const key = `${phase}|${Math.round(pct * 10)}|${fromData ? Date.now() : ''}`;
-    if (fromData || !lastTickerKey.startsWith(phase)) {
+    if (fromData || !lastTickerKey.startsWith(phase) || (live && !paused && Date.now() - tickerAt > 30000)) {
+      tickerAt = Date.now();
       const text = !trading && !debug ? (bullWin ? D.bullWin : D.bearWin)
         : phase === 'pre' ? '【待命】雙方大軍集結於亞空間兩端，等待 09:00 開盤號角'
           : report(pct, hhmm, rareEvent(data.twii, data.tsmc, pct));
