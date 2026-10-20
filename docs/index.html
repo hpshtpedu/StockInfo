@@ -1529,10 +1529,11 @@
   }
 
   let lastLoad = 0;
+  let loadRetried = false;
   async function load() {
     lastLoad = Date.now();
-    // 請求最多等 20 秒：手機休眠／換網路時連線可能卡住永遠不回來
-    const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(20000) : undefined;
+    // 請求最多等 30 秒：手機休眠／換網路時連線可能卡住永遠不回來
+    const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(30000) : undefined;
     try {
       // 網址帶上每 2 分鐘換一次的參數：GitHub Pages 的 CDN 每個節點會快取檔案約 10 分鐘，
       // 手機和電腦連到不同節點時會一新一舊（10/15 八大就這樣）；換參數就一定拿到最新的檔案
@@ -1571,7 +1572,17 @@
       render(data, pickMargin(data.margin, await marginReq), await profileReq);
       $status.className = '';
       $status.textContent = `更新 ${hhmm(data.updated)} (GMT+8)`;
+      loadRetried = false;
     } catch (err) {
+      // 閒置很久回來的第一個請求，Worker 要從頭重抓，偶爾會逾時：先不報錯，3 秒後再試一次，再失敗才顯示
+      if (!loadRetried) {
+        loadRetried = true;
+        $status.className = '';
+        $status.textContent = '更新中…';
+        setTimeout(load, 3000);
+        return;
+      }
+      loadRetried = false;
       $status.className = 'err';
       $status.textContent = `更新失敗：${err.message}`;
     }

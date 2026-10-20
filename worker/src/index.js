@@ -393,11 +393,11 @@ async function refreshNews(kept, since = Date.now() - 3600000) {
   }
   let items = [...byTitle.values()];
   // 還是估的 xnews 文章：抓內頁拿精確時間（每篇只試一次，每次最多 3 篇）
-  for (const x of items.filter((y) => y.approx && !y.tried).slice(0, 3)) {
+  await Promise.all(items.filter((y) => y.approx && !y.tried).slice(0, 3).map(async (x) => {  // 同時抓，不一篇篇等
     const t = await articleTime(x.id);
     x.tried = true;
     if (t) { x.time = t; delete x.approx; }
-  }
+  }));
   items = items.sort((a, b) => b.time - a.time).slice(0, NEWS_KEEP);
   return { items };
 }
@@ -409,6 +409,13 @@ async function fetchJin10(origin, ctx) {
     // v2：快訊會往前補抓；舊格式的清單重抓一次（往前補 3 小時，找回換版時漏掉的）
     if (stored?.v === 9 && Date.now() - stored.at < NEWS_REFRESH) return { src: 'kv', items: stored.items.slice(0, 10) };
     const since = stored?.v >= 2 ? stored.at - 5 * 60000 : Date.now() - 3 * 3600000;  // 版本號：排除字改了就重整一次
+    // 已經有清單（只是過期）：先回舊的，在背景重抓寫回 KV，不讓整個 /quotes 等新聞（閒置後回來常因此逾時）
+    if (stored?.items?.length && stored.v === 9) {
+      ctx.waitUntil(refreshNews(stored.items, since).then((out) => {
+        if (!out.error) return kv.put('news', JSON.stringify({ v: 9, at: Date.now(), items: out.items }));
+      }).catch(() => {}));
+      return { src: 'kv-stale', items: stored.items.slice(0, 10) };
+    }
     try {
       // KV 第一次用（還是空的）：拿這個機房原本記住的清單當底，不從零開始
       const out = await refreshNews(stored?.items ?? (await loadLast(origin, 'news4')) ?? [], since);
