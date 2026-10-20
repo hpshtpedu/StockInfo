@@ -17,8 +17,8 @@
   .wg img { position: absolute; display: block; pointer-events: none; user-select: none; -webkit-user-select: none; }
   .wg-god { bottom: calc(32% + 8px); height: calc(68% - 14px); transition: filter .6s; }  /* 跟亞空間條留 8px 空隙（素材已裁掉透明邊） */
   .wg-guo { left: 0; } .wg-emp { right: 0; }
-  /* 帝皇敗北立繪比較大，縮成 8 成；往上抬，頭頂跟對面大不淨者切齊 */
-  .wg-emp[src*="Emperor_loss"] { height: calc((68% - 14px) * .8); bottom: calc(32% + 8px + (68% - 14px) * .2); }
+  /* 帝皇敗北立繪比較大，縮成 8 成；底部照樣跟其他神祇切齊（站在亞空間條上方） */
+  .wg-emp[src*="Emperor_loss"] { height: calc((68% - 14px) * .8); }
   /* 收盤結果印章（win／loss）：上方兩尊神中間的空白正中央，寬度依實際空間調整（不蓋到神），結算時才出現 */
   .wg-result { left: 50%; top: calc((68% - 8px) / 2); width: 40%; height: auto; transform: translate(-50%, -50%) scale(.6); opacity: 0; z-index: 3;
     transition: opacity .6s, transform .6s cubic-bezier(.2, 1.6, .4, 1); }
@@ -55,7 +55,7 @@
     22% { transform: translate(-50%, -4px) scale(1); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -38px) scale(.95); } }
   @keyframes wg-crit { 0% { opacity: 0; transform: translate(-50%, 0) scale(2.4); } 10% { opacity: 1; transform: translate(-50%, -2px) scale(1.5); }
     25% { transform: translate(-50%, -6px) scale(1.2); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -42px) scale(1.1); } }
-  .wg-ticker { height: 22px; line-height: 22px; padding: 0 10px; font-size: 12.5px; color: #d6dbe3; background: #111419;
+  .wg-ticker { height: 22px; line-height: 22px; padding: 0 10px; font-size: 13px;  /* 跟分類標題「台股盤中」同字級 */ color: #d6dbe3; background: #111419;
     border-top: 1px solid var(--line); white-space: nowrap; overflow: hidden; }
   .wg-ticker span { display: inline-block; vertical-align: top; }
   .wg-ticker .tz { color: #b06cff; } .wg-ticker .tb { color: var(--up); } .wg-ticker .tr { color: var(--down); }  /* 奸奇紫、多軍紅、空軍綠 */
