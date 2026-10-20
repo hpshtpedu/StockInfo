@@ -1487,7 +1487,7 @@
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
            ${txLower}`;
       return `
-        <div class="card${chart ? ' has-k' : ''}${q.id === 'txf' ? ' txf' : q.id === 'twii' ? ' twii' : ''}"${q.id === 'sox' || q.id === 'tsm' ? ` data-us="${q.time || 0}"` : ''}>
+        <div class="card${chart ? ' has-k' : ''}${q.id === 'txf' ? ' txf' : q.id === 'twii' ? ' twii' : ''}"${q.id === 'sox' || q.id === 'tsm' ? ` data-us="${q.time || 0}"` : ''}${q.id === 'kospi' || q.id === 'nikkei' ? ' data-asia' : ''}>
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
           <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}${q.id === 'tsm' ? adrBadge(q).replace('class="badge', 'class="badge pb') : ''}</div>
           ${body}
@@ -1520,6 +1520,12 @@
       const t = Number(card.dataset.us);
       card.classList.toggle('pend', usDue && (!t || nyDay(t) < key(tw)));
     }
+    // 韓股、日經：美股交易時段（美東 09:30-16:00，美股休市不算）蓋上鋼琴烤漆，那時看的是美股，亞股是收盤的舊數字
+    const ny = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' })
+      .formatToParts(new Date(Date.now())).map((x) => [x.type, x.value]));
+    const nyMins = Number(ny.hour) * 60 + Number(ny.minute);
+    const usOpen = !['Sat', 'Sun'].includes(ny.weekday) && !isMarketHoliday('us') && nyMins >= 9 * 60 + 30 && nyMins < 16 * 60;
+    for (const card of $list.querySelectorAll('.card[data-asia]')) card.classList.toggle('pend', usOpen);
   }
 
   let lastLoad = 0;
