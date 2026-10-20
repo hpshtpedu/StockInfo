@@ -17,6 +17,7 @@
   .wg img { position: absolute; display: block; pointer-events: none; user-select: none; -webkit-user-select: none; }
   .wg-god { bottom: calc(32% + 8px); height: calc(68% - 14px); transition: filter .6s; }  /* 跟亞空間條留 8px 空隙（素材已裁掉透明邊） */
   .wg-guo { left: 0; } .wg-emp { right: 0; }
+  .wg-emp[src*="Emperor_loss"] { height: calc((68% - 14px) * .8); }  /* 帝皇敗北立繪比較大，縮成 8 成（腳底一樣貼著亞空間條上方） */
   .wg-troop { bottom: 0; height: 32%; transition: left 2s ease-in-out, opacity 1s, transform .6s; }
   .wg-tguo { transform: translateX(-100%); } .wg-temp { transform: translateX(0); }
   .wg-cloud { bottom: 0; height: 48%; transform: translateX(-50%); transition: left 2s ease-in-out, opacity 1s; z-index: 2; }
