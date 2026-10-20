@@ -294,8 +294,8 @@
     tg.style.left = `${front * p}%`;
     te.style.left = `${100 - (100 - front) * p}%`;
     cloud.style.left = `${front}%`;
-    // 戰線條：開打後（進軍完成）照戰線分紅綠；行軍、待命時只有亞空間底圖
-    const split = phase === 'battle' || phase === 'tension' || done ? front : null;
+    // 戰線條：交火時照戰線分紅綠＋白色拉扯線；行軍、待命、收盤後只有亞空間底圖
+    const split = phase === 'battle' || phase === 'tension' ? front : null;
     $('.wg-bar .l').style.width = split == null ? '0' : `${split}%`;
     $('.wg-bar .r').style.width = split == null ? '0' : `${100 - split}%`;
     $('.wg-bar .edge').style.left = split == null ? '-10px' : `${split}%`;
