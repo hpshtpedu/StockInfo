@@ -4,3 +4,6 @@ node_modules/
 # MacroMicro exports for local analysis only (not ours to redistribute)
 mm_data/
 __pycache__/
+
+# 小遊戲素材原檔（縮好的在 docs/game/，用 scripts/build_game_assets.py 產生）
+mini_game/

@@ -929,6 +929,21 @@
       </div>`;
   }
 
+  // 戰鎚小遊戲（docs/game.js）：第一次要用時才載入，之後每次重畫把同一個遊戲元素搬回原位
+  let gameLoading = null;
+  function attachGame(d) {
+    gameLoading ??= new Promise((ok) => {
+      const s = document.createElement('script');
+      s.src = 'game.js?v=1';
+      s.onload = ok;
+      document.head.appendChild(s);
+    });
+    gameLoading.then(() => {
+      const slot = document.getElementById('game-slot');
+      if (slot && window.WarGame) window.WarGame.attach(slot, d);
+    });
+  }
+
   // 新聞快訊的已讀紀錄（這台裝置，存標題，最多 100 則）
   const READ_MARK = '<svg class="readmark" viewBox="0 0 16 16" aria-label="已讀"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   function readNews() {
@@ -1493,9 +1508,11 @@
           ${body}
         </div>`;
     };
-    $list.innerHTML = calendarHtml() + jin10Html(data.jin10)
+    const gameOn = !!window.PrivateVault?.unlocked();  // 小遊戲：登入（私人頁解鎖）才有
+    $list.innerHTML = calendarHtml() + jin10Html(data.jin10) + (gameOn ? '<div id="game-slot"></div>' : '')
       + quotes.map((q) => (before[q.id] ?? '') + cardFor(q) + (after[q.id] ?? '')).join('')
       + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
+    if (gameOn) attachGame({ twii: byId.twii, tsmc: data.holdings?.find((h) => h.code === '2330'), tradingDay: !isMarketHoliday('tw') });
     applyCollapsed();
     fitNames();
     markPending();
