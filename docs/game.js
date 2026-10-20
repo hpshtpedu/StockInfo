@@ -55,7 +55,7 @@
     22% { transform: translate(-50%, -4px) scale(1); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -38px) scale(.95); } }
   @keyframes wg-crit { 0% { opacity: 0; transform: translate(-50%, 0) scale(2.4); } 10% { opacity: 1; transform: translate(-50%, -2px) scale(1.5); }
     25% { transform: translate(-50%, -6px) scale(1.2); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -42px) scale(1.1); } }
-  .wg-ticker { height: 22px; line-height: 22px; padding: 0 10px; font-size: 13px;  /* 跟分類標題「台股盤中」同字級 */ color: #d6dbe3; background: #111419;
+  .wg-ticker { height: 24px; line-height: 24px; padding: 0 10px; font-size: 14px; font-weight: 600;  /* 跟卡片標題（例如「台指期」）同字級 */ color: #d6dbe3; background: #111419;
     border-top: 1px solid var(--line); white-space: nowrap; overflow: hidden; }
   .wg-ticker span { display: inline-block; vertical-align: top; }
   .wg-ticker .tz { color: #b06cff; } .wg-ticker .tb { color: var(--up); } .wg-ticker .tr { color: var(--down); }  /* 奸奇紫、多軍紅、空軍綠 */
