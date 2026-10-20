@@ -523,7 +523,7 @@
     const gg = tsmc ? `<div class="gg">台積電 <b class="${tsmc.net > 0 ? 'up' : tsmc.net < 0 ? 'down' : ''}">${tsmc.net > 0 ? '+' : ''}${fmt(tsmc.net, 1)}億</b></div>` : '';
     return `
       <div class="card roomy">
-        <div class="head"><div class="name">八大行庫<span class="nm-x">買賣超</span></div>${streak}</div>
+        <div class="head"><div class="name">八大買賣超</div>${streak}</div>
         <div class="price ${dir}">${last.net > 0 ? '+' : ''}${fmt(last.net, 1)}<small> 億</small></div>
         ${gg}
         <div class="foot"><div class="meta">${mm}/${dd} 盤後</div>${note}</div>
