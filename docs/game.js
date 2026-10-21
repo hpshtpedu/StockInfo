@@ -18,6 +18,8 @@
   .wg-god { bottom: calc(32% + 8px); height: calc(68% - 14px); transition: filter .6s; }  /* 跟亞空間條留 8px 空隙（素材已裁掉透明邊） */
   .wg-guo { left: 0; } .wg-emp { right: 0; }
   /* 帝皇敗北立繪比較大，縮成 8 成。王座底部是平的，貼底會看起來比對面低：取頭對齊（抬 20%）和底對齊（不抬）的中間，抬 10% */
+  /* 帝皇勝利、大不淨者敗北立繪比較胖，縮成 82%，看起來跟盤中差不多大（底部照樣貼齊） */
+  .wg-emp[src*="Emperor_win"], .wg-guo[src*="GUO_loss"] { height: calc((68% - 14px) * .82); }
   .wg-emp[src*="Emperor_loss"] { height: calc((68% - 14px) * .8); bottom: calc(32% + 8px + (68% - 14px) * .1); }
   /* 收盤結果印章（win／loss）：上方兩尊神中間的空白正中央，寬度依實際空間調整（不蓋到神），結算時才出現 */
   .wg-result { left: 50%; top: calc((68% - 8px) / 2); width: 40%; height: auto; transform: translate(-50%, -50%) scale(.6); opacity: 0; z-index: 3;
@@ -41,6 +43,7 @@
   @keyframes wg-shake { 0%,100% { translate: 0; } 25% { translate: -2px 1px; } 75% { translate: 2px -1px; } }
   .wg-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 5; }
   .wg-flash.on { animation: wg-flash .5s 1; }
+  .wg-paused .wg-flash { animation-play-state: running !important; }  /* 收盤閃光不能被暫停凍住（13:31 後暫停，會卡在一片白） */
   @keyframes wg-flash { 0% { opacity: .9; } 100% { opacity: 0; } }
   /* 魔獸世界風格戰鬥跳字：粗體黑描邊，從被打的一方頭上冒出往上飄；爆擊先放大彈出再縮回 */
   .wg-float { position: absolute; z-index: 4; font: 900 28px/1 Impact, "Arial Black", "Microsoft JhengHei", sans-serif; white-space: nowrap;
@@ -410,7 +413,7 @@
       const a = arena.getBoundingClientRect();
       if (a.width) {
         const h = a.height * 0.68 - 14;                                    // 神祇顯示高度
-        const widest = Math.max(h * (343 / 240), h * (251 / 240));         // Emperor_win、GUO_loss 的寬高比
+        const widest = Math.max(h * 0.82 * (343 / 240), h * 0.82 * (251 / 240));  // Emperor_win、GUO_loss（顯示 82%）的寬
         const ratio = meta.win ? meta.win.w / meta.win.h : 2.8;  // 一律照 win 的大小：DEFEAT、VS 用同樣高度
         const w = Math.max(40, Math.min(2 * (a.width / 2 - widest) - 12, (a.height * 0.68 - 16) * ratio));
         stamp.style.width = 'auto';
@@ -423,7 +426,9 @@
       (bullWin ? te : tg).style.transform = bullWin ? 'translateX(-12px)' : 'translateX(calc(-100% + 12px))';
       if (phase === 'resolved' && !resolvedShown && live) {   // 現場看到收盤：閃光一次
         resolvedShown = true;
-        $('.wg-flash').classList.remove('on'); void el.offsetWidth; $('.wg-flash').classList.add('on');
+        const fl = $('.wg-flash');
+        fl.classList.remove('on'); void el.offsetWidth; fl.classList.add('on');
+        setTimeout(() => fl.classList.remove('on'), 600);
       }
     } else {
       tg.style.opacity = te.style.opacity = 1;
