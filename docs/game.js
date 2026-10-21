@@ -62,11 +62,9 @@
   .wg-float.crit { font-size: 40px; animation: wg-crit 1.6s ease-out forwards; }
   .wg-float.crit.up { color: #ffd100; } .wg-float.crit.down { color: #8dff3a; }
   .wg-float.say { font-size: 19px; font-weight: 800; }
-  /* 大招傷害（魔獸世界浮動戰鬥文字：技能名稱小字在上、×2 的巨大數字在下，先巨大彈出再縮回，發光描邊） */
+  /* 大招傷害（魔獸世界浮動戰鬥文字：×2 的巨大數字，先巨大彈出再縮回，發光描邊） */
   .wg-float.ult { top: 26% !important; font-size: 46px; text-align: center; animation: wg-ult 2s ease-out forwards;
     text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 10px currentColor; }
-  .wg-float.ult small { display: block; font: 800 14px/1.2 "Microsoft JhengHei", sans-serif; letter-spacing: 1px;
-    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
   .wg-float.say.hi { top: 3% !important; }  /* 大招台詞固定在最上面，不疊到大數字 */
   .wg-float.ult.up { color: #ffd100; } .wg-float.ult.down { color: #8dff3a; }
   @keyframes wg-ult { 0% { opacity: 0; transform: translate(-50%, 0) scale(3); } 8% { opacity: 1; transform: translate(-50%, -2px) scale(1.6); }
@@ -267,7 +265,7 @@
   function float(text, cls, crit, x, extra = '') {
     const f = document.createElement('div');
     f.className = `wg-float ${cls}${crit ? ' crit' : ''}${extra}`;
-    if (extra.includes('ult')) f.innerHTML = text; else f.textContent = text;
+    f.textContent = text;
     f.style.left = `${x ?? 32 + Math.random() * 36}%`;
     f.style.top = `${x == null ? 12 + Math.random() * 30 : 34 + Math.random() * 14}%`;
     f.style.setProperty('--dx', `${Math.round((Math.random() - 0.5) * 16)}px`);
@@ -336,7 +334,7 @@
     // 大招（三成）：喊中文台詞＋放大招打一發，傷害 ×2（跟爆擊同時發生就用爆擊台詞）
     if (Math.random() < 0.3) {
       ultimate(bull, () => {
-        float(`<small>${bull ? '靈能閃電' : '投擲納垢靈'}</small>${dmg * 2}!`, side, true, x, ' ult');
+        float(`${dmg * 2}!`, side, true, x, ' ult');
         float(pick(bull ? (crit ? D.floatBullCrit : D.floatBull) : (crit ? D.floatBearCrit : D.floatBear)), side, false, null, ' say hi');
       });
       return;
