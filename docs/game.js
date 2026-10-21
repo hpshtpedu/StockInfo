@@ -8,7 +8,9 @@
   .card.wg { padding: 0; overflow: hidden; gap: 0; max-height: none; }
   .wg-arena { position: relative; height: 128px; overflow: hidden; }
   /* 亞空間＝底部的戰線條（像內外盤比例條）：高度跟部隊一樣，戰線左邊淡綠（空方佔領）、右邊淡紅（多方佔領） */
-  .wg-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 32%; background: url(${A}Immaterium.webp) center / cover; }
+  .wg-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 32%; background: url(${A}Immaterium.webp) center / cover;
+    /* 上緣 14px 漸層淡出：亞空間像霧往上散進戰場，不是一條硬切的線（不加光暈，發光的只有神祇） */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px); mask-image: linear-gradient(to bottom, transparent 0, #000 14px); }
   .wg-bar i { position: absolute; top: 0; bottom: 0; transition: width 2s ease-in-out, left 2s ease-in-out; }
   .wg-bar .l { left: 0; background: rgba(47, 194, 127, .28); }
   .wg-bar .r { right: 0; background: rgba(255, 92, 92, .28); }
@@ -20,7 +22,7 @@
   /* 兩邊神祇的領地（1/4 圓，最底層）：大不淨者的腐爛花園貼左下、帝皇的巢都貼右下；調暗一點，不搶神祇和印章 */
   .wg-place { opacity: .7; z-index: 0; }
   .wg-pguo { left: 0; } .wg-pemp { right: 0; }
-  .wg-place { bottom: 32%; height: calc(68% * 1.5); }  /* 放大 1.5 倍往中間延伸，神站在地面上；上緣超出卡片的部分被切掉 */
+  .wg-place { bottom: calc(32% - 14px); height: calc(68% * 1.5 + 14px); }  /* 放大 1.5 倍往中間延伸，神站在地面上；上緣超出卡片的部分被切掉 */
   /* 帝皇敗北立繪比較大，縮成 8 成。王座底部是平的，貼底會看起來比對面低：取頭對齊（抬 20%）和底對齊（不抬）的中間，抬 10% */
   /* 帝皇勝利、大不淨者敗北立繪比較胖，縮成 82%，看起來跟盤中差不多大（底部照樣貼齊） */
   .wg-emp[src*="Emperor_win"], .wg-guo[src*="GUO_loss"] { height: calc((68% - 14px) * .82); }
