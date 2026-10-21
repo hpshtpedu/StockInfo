@@ -293,7 +293,11 @@
     const crit = Math.random() < (favored ? 0.25 + 0.25 * edge : 0.12);  // 爆擊率：優勢方 25-50%、劣勢方 12%
     let dmg = Math.round((40 + Math.random() * 160) * (favored ? 1 + edge : 1 - 0.4 * edge));
     if (crit) dmg = Math.round(dmg * (2 + Math.random()));
-    const x = bull ? Math.max(8, front - 6 - Math.random() * 10) : Math.min(92, front + 6 + Math.random() * 10);
+    // 數字出現在被打的一方旁邊：打大不淨者 → 他的右邊；打帝皇 → 帝皇的左邊（float 會再限制在兩尊神中間）
+    const ar = arena.getBoundingClientRect();
+    const gR = ar.width ? ((guo.getBoundingClientRect().right - ar.left) / ar.width) * 100 : 30;
+    const eL = ar.width ? ((emp.getBoundingClientRect().left - ar.left) / ar.width) * 100 : 70;
+    const x = bull ? gR + 2 + Math.random() * 8 : eL - 2 - Math.random() * 8;
     // 神祇出手：多方＝帝皇揮劍氣打大不淨者，空方＝大不淨者吐口水打帝皇；爆擊連打兩發
     // 每一發命中各跳一個數字；爆擊兩發 → 兩個數字（第二發傷害略有差異），台詞只喊一次
     attack(bull, crit, (i) => {
