@@ -50,7 +50,7 @@
   .wg-float.up { color: #ff6a5c; } .wg-float.down { color: #3fdc8a; }
   .wg-float.crit { font-size: 40px; animation: wg-crit 1.6s ease-out forwards; }
   .wg-float.crit.up { color: #ffd100; } .wg-float.crit.down { color: #8dff3a; }
-  .wg-float.say { font-size: 13px; font-weight: 800; }
+  .wg-float.say { font-size: 19px; font-weight: 800; }
   @keyframes wg-up { 0% { opacity: 0; transform: translate(-50%, 4px) scale(.7); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
     22% { transform: translate(-50%, -4px) scale(1); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -38px) scale(.95); } }
   @keyframes wg-crit { 0% { opacity: 0; transform: translate(-50%, 0) scale(2.4); } 10% { opacity: 1; transform: translate(-50%, -2px) scale(1.5); }
@@ -303,7 +303,8 @@
     attack(bull, crit, (i) => {
       const n = i ? Math.round(dmg * (0.75 + Math.random() * 0.5)) : dmg;
       float(crit ? `${n}!` : String(n), bull ? 'up' : 'down', crit, x + (i ? (bull ? -4 : 4) : 0));
-      if (!i && crit && Math.random() < 0.8) float(pick(bull ? D.floatBullCrit : D.floatBearCrit), bull ? 'up' : 'down', false, null, ' say');
+      // 中文台詞：爆擊一定喊（爆擊台詞），普通攻擊也有四成喊一般台詞
+      if (!i && (crit || Math.random() < 0.4)) float(pick(bull ? (crit ? D.floatBullCrit : D.floatBull) : (crit ? D.floatBearCrit : D.floatBear)), bull ? 'up' : 'down', false, null, ' say');
     });
   }
 
