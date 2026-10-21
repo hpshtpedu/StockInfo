@@ -295,9 +295,11 @@
     if (crit) dmg = Math.round(dmg * (2 + Math.random()));
     const x = bull ? Math.max(8, front - 6 - Math.random() * 10) : Math.min(92, front + 6 + Math.random() * 10);
     // 神祇出手：多方＝帝皇揮劍氣打大不淨者，空方＝大不淨者吐口水打帝皇；爆擊連打兩發
-    attack(bull, crit, () => {
-      float(crit ? `${dmg}!` : String(dmg), bull ? 'up' : 'down', crit, x);
-      if (crit && Math.random() < 0.8) float(pick(bull ? D.floatBullCrit : D.floatBearCrit), bull ? 'up' : 'down', false, null, ' say');
+    // 每一發命中各跳一個數字；爆擊兩發 → 兩個數字（第二發傷害略有差異），台詞只喊一次
+    attack(bull, crit, (i) => {
+      const n = i ? Math.round(dmg * (0.75 + Math.random() * 0.5)) : dmg;
+      float(crit ? `${n}!` : String(n), bull ? 'up' : 'down', crit, x + (i ? (bull ? -4 : 4) : 0));
+      if (!i && crit && Math.random() < 0.8) float(pick(bull ? D.floatBullCrit : D.floatBearCrit), bull ? 'up' : 'down', false, null, ' say');
     });
   }
 
@@ -336,8 +338,8 @@
     }, 910);
   }
   function attack(bull, crit, onHit) {
-    shot(bull, onHit);
-    if (crit) setTimeout(() => shot(bull), 250);  // 爆擊：快速第二發，被打方連震兩下、兩個骷髏
+    shot(bull, () => onHit?.(0));
+    if (crit) setTimeout(() => shot(bull, () => onHit?.(1)), 250);  // 爆擊：快速第二發，被打方連震兩下、兩個骷髏
   }
   let hitTimer = null;
 
