@@ -62,6 +62,16 @@
   .wg-float.crit { font-size: 40px; animation: wg-crit 1.6s ease-out forwards; }
   .wg-float.crit.up { color: #ffd100; } .wg-float.crit.down { color: #8dff3a; }
   .wg-float.say { font-size: 19px; font-weight: 800; }
+  /* 大招傷害（魔獸世界浮動戰鬥文字：技能名稱小字在上、×2 的巨大數字在下，先巨大彈出再縮回，發光描邊） */
+  .wg-float.ult { top: 26% !important; font-size: 46px; text-align: center; animation: wg-ult 2s ease-out forwards;
+    text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 10px currentColor; }
+  .wg-float.ult small { display: block; font: 800 14px/1.2 "Microsoft JhengHei", sans-serif; letter-spacing: 1px;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
+  .wg-float.say.hi { top: 3% !important; }  /* 大招台詞固定在最上面，不疊到大數字 */
+  .wg-float.ult.up { color: #ffd100; } .wg-float.ult.down { color: #8dff3a; }
+  @keyframes wg-ult { 0% { opacity: 0; transform: translate(-50%, 0) scale(3); } 8% { opacity: 1; transform: translate(-50%, -2px) scale(1.6); }
+    20% { transform: translate(-50%, -4px) scale(1.25); } 65% { opacity: 1; transform: translate(-50%, -10px) scale(1.2); }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -40px) scale(1.15); } }
   @keyframes wg-up { 0% { opacity: 0; transform: translate(-50%, 4px) scale(.7); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
     22% { transform: translate(-50%, -4px) scale(1); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -38px) scale(.95); } }
   @keyframes wg-crit { 0% { opacity: 0; transform: translate(-50%, 0) scale(2.4); } 10% { opacity: 1; transform: translate(-50%, -2px) scale(1.5); }
@@ -75,6 +85,13 @@
   @keyframes wg-marq { 0%, 15% { transform: translateX(0); } 85%, 100% { transform: translateX(var(--shift, 0)); } }
   /* 普通攻擊：口水／劍氣從攻擊方身前水平飛向對方人物中線；被打的一方震動、頭上冒骷髏 */
   .wg-shot { z-index: 4; transition: left .9s linear; }  /* 飛行 0.9 秒 */
+  /* 大招：人物 2/3 大、飛 1.1 秒；大不淨者丟納垢靈走拋物線，帝皇的靈能閃電直線 */
+  .wg-shot.ult { z-index: 5; transition: left 1.1s linear; }
+  .wg-shot.arc { animation: wg-arc 1.1s ease-in-out; }
+  @keyframes wg-arc { 0% { translate: 0 0; } 50% { translate: 0 -22px; } 100% { translate: 0 0; } }
+  .wg-hurt-big { animation: wg-hurtb .55s 1; }
+  @keyframes wg-hurtb { 0%,100% { translate: 0; } 12% { translate: -8px 1px; } 25% { translate: 8px -1px; } 37% { translate: -7px 0; }
+    50% { translate: 6px 1px; } 62% { translate: -5px 0; } 75% { translate: 4px 0; } 87% { translate: -2px 0; } }
   .wg-hurt { animation: wg-hurt .28s 1; }
   @keyframes wg-hurt { 0%,100% { translate: 0; } 20% { translate: -4px 0; } 40% { translate: 4px 0; } 60% { translate: -3px 0; } 80% { translate: 3px 0; } }
   .wg-skull { z-index: 4; animation: wg-skull 1s ease-out forwards; }
@@ -250,7 +267,7 @@
   function float(text, cls, crit, x, extra = '') {
     const f = document.createElement('div');
     f.className = `wg-float ${cls}${crit ? ' crit' : ''}${extra}`;
-    f.textContent = text;
+    if (extra.includes('ult')) f.innerHTML = text; else f.textContent = text;
     f.style.left = `${x ?? 32 + Math.random() * 36}%`;
     f.style.top = `${x == null ? 12 + Math.random() * 30 : 34 + Math.random() * 14}%`;
     f.style.setProperty('--dx', `${Math.round((Math.random() - 0.5) * 16)}px`);
@@ -260,17 +277,18 @@
     if (a.width) {
       const lo = guo.getBoundingClientRect().right - a.left + 4;
       const hi = emp.getBoundingClientRect().left - a.left - 4;
-      let half = (f.offsetWidth * (crit ? 1.5 : 1.1)) / 2 + 8;
+      const k = extra.includes('ult') ? 1.65 : crit ? 1.5 : 1.1;
+      let half = (f.offsetWidth * k) / 2 + 8;
       if (hi - lo < 2 * half) {  // 比中間的空間寬：字縮小到放得下
         const size = parseFloat(getComputedStyle(f).fontSize) * (hi - lo) / (2 * half);
         f.style.fontSize = `${Math.max(9, size)}px`;
-        half = (f.offsetWidth * (crit ? 1.5 : 1.1)) / 2 + 8;
+        half = (f.offsetWidth * k) / 2 + 8;
       }
       const want = (parseFloat(f.style.left) / 100) * a.width;
       const cx = hi - lo < 2 * half ? (lo + hi) / 2 : Math.min(hi - half, Math.max(lo + half, want));
       f.style.left = `${(cx / a.width) * 100}%`;
     }
-    setTimeout(() => f.remove(), 1700);
+    setTimeout(() => f.remove(), extra.includes('ult') ? 2100 : 1700);
     if (crit) { el.classList.remove('wg-shake'); void el.offsetWidth; el.classList.add('wg-shake'); }
   }
 
@@ -314,27 +332,34 @@
     const eL = ar.width ? ((emp.getBoundingClientRect().left - ar.left) / ar.width) * 100 : 70;
     const x = bull ? gR + 2 + Math.random() * 8 : eL - 2 - Math.random() * 8;
     // 神祇出手：多方＝帝皇揮劍氣打大不淨者，空方＝大不淨者吐口水打帝皇；爆擊連打兩發
-    // 每一發命中各跳一個數字；爆擊兩發 → 兩個數字（第二發傷害略有差異），台詞只喊一次
+    const side = bull ? 'up' : 'down';
+    // 大招（三成）：喊中文台詞＋放大招打一發，傷害 ×2（跟爆擊同時發生就用爆擊台詞）
+    if (Math.random() < 0.3) {
+      ultimate(bull, () => {
+        float(`<small>${bull ? '靈能閃電' : '投擲納垢靈'}</small>${dmg * 2}!`, side, true, x, ' ult');
+        float(pick(bull ? (crit ? D.floatBullCrit : D.floatBull) : (crit ? D.floatBearCrit : D.floatBear)), side, false, null, ' say hi');
+      });
+      return;
+    }
+    // 普通攻擊：每一發命中各跳一個數字；爆擊兩發 → 兩個數字（第二發傷害略有差異）
     attack(bull, crit, (i) => {
       const n = i ? Math.round(dmg * (0.75 + Math.random() * 0.5)) : dmg;
-      float(crit ? `${n}!` : String(n), bull ? 'up' : 'down', crit, x + (i ? (bull ? -4 : 4) : 0));
-      // 中文台詞：爆擊一定喊（爆擊台詞），普通攻擊也有四成喊一般台詞
-      if (!i && (crit || Math.random() < 0.4)) float(pick(bull ? (crit ? D.floatBullCrit : D.floatBull) : (crit ? D.floatBearCrit : D.floatBear)), bull ? 'up' : 'down', false, null, ' say');
+      float(crit ? `${n}!` : String(n), side, crit, x + (i ? (bull ? -4 : 4) : 0));
     });
   }
 
   // 一發攻擊：攻擊特效（人物 1/4 高）從攻擊方身前水平飛到被打方的人物中線，命中時被打方震動、頭上冒骷髏（人物 1/5 高）
-  function shot(bull, onHit) {
+  function shot(bull, onHit, ult = false) {
     const a = arena.getBoundingClientRect();
     const from = (bull ? emp : guo).getBoundingClientRect();
     const to = (bull ? guo : emp).getBoundingClientRect();
     if (!a.width || !from.width || !to.width) return;
     const h = from.height;
     const img = document.createElement('img');
-    img.className = 'wg-shot';
-    img.src = `${A}${bull ? 'Emperor' : 'GUO'}_attack.webp`;
-    img.style.height = `${h / 4}px`;
-    img.style.top = `${from.top - a.top + h * 0.38}px`;
+    img.className = `wg-shot${ult ? ' ult' : ''}${ult && !bull ? ' arc' : ''}`;
+    img.src = `${A}${bull ? 'Emperor' : 'GUO'}_attack${ult ? '2' : ''}.webp`;
+    img.style.height = `${h * (ult ? 2 / 3 : 1 / 4)}px`;
+    img.style.top = `${from.top - a.top + h * (ult ? 0.18 : 0.38)}px`;
     const target = (to.left + to.right) / 2 - a.left;
     img.style.left = `${(bull ? from.left : from.right) - a.left}px`;
     img.style.transform = 'translateX(-50%)';
@@ -344,7 +369,8 @@
     setTimeout(() => {
       img.remove();
       const god = bull ? guo : emp;
-      god.classList.remove('wg-hurt'); void god.offsetWidth; god.classList.add('wg-hurt');
+      const hurt = ult ? 'wg-hurt-big' : 'wg-hurt';
+      god.classList.remove('wg-hurt', 'wg-hurt-big'); void god.offsetWidth; god.classList.add(hurt);
       const sk = document.createElement('img');
       sk.className = 'wg-skull';
       sk.src = `${A}damage.webp`;
@@ -354,9 +380,18 @@
       sk.style.top = `${to.top - a.top + to.height * 0.05}px`;
       arena.appendChild(sk);
       setTimeout(() => sk.remove(), 1100);
+      if (ult) {  // 大招多一個骷髏、卡片震一下
+        const sk2 = sk.cloneNode();
+        sk2.style.left = `${to.left - a.left + Math.random() * Math.max(0, to.width - sh)}px`;
+        sk2.style.animationDelay = '.12s';
+        arena.appendChild(sk2);
+        setTimeout(() => sk2.remove(), 1250);
+        el.classList.remove('wg-shake'); void el.offsetWidth; el.classList.add('wg-shake');
+      }
       onHit?.();
-    }, 910);
+    }, ult ? 1110 : 910);
   }
+  function ultimate(bull, onHit) { shot(bull, onHit, true); }
   function attack(bull, crit, onHit) {
     shot(bull, () => onHit?.(0));
     if (crit) setTimeout(() => shot(bull, () => onHit?.(1)), 250);  // 爆擊：快速第二發，被打方連震兩下、兩個骷髏
