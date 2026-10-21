@@ -1051,7 +1051,7 @@
     }
     // 第 3 頁：股東 PR（登入、有張數才有）
     const pr = shareholderPr(h.code);
-    const third = pr == null ? '' : `<div class="fl ma" title="集保戶股權分散表 ${tdcc.date}"><span class="wide">股東PR <b>${pr >= 99.95 ? '99.9' : pr.toFixed(1)}</b></span></div>`;
+    const third = pr == null ? '' : `<div class="fl ma" title="集保戶股權分散表 ${tdcc.date}"><span class="wide">集保戶股權PR <b>${pr >= 99.95 ? '99.9' : pr.toFixed(1)}</b></span></div>`;
     const pages = [first, second, third].filter(Boolean);
     if (pages.length < 2) return first;
     const p = (lowerPage[h.code] ?? 0) % pages.length;
