@@ -42,9 +42,9 @@
   .wg-shake .wg-arena { animation: wg-shake .25s 1; }
   @keyframes wg-shake { 0%,100% { translate: 0; } 25% { translate: -2px 1px; } 75% { translate: 2px -1px; } }
   .wg-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 5; }
-  .wg-flash.on { animation: wg-flash .5s 1; }
+  .wg-flash.on { animation: wg-flash .6s 1; }
   .wg-paused .wg-flash { animation-play-state: running !important; }  /* 收盤閃光不能被暫停凍住（13:31 後暫停，會卡在一片白） */
-  @keyframes wg-flash { 0% { opacity: .9; } 100% { opacity: 0; } }
+  @keyframes wg-flash { 0% { opacity: 0; } 40% { opacity: 1; } 100% { opacity: 0; } }  /* 先亮到全白，最白時底下換成結算，再淡出 */
   /* 魔獸世界風格戰鬥跳字：粗體黑描邊，從被打的一方頭上冒出往上飄；爆擊先放大彈出再縮回 */
   .wg-float { position: absolute; z-index: 4; font: 900 28px/1 Impact, "Arial Black", "Microsoft JhengHei", sans-serif; white-space: nowrap;
     letter-spacing: .5px; pointer-events: none; --dx: 0px;
@@ -215,6 +215,8 @@
   fetch(`${A}meta.json`).then((r) => r.json()).then((m) => { meta = m; draw(false); }).catch(() => {});
   let lastPrice = null;
   let resolvedShown = false;
+  let lastPhase = null;   // 上一次畫的階段：用來判斷是不是「看著」收盤（要播轉場）
+  let holdUntil = 0;
   let lastTickerKey = '';
   let tickerAt = 0;  // 盤中每 30 秒換一句戰報
   let counterShown = null;  // 這一波反攻號角播過了沒（同一波只播一次）
@@ -359,6 +361,17 @@
     // 交易日 08:00 前和休市日：停在上一個交易日的結算畫面；08:00-09:00 待命（兩軍貼兩側、中間 VS）
     const phase = !trading || mins < 480 ? 'last' : mins < 540 ? 'pre' : mins < 550 ? 'march' : mins < 805 ? 'battle' : mins < 810 ? 'tension' : 'resolved';
     const done = phase === 'resolved' || phase === 'last';
+    // 收盤轉場：親眼看著交火進入收盤時，先打白光（保留盤中畫面），最白的那一刻（0.24 秒）才換成結算畫面
+    if (phase === 'resolved' && (lastPhase === 'battle' || lastPhase === 'tension') && !resolvedShown) {
+      resolvedShown = true;
+      holdUntil = Date.now() + 240;
+      const fl = $('.wg-flash');
+      fl.classList.remove('on'); void el.offsetWidth; fl.classList.add('on');
+      setTimeout(() => fl.classList.remove('on'), 700);
+      setTimeout(() => draw(false), 250);
+    }
+    lastPhase = phase;
+    if (Date.now() < holdUntil) return;  // 白光還沒到最亮：畫面先停在盤中
     const bullWin = pct >= 0;
     const paused = !live || document.hidden || !visible;
     el.classList.toggle('wg-paused', paused);
@@ -424,17 +437,11 @@
     if (done) {
       tg.style.opacity = te.style.opacity = 0;
       (bullWin ? te : tg).style.transform = bullWin ? 'translateX(-12px)' : 'translateX(calc(-100% + 12px))';
-      if (phase === 'resolved' && !resolvedShown && live) {   // 現場看到收盤：閃光一次
-        resolvedShown = true;
-        const fl = $('.wg-flash');
-        fl.classList.remove('on'); void el.offsetWidth; fl.classList.add('on');
-        setTimeout(() => fl.classList.remove('on'), 600);
-      }
     } else {
       tg.style.opacity = te.style.opacity = 1;
       tg.style.transform = 'translateX(-100%)';
       te.style.transform = 'translateX(0)';
-      resolvedShown = false;
+      if (!done) resolvedShown = false;
     }
 
     // 跳字：每次新資料，跟上一筆比的點數
