@@ -59,8 +59,15 @@
     border-top: 1px solid var(--line); white-space: nowrap; overflow: hidden; }
   .wg-ticker span { display: inline-block; vertical-align: top; }
   .wg-ticker .tz { color: #b06cff; } .wg-ticker .tb { color: var(--up); } .wg-ticker .tr { color: var(--down); }  /* 奸奇紫、多軍紅、空軍綠 */
-  .wg-ticker span.scroll { animation: wg-marq 14s linear infinite; padding-left: 100%; }
-  @keyframes wg-marq { to { transform: translateX(-100%); } }
+  /* 跑馬燈：先從頭顯示、停一下再往左捲到尾（不從右邊外面捲進來，否則開頭的「【」會在右下角露出一槓） */
+  .wg-ticker span.scroll { animation: wg-marq var(--dur, 14s) linear infinite; }
+  @keyframes wg-marq { 0%, 15% { transform: translateX(0); } 85%, 100% { transform: translateX(var(--shift, 0)); } }
+  /* 普通攻擊：口水／劍氣從攻擊方身前水平飛向對方人物中線；被打的一方震動、頭上冒骷髏 */
+  .wg-shot { z-index: 4; transition: left .45s linear; }
+  .wg-hurt { animation: wg-hurt .28s 1; }
+  @keyframes wg-hurt { 0%,100% { translate: 0; } 20% { translate: -4px 0; } 40% { translate: 4px 0; } 60% { translate: -3px 0; } 80% { translate: 3px 0; } }
+  .wg-skull { z-index: 4; animation: wg-skull 1s ease-out forwards; }
+  @keyframes wg-skull { 0% { opacity: 0; transform: translateY(4px) scale(.7); } 15% { opacity: 1; transform: translateY(0) scale(1.05); } 100% { opacity: 0; transform: translateY(-22px) scale(1); } }
   .wg-dbg { display: flex; gap: 6px; align-items: center; padding: 4px 8px; font-size: 12px; color: var(--muted); }
   .wg-dbg input[type=range] { flex: 1; }
   .wg-dbg input[type=number] { width: 4.5em; background: #20242c; color: var(--text); border: 1px solid var(--line); border-radius: 4px; }`;
@@ -191,13 +198,16 @@
       <div class="wg-flash"></div>
     </div>
     <div class="wg-ticker"><span></span></div>
-    ${debug ? '<div class="wg-dbg">時間<input type="range" min="535" max="815" step="1" value="600"><span class="t">10:00</span>漲跌%<input type="number" step="0.1" value="0"></div>' : ''}`;
+    ${debug ? '<div class="wg-dbg">時間<input type="range" min="470" max="815" step="1" value="600"><span class="t">10:00</span>漲跌%<input type="number" step="0.1" value="0"></div>' : ''}`;
   const $ = (s) => el.querySelector(s);
   const arena = $('.wg-arena');
   const guo = $('.wg-guo'), emp = $('.wg-emp'), tg = $('.wg-tguo'), te = $('.wg-temp'), cloud = $('.wg-cloud');
   const setSrc = (img, src) => { if (img.getAttribute('src') !== src) img.src = src; };
 
   let data = { twii: null, tsmc: null, tradingDay: true };
+  // 素材尺寸和人物中線（scripts/build_game_assets.py 產生）
+  let meta = { Emperor: { w: 287, h: 240, cx: 0.54 }, GUO: { w: 371, h: 240, cx: 0.53 }, Emperor_win: { w: 343, h: 240 }, GUO_loss: { w: 251, h: 240 }, win: { w: 336, h: 120 } };
+  fetch(`${A}meta.json`).then((r) => r.json()).then((m) => { meta = m; draw(false); }).catch(() => {});
   let lastPrice = null;
   let resolvedShown = false;
   let lastTickerKey = '';
@@ -258,8 +268,50 @@
     let dmg = Math.round((40 + Math.random() * 160) * (favored ? 1 + edge : 1 - 0.4 * edge));
     if (crit) dmg = Math.round(dmg * (2 + Math.random()));
     const x = bull ? Math.max(8, front - 6 - Math.random() * 10) : Math.min(92, front + 6 + Math.random() * 10);
-    float(crit ? `${dmg}!` : String(dmg), bull ? 'up' : 'down', crit, x);
-    if (crit && Math.random() < 0.8) float(pick(bull ? D.floatBullCrit : D.floatBearCrit), bull ? 'up' : 'down', false, null, ' say');
+    // 神祇出手：多方＝帝皇揮劍氣打大不淨者，空方＝大不淨者吐口水打帝皇；爆擊連打兩發
+    attack(bull, crit, () => {
+      float(crit ? `${dmg}!` : String(dmg), bull ? 'up' : 'down', crit, x);
+      if (crit && Math.random() < 0.8) float(pick(bull ? D.floatBullCrit : D.floatBearCrit), bull ? 'up' : 'down', false, null, ' say');
+    });
+  }
+
+  // 一發攻擊：攻擊特效（人物 1/4 高）從攻擊方身前水平飛到被打方的人物中線，命中時被打方震動、頭上冒骷髏（人物 1/5 高）
+  function shot(bull, onHit) {
+    const a = arena.getBoundingClientRect();
+    const from = (bull ? emp : guo).getBoundingClientRect();
+    const to = (bull ? guo : emp).getBoundingClientRect();
+    if (!a.width || !from.width || !to.width) return;
+    const h = from.height;
+    const img = document.createElement('img');
+    img.className = 'wg-shot';
+    img.src = `${A}${bull ? 'Emperor' : 'GUO'}_attack.webp`;
+    img.style.height = `${h / 4}px`;
+    img.style.top = `${from.top - a.top + h * 0.38}px`;
+    const target = (to.left + to.right) / 2 - a.left;
+    img.style.left = `${(bull ? from.left : from.right) - a.left}px`;
+    img.style.transform = 'translateX(-50%)';
+    arena.appendChild(img);
+    void img.offsetWidth;
+    img.style.left = `${target}px`;
+    setTimeout(() => {
+      img.remove();
+      const god = bull ? guo : emp;
+      god.classList.remove('wg-hurt'); void god.offsetWidth; god.classList.add('wg-hurt');
+      const sk = document.createElement('img');
+      sk.className = 'wg-skull';
+      sk.src = `${A}damage.webp`;
+      const sh = to.height / 5;
+      sk.style.height = `${sh}px`;
+      sk.style.left = `${to.left - a.left + Math.random() * Math.max(0, to.width - sh)}px`;
+      sk.style.top = `${to.top - a.top + to.height * 0.05}px`;
+      arena.appendChild(sk);
+      setTimeout(() => sk.remove(), 1100);
+      onHit?.();
+    }, 460);
+  }
+  function attack(bull, crit, onHit) {
+    shot(bull, onHit);
+    if (crit) setTimeout(() => shot(bull), 180);  // 爆擊：快速第二發，被打方連震兩下、兩個骷髏
   }
   let hitTimer = null;
 
@@ -268,8 +320,9 @@
     const trading = debug || data.tradingDay;
     const pct = pctNow();
     const live = trading && mins >= 540 && mins < 811;          // 09:00-13:31 動畫
-    const phase = !trading || mins < 540 ? 'pre' : mins < 550 ? 'march' : mins < 805 ? 'battle' : mins < 810 ? 'tension' : 'resolved';
-    const done = phase === 'resolved' || (!trading);              // 休市日：停在上一個交易日的結果
+    // 交易日 08:00 前和休市日：停在上一個交易日的結算畫面；08:00-09:00 待命（兩軍貼兩側、中間 VS）
+    const phase = !trading || mins < 480 ? 'last' : mins < 540 ? 'pre' : mins < 550 ? 'march' : mins < 805 ? 'battle' : mins < 810 ? 'tension' : 'resolved';
+    const done = phase === 'resolved' || phase === 'last';
     const bullWin = pct >= 0;
     const paused = !live || document.hidden || !visible;
     el.classList.toggle('wg-paused', paused);
@@ -280,7 +333,7 @@
     arena.classList.toggle('wg-glow-bear', pct < -0.5 && !done);
 
     // 神祇：盤中播動畫，暫停時靜止圖，結算後換勝／敗立繪
-    if (done && (phase === 'resolved' || data.twii?.changePct != null)) {
+    if (done) {
       setSrc(emp, `${A}Emperor_${bullWin ? 'win' : 'loss'}.webp`);
       setSrc(guo, `${A}GUO_${bullWin ? 'loss' : 'win'}.webp`);
     } else {
@@ -288,11 +341,23 @@
       setSrc(guo, `${A}GUO${paused ? '_still' : ''}.webp`);
     }
 
+    // 帝皇（一般／靜止圖）：人物中線到右緣的距離＝大不淨者人物中線到左緣的距離；勝敗立繪照舊貼右
+    {
+      const gh = guo.getBoundingClientRect().height || 0;
+      if (!done && gh && meta.Emperor && meta.GUO) {
+        const gw = gh * meta.GUO.w / meta.GUO.h, ew = gh * meta.Emperor.w / meta.Emperor.h;
+        emp.style.right = `${Math.max(0, gw * meta.GUO.cx - ew * (1 - meta.Emperor.cx))}px`;
+      } else emp.style.right = '0';
+    }
+
     // 戰線：昨收在中間，漲往左推（帝皇在右邊進攻），tanh 讓 ±2% 接近邊界
     front = 50 - 40 * Math.tanh(pct / 1.2);
-    const p = phase === 'pre' ? 0.12 : phase === 'march' ? 0.12 + 0.88 * Math.min(1, (mins - 540) / 10) : 1;
-    tg.style.left = `${front * p}%`;
-    te.style.left = `${100 - (100 - front) * p}%`;
+    // 部隊：待命時完整貼在兩側，行軍時從兩側走到戰線，開打後在戰線上
+    const q = phase === 'pre' ? 0 : phase === 'march' ? Math.min(1, (mins - 540) / 10) : 1;
+    const aw = arena.getBoundingClientRect().width || 1;
+    const gW = (tg.getBoundingClientRect().width / aw) * 100 || 25, eW = (te.getBoundingClientRect().width / aw) * 100 || 20;
+    tg.style.left = `${gW + (front - gW) * q}%`;
+    te.style.left = `${100 - eW + (front - (100 - eW)) * q}%`;
     cloud.style.left = `${front}%`;
     // 戰線條：交火時照戰線分紅綠＋白色拉扯線；行軍、待命、收盤後只有亞空間底圖
     const split = phase === 'battle' || phase === 'tension' ? front : null;
@@ -302,19 +367,21 @@
     const fighting = phase === 'battle' || phase === 'tension';
     cloud.style.opacity = fighting ? 1 : 0;
     const stamp = $('.wg-result');
+    const standby = phase === 'pre';
     if (done) setSrc(stamp, `${A}${bullWin ? 'win' : 'loss'}.webp`);
-    stamp.onload = () => draw(false);  // 圖載完才知道比例，重排一次
-    stamp.classList.toggle('on', done);
-    if (done) {
+    else if (standby) setSrc(stamp, `${A}vs.webp`);
+    stamp.classList.toggle('on', done || standby);
+    if (done || standby) {
       // 以卡片中線置中，左右空隙一樣：寬度＝離中線最近的神祇邊緣到中線的距離 × 2。
       // 用「收漲」那組立繪（帝皇勝利立繪最寬）算，收跌的 DEFEAT 也用同一個大小
       const a = arena.getBoundingClientRect();
       if (a.width) {
         const h = a.height * 0.68 - 14;                                    // 神祇顯示高度
         const widest = Math.max(h * (343 / 240), h * (251 / 240));         // Emperor_win、GUO_loss 的寬高比
-        const ratio = stamp.naturalWidth && stamp.naturalHeight ? stamp.naturalWidth / stamp.naturalHeight : 3;
-        const w = Math.min(2 * (a.width / 2 - widest) - 12, (a.height * 0.68 - 16) * ratio);
-        stamp.style.width = `${Math.max(40, w)}px`;
+        const ratio = meta.win ? meta.win.w / meta.win.h : 2.8;  // 一律照 win 的大小：DEFEAT、VS 用同樣高度
+        const w = Math.max(40, Math.min(2 * (a.width / 2 - widest) - 12, (a.height * 0.68 - 16) * ratio));
+        stamp.style.width = 'auto';
+        stamp.style.height = `${w / ratio}px`;
         stamp.style.left = '50%';
       }
     }
@@ -346,7 +413,7 @@
     const key = `${phase}|${Math.round(pct * 10)}|${fromData ? Date.now() : ''}`;
     if (fromData || !lastTickerKey.startsWith(phase) || (live && !paused && Date.now() - tickerAt > 30000)) {
       tickerAt = Date.now();
-      const text = !trading && !debug ? (bullWin ? D.bullWin : D.bearWin)
+      const text = phase === 'last' ? (bullWin ? D.bullWin : D.bearWin)
         : phase === 'pre' ? '【待命】雙方大軍集結於亞空間兩端，等待 09:00 開盤號角'
           : report(pct, hhmm, rareEvent(data.twii, data.tsmc, pct));
       const span = $('.wg-ticker span');
@@ -354,7 +421,12 @@
       span.innerHTML = span.innerHTML.replace('【最後試撮倒數】', '<b class="tz">【最後試撮倒數】</b>')
         .replace('【帝皇之光普照】', '<b class="tb">【帝皇之光普照】</b>').replace('【慈父賜福全場】', '<b class="tr">【慈父賜福全場】</b>');
       span.classList.remove('scroll');
-      if (span.scrollWidth > $('.wg-ticker').clientWidth) span.classList.add('scroll');
+      const over = span.scrollWidth - ($('.wg-ticker').clientWidth - 20);
+      if (over > 0) {  // 放不下才捲：先停在開頭，再捲到尾，約每秒 30px
+        span.style.setProperty('--shift', `${-over}px`);
+        span.style.setProperty('--dur', `${Math.max(8, over / 30 / 0.7)}s`);
+        span.classList.add('scroll');
+      }
       lastTickerKey = key;
     }
 

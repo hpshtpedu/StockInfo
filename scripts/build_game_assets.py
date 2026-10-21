@@ -4,6 +4,7 @@ Animated gods: 240 px tall, 10 fps (every other frame, each shown twice as long)
 Static art: 240 px tall. Background: as is. Transparent margins are trimmed (all frames). Also writes *_still.webp (first frame) for paused state.
 Run: python scripts/build_game_assets.py
 """
+import json
 import pathlib
 from PIL import Image
 
@@ -12,7 +13,7 @@ OUT = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'game'
 OUT.mkdir(parents=True, exist_ok=True)
 SIZES = {'Emperor': 240, 'GUO': 240, 'fight-cloud': 200, 'Emperor_win': 240, 'Emperor_loss': 240,
          'GUO_win': 240, 'GUO_loss': 240, 'Emperor_troops': 160, 'GUO_troops': 160, 'Immaterium': None,
-         'win': 120, 'loss': 120}
+         'win': 120, 'loss': 120, 'vs': 120, 'damage': 64, 'Emperor_attack': 96, 'GUO_attack': 96}
 
 
 def trim_box(im):
@@ -48,4 +49,20 @@ for name, h in SIZES.items():
     else:
         fit(crop(im.convert('RGBA' if im.mode in ('RGBA', 'P') else 'RGB')), h).save(OUT / f'{name}.webp', quality=78, method=6)
     print(name, (OUT / f'{name}.webp').stat().st_size // 1024, 'KB')
+# 人物中線：第一格不透明像素的水平重心（武器讓圖片偏一邊，不能用圖片中心），網頁用來左右對稱擺放
+meta = {}
+for name in ('Emperor', 'GUO'):
+    im = Image.open(OUT / f'{name}.webp').convert('RGBA')
+    a = im.getchannel('A')
+    w, h = im.size
+    tot = sx = 0
+    for x in range(w):
+        col = sum(1 for y in range(h) if a.getpixel((x, y)) > 8)
+        tot += col; sx += col * x
+    meta[name] = {'w': w, 'h': h, 'cx': round(sx / tot / w, 4)}
+for name in ('Emperor_win', 'GUO_loss', 'win', 'vs'):
+    w, h = Image.open(OUT / f'{name}.webp').size
+    meta[name] = {'w': w, 'h': h}
+(OUT / 'meta.json').write_text(json.dumps(meta), encoding='utf-8')
+print(meta)
 print('total', sum(p.stat().st_size for p in OUT.glob('*.webp')) // 1024, 'KB')
