@@ -44,6 +44,8 @@ jobs:
         continue-on-error: true
       - run: python scripts/etf_yield.py
         continue-on-error: true
+      - run: python scripts/tdcc.py
+        continue-on-error: true
       - run: python scripts/taiex_history.py
         continue-on-error: true
       - run: python scripts/vix_history.py
@@ -62,7 +64,7 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
       - name: Commit if changed
         run: |
-          FILES="docs/margin.json docs/volume_profile.json docs/events.json docs/institutional.json docs/taiex_history.json docs/vix_history.json docs/tsmc_weight.json docs/global_history.json docs/gov_banks.json docs/foreign_records.json docs/tx_cost.json docs/etf_yield.json"
+          FILES="docs/margin.json docs/volume_profile.json docs/events.json docs/institutional.json docs/taiex_history.json docs/vix_history.json docs/tsmc_weight.json docs/global_history.json docs/gov_banks.json docs/foreign_records.json docs/tx_cost.json docs/etf_yield.json docs/tdcc.json"
           if git diff --quiet $FILES; then
             echo "no change"
             exit 0

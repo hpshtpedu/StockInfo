@@ -155,7 +155,9 @@
   /* 下半部（K 線／外投／月季線／殖利率／複利）固定同一個高度＝最高的 K 線那一頁，切換時方塊不忽大忽小 */
   .hold .fl { height: 25px; align-items: center; }
   .tsw { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
-  .tsw[data-p="0"] > .ma, .tsw[data-p="1"] > .fl:not(.ma) { display: none; }
+  /* 下半部分頁：每頁包一層 .pg（data-i），只顯示目前那頁 */
+  .tsw > .pg { display: none; }
+  .tsw[data-p="0"] > .pg[data-i="0"], .tsw[data-p="1"] > .pg[data-i="1"], .tsw[data-p="2"] > .pg[data-i="2"] { display: block; }
   .hold .fl.ma { font-weight: 400; }
   .hold .fl.ma b { color: var(--warn); font-weight: 700; }
   .hold .fl.ma .wide { grid-column: 1 / -1; }
@@ -1004,6 +1006,27 @@
   // 0056、00878＝近一年殖利率（etf_yield.json：最近 4 次已除息配息率加總，自訂歷史配息率指標）
   const lowerPage = {};
   let etfYield = null;
+  // 股東 PR（集保戶股權分散表，tdcc.json）：自己的股數贏過多少 % 的股東。15 個級距（股），級距內線性內插；
+  // 第 15 級（100 萬股以上）沒有上限，用 100 萬～1,000 萬股內插。只在登入、這檔有張數時算（張數不離開瀏覽器）
+  const TDCC_BOUNDS = [[1, 999], [1000, 5000], [5001, 10000], [10001, 15000], [15001, 20000], [20001, 30000], [30001, 40000], [40001, 50000],
+    [50001, 100000], [100001, 200000], [200001, 400000], [400001, 600000], [600001, 800000], [800001, 1000000], [1000001, 10000000]];
+  let tdcc = null;
+  function shareholderPr(code) {
+    const lots = privateLots?.[code];
+    const people = tdcc?.people?.[code];
+    if (!(lots > 0) || !people) return null;
+    const shares = lots * 1000;
+    const total = people.reduce((a, b) => a + b, 0);
+    let below = 0;
+    for (let i = 0; i < 15; i++) {
+      const [lo, hi] = TDCC_BOUNDS[i];
+      if (shares > hi && i < 14) { below += people[i]; continue; }
+      below += people[i] * Math.min(1, Math.max(0, (shares - lo) / (hi - lo + 1)));
+      break;
+    }
+    return total ? (below / total) * 100 : null;
+  }
+
   function lowerToggle(h, first) {
     let second = '';
     if (h.code === '2330') {
@@ -1025,10 +1048,15 @@
     } else if (h.code === '0056' || h.code === '00878') {
       const y = etfYield?.[h.code]?.yield;
       second = `<div class="fl ma"><span class="wide">近一年殖利率 <b>${Number.isFinite(y) ? `${y.toFixed(2)}%` : '—'}</b></span></div>`;
-    } else {
-      return first;
     }
-    return `<div class="tsw" data-code="${h.code}" data-p="${lowerPage[h.code] ?? 0}">${first}${second}</div>`;
+    // 第 3 頁：股東 PR（登入、有張數才有）
+    const pr = shareholderPr(h.code);
+    const third = pr == null ? '' : `<div class="fl ma" title="集保戶股權分散表 ${tdcc.date}"><span>股東PR <b>${pr >= 99.95 ? '99.9' : pr.toFixed(1)}</b></span>`
+      + `<span>前 <b>${Math.max(0.1, 100 - pr).toFixed(1)}%</b></span></div>`;
+    const pages = [first, second, third].filter(Boolean);
+    if (pages.length < 2) return first;
+    const p = (lowerPage[h.code] ?? 0) % pages.length;
+    return `<div class="tsw" data-code="${h.code}" data-n="${pages.length}" data-p="${p}">${pages.map((x, i) => `<div class="pg" data-i="${i}">${x}</div>`).join('')}</div>`;
   }
 
   function holdingsHtml(list, twii, flows) {
@@ -1568,6 +1596,7 @@
       const recordsReq = getJson('foreign_records.json');
       const txCostReq = getJson('tx_cost.json');
       const yieldReq = getJson('etf_yield.json');
+      const tdccReq = getJson('tdcc.json');
       const res = await fetch(API, { cache: 'no-store', signal });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
@@ -1585,6 +1614,7 @@
       foreignRecords = (await recordsReq) ?? foreignRecords;
       txCost = (await txCostReq) ?? txCost;
       etfYield = (await yieldReq) ?? etfYield;
+      tdcc = (await tdccReq) ?? tdcc;
       volumeProfile = (await profileReq) ?? volumeProfile;
       render(data, pickMargin(data.margin, await marginReq), await profileReq);
       $status.className = '';
@@ -1645,7 +1675,7 @@
     }
     const w = e.target.closest('.tsw');
     if (!w) return;
-    lowerPage[w.dataset.code] = 1 - (lowerPage[w.dataset.code] ?? 0);
+    lowerPage[w.dataset.code] = ((lowerPage[w.dataset.code] ?? 0) + 1) % Number(w.dataset.n || 2);
     w.dataset.p = lowerPage[w.dataset.code];
   });
   $list.addEventListener('click', (e) => {
