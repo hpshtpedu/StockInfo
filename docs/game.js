@@ -17,6 +17,10 @@
   .wg img { position: absolute; display: block; pointer-events: none; user-select: none; -webkit-user-select: none; }
   .wg-god { bottom: calc(32% + 8px); height: calc(68% - 14px); transition: filter .6s; }  /* 跟亞空間條留 8px 空隙（素材已裁掉透明邊） */
   .wg-guo { left: 0; } .wg-emp { right: 0; }
+  /* 兩邊神祇的領地（1/4 圓，最底層）：大不淨者的腐爛花園貼左下、帝皇的巢都貼右下；調暗一點，不搶神祇和印章 */
+  .wg-place { opacity: .7; z-index: 0; }
+  .wg-pguo { left: 0; } .wg-pemp { right: 0; }
+  .wg-place { bottom: 32%; height: calc(68% * 1.5); }  /* 放大 1.5 倍往中間延伸，神站在地面上；上緣超出卡片的部分被切掉 */
   /* 帝皇敗北立繪比較大，縮成 8 成。王座底部是平的，貼底會看起來比對面低：取頭對齊（抬 20%）和底對齊（不抬）的中間，抬 10% */
   /* 帝皇勝利、大不淨者敗北立繪比較胖，縮成 82%，看起來跟盤中差不多大（底部照樣貼齊） */
   .wg-emp[src*="Emperor_win"], .wg-guo[src*="GUO_loss"] { height: calc((68% - 14px) * .82); }
@@ -193,6 +197,8 @@
   const el = document.createElement('div');
   el.className = 'card wide wg wg-paused';
   el.innerHTML = `<div class="wg-arena">
+      <img class="wg-place wg-pguo" src="${A}GUO_place.webp" alt="">
+      <img class="wg-place wg-pemp" src="${A}Emperor_place.webp" alt="">
       <div class="wg-bar"><i class="l"></i><i class="r"></i><i class="edge"></i></div>
       <img class="wg-god wg-guo" alt="">
       <img class="wg-god wg-emp" alt="">
