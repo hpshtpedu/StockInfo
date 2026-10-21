@@ -63,7 +63,7 @@
   .wg-ticker span.scroll { animation: wg-marq var(--dur, 14s) linear infinite; }
   @keyframes wg-marq { 0%, 15% { transform: translateX(0); } 85%, 100% { transform: translateX(var(--shift, 0)); } }
   /* 普通攻擊：口水／劍氣從攻擊方身前水平飛向對方人物中線；被打的一方震動、頭上冒骷髏 */
-  .wg-shot { z-index: 4; transition: left .45s linear; }
+  .wg-shot { z-index: 4; transition: left .9s linear; }  /* 飛行 0.9 秒 */
   .wg-hurt { animation: wg-hurt .28s 1; }
   @keyframes wg-hurt { 0%,100% { translate: 0; } 20% { translate: -4px 0; } 40% { translate: 4px 0; } 60% { translate: -3px 0; } 80% { translate: 3px 0; } }
   .wg-skull { z-index: 4; animation: wg-skull 1s ease-out forwards; }
@@ -307,11 +307,11 @@
       arena.appendChild(sk);
       setTimeout(() => sk.remove(), 1100);
       onHit?.();
-    }, 460);
+    }, 910);
   }
   function attack(bull, crit, onHit) {
     shot(bull, onHit);
-    if (crit) setTimeout(() => shot(bull), 180);  // 爆擊：快速第二發，被打方連震兩下、兩個骷髏
+    if (crit) setTimeout(() => shot(bull), 250);  // 爆擊：快速第二發，被打方連震兩下、兩個骷髏
   }
   let hitTimer = null;
 
