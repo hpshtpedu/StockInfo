@@ -32,8 +32,10 @@
   .wg-troop { bottom: 0; height: 32%; transition: left 2s ease-in-out, opacity 1s, transform .6s; }
   .wg-tguo { transform: translateX(-100%); } .wg-temp { transform: translateX(0); }
   .wg-cloud { bottom: 0; height: 48%; transform: translateX(-50%); transition: left 2s ease-in-out, opacity 1s; z-index: 2; }
-  .wg-glow-bull .wg-emp, .wg-glow-bull .wg-temp { filter: drop-shadow(0 0 6px #ffd700); }
-  .wg-glow-bear .wg-guo, .wg-glow-bear .wg-tguo { filter: drop-shadow(0 0 6px #00ff00); }
+  /* 神祇一直發光（帝皇金、大不淨者綠）；部隊只在大漲／大跌（±0.5% 以上）時發光 */
+  .wg-emp { filter: drop-shadow(0 0 6px #ffd700); } .wg-guo { filter: drop-shadow(0 0 6px #00ff00); }
+  .wg-glow-bull .wg-temp { filter: drop-shadow(0 0 6px #ffd700); }
+  .wg-glow-bear .wg-tguo { filter: drop-shadow(0 0 6px #00ff00); }
   .wg-march .wg-troop { animation: wg-step .5s steps(2) infinite; }
   @keyframes wg-step { 0% { margin-bottom: 0; rotate: 0deg; } 50% { margin-bottom: 3px; rotate: -2deg; } }
   .wg-battle .wg-troop { animation: wg-jit .35s infinite; }
