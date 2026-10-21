@@ -97,6 +97,8 @@
     climax: '【最後試撮倒數】 亞空間靈能核心嚴重過載！',
     bullWin: '【帝皇之光普照】 空軍異端盡數伏誅！',
     bearWin: '【慈父賜福全場】 帝皇回歸黃金王座！',
+    counterBear: '【反攻號角】大不淨者吹響腐爛號角，納垢大軍趁多軍追高時全面反撲！',
+    counterBull: '【反攻號角】帝皇之劍再度出鞘，忠誠軍團自谷底發動絕地反攻！',
     rare: {
       tsmcLimitUp: ['【星炬超載】 空頭異端瞬間汽化灰飛煙滅！', '【原體歸來】 泰拉全境進入絕對忠誠狂歡！', '【神聖光鑄】 機械神教啟動萬機神泰坦！'],
       tsmcLimitDown: ['【卡迪亞破碎】 恐懼之眼裂隙直撲泰拉皇宮！', '【王座悲鳴】 慈父毒液倒灌黃金王座大廳！', '【泰拉陷落】 阿斯塔特忠誠軍團瀕臨全滅！'],
@@ -212,6 +214,7 @@
   let resolvedShown = false;
   let lastTickerKey = '';
   let tickerAt = 0;  // 盤中每 30 秒換一句戰報
+  let counterShown = null;  // 這一波反攻號角播過了沒（同一波只播一次）
   let visible = true;
   let timer = null;
 
@@ -259,11 +262,34 @@
   // 戰鬥：交火期間每 3 秒（試撮 1.5 秒）跳一次傷害，跟著大盤情勢：漲越多多方越常出手、傷害越大、越容易爆擊。
   // 多方打納垢 → 戰線左邊紅字；空方打帝皇 → 戰線右邊綠字。數字是效果，不是真實點數
   let front = 50;
+  // 短線動能（加權 15 分 K）：現價跟約 30 分鐘前（兩根之前的收盤）比的 %；今天高點回落、低點反彈的 %
+  function momentum() {
+    const t = data.twii;
+    const k = (t?.candles ?? []).filter(Boolean);
+    const price = priceNow();
+    if (!t?.prev || price == null || k.length < 3) return { mom: 0, pull: 0, bounce: 0 };
+    const ref = k[k.length - 3][3];
+    const hi = Math.max(price, ...k.map((x) => x[1])), lo = Math.min(price, ...k.map((x) => x[2]));
+    return { mom: (price - ref) / t.prev * 100, pull: (price - hi) / t.prev * 100, bounce: (price - lo) / t.prev * 100 };
+  }
+  // 情勢分數（-1 空 … +1 多）：今天漲跌幅 55%、短線動能 45%。漲多但正在下滑時，大不淨者出手變多（反撲）
+  function score(pct) {
+    return 0.55 * Math.tanh(pct / 0.8) + 0.45 * Math.tanh(momentum().mom / 0.25);
+  }
+  // 反攻號角：收漲但從高點回落 ≥0.4% 且短線在跌 → 空軍反攻；收跌但從低點反彈 ≥0.4% 且短線在漲 → 多軍反攻
+  function counterattack(pct) {
+    const m = momentum();
+    if (pct > 0 && m.pull <= -0.4 && m.mom < 0) return 'bear';
+    if (pct < 0 && m.bounce >= 0.4 && m.mom > 0) return 'bull';
+    return null;
+  }
+
   function hit() {
     const pct = pctNow();
-    const bull = Math.random() < 0.5 + 0.4 * Math.tanh(pct / 0.8);
-    const edge = Math.min(1, Math.abs(pct) / 1.5);                      // 情勢一面倒的程度
-    const favored = bull === pct >= 0;
+    const sc = score(pct);
+    const bull = Math.random() < 0.5 + 0.42 * sc;
+    const edge = Math.min(1, Math.abs(sc) * 1.4);                       // 情勢一面倒的程度
+    const favored = bull === sc >= 0;
     const crit = Math.random() < (favored ? 0.25 + 0.25 * edge : 0.12);  // 爆擊率：優勢方 25-50%、劣勢方 12%
     let dmg = Math.round((40 + Math.random() * 160) * (favored ? 1 + edge : 1 - 0.4 * edge));
     if (crit) dmg = Math.round(dmg * (2 + Math.random()));
@@ -411,15 +437,22 @@
 
     // 戰報：資料更新或階段改變才換一句
     const key = `${phase}|${Math.round(pct * 10)}|${fromData ? Date.now() : ''}`;
-    if (fromData || !lastTickerKey.startsWith(phase) || (live && !paused && Date.now() - tickerAt > 30000)) {
+    // 反攻號角：交火中情勢剛翻轉時插播一次
+    const counter = fighting ? counterattack(pct) : null;
+    const newCounter = counter && counter !== counterShown;
+    if (!counter) counterShown = null;
+    if (newCounter || fromData || !lastTickerKey.startsWith(phase) || (live && !paused && Date.now() - tickerAt > 30000)) {
       tickerAt = Date.now();
-      const text = phase === 'last' ? (bullWin ? D.bullWin : D.bearWin)
+      if (newCounter) counterShown = counter;
+      const text = newCounter ? (counter === 'bear' ? D.counterBear : D.counterBull)
+        : phase === 'last' ? (bullWin ? D.bullWin : D.bearWin)
         : phase === 'pre' ? '【待命】雙方大軍集結於亞空間兩端，等待 09:00 開盤號角'
           : report(pct, hhmm, rareEvent(data.twii, data.tsmc, pct));
       const span = $('.wg-ticker span');
       span.textContent = text;
       span.innerHTML = span.innerHTML.replace('【最後試撮倒數】', '<b class="tz">【最後試撮倒數】</b>')
-        .replace('【帝皇之光普照】', '<b class="tb">【帝皇之光普照】</b>').replace('【慈父賜福全場】', '<b class="tr">【慈父賜福全場】</b>');
+        .replace('【帝皇之光普照】', '<b class="tb">【帝皇之光普照】</b>').replace('【慈父賜福全場】', '<b class="tr">【慈父賜福全場】</b>')
+        .replace('【反攻號角】', `<b class="${counter === 'bear' ? 'tr' : 'tb'}">【反攻號角】</b>`);
       span.classList.remove('scroll');
       const over = span.scrollWidth - ($('.wg-ticker').clientWidth - 20);
       if (over > 0) {  // 放不下才捲：先停在開頭，再捲到尾，約每秒 30px
