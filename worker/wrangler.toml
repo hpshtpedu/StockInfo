@@ -10,3 +10,7 @@ ALLOWED_ORIGIN = "https://hpshtpedu.github.io"
 [[kv_namespaces]]
 binding = "NEWS_KV"
 id = "409d5e1840404fd48b345809fbfdd11b"
+
+# 颱風停班檢查（UTC）：台北 20:30、21:30、22:30、04:45。只在 4/1～10/31 真的去查（程式裡判斷）
+[triggers]
+crons = ["30 12-14 * * *", "45 20 * * *"]

@@ -46,6 +46,7 @@ const HOLIDAYS_CACHE_SECONDS = 86400;
 
 import S2T from './s2t.json';
 import { FLASH_HEADERS, FLASH_URL, NEWS_URLS, makeConverter, newsExcluded, newsMatch, parseImportant, parseJin10 } from './jin10.js';
+import { checkTyphoon } from './typhoon.js';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
@@ -83,6 +84,10 @@ export default {
     });
     ctx.waitUntil(cache.put(cacheKey, response.clone()));
     return withCors(response, env);
+  },
+  // 颱風停班（wrangler.toml 的 crons）：查人事總處，臺北市全日停班就記成台股休市日
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(checkTyphoon(env, UA));
   },
 };
 
@@ -646,10 +651,16 @@ function dailyTtl(dataDate, publishHour, retrySeconds = 300) {
 }
 
 // TWSE market holidays as [{ date: "YYYY-MM-DD", name }], used by the calendar.
+// 颱風假（KV 的 typhoon，cron 查到臺北市全日停班時寫入）也併進來，所有「是不是交易日」的判斷跟著連動
 let holidaysMemo = null;
 async function fetchHolidays(origin, ctx) {
   if (holidaysMemo && Date.now() - holidaysMemo.at < 600000) return holidaysMemo.value;
-  const value = await fetchHolidaysCached(origin, ctx);
+  const [twse, typhoon] = await Promise.all([
+    fetchHolidaysCached(origin, ctx),
+    ENV?.NEWS_KV.get('typhoon', 'json').catch(() => null),
+  ]);
+  const extra = (typhoon?.days ?? []).filter((d) => !twse.some((h) => (h.date ?? h) === d.date));
+  const value = [...twse, ...extra];
   holidaysMemo = { at: Date.now(), value };
   return value;
 }
