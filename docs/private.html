@@ -74,7 +74,7 @@
 <script>
   const PV = window.PrivateVault;
   const $ = (id) => document.getElementById(id);
-  const home = () => { location.href = 'index.html'; };
+  const home = () => { location.href = './';  // 回首頁用資料夾網址（/StockInfo/），不帶 index.html };
 
   async function showLots() {
     $('login').hidden = true;
