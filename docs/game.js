@@ -66,7 +66,7 @@
     letter-spacing: .5px; pointer-events: none; --dx: 0px;
     text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 2px 3px rgba(0,0,0,.8);
     animation: wg-up 1.4s ease-out forwards; }
-  .wg-float.up { color: #ff6a5c; } .wg-float.down { color: #3fdc8a; }
+  .wg-float.up { color: #ffd100; } .wg-float.down { color: #3fdc8a; }  /* 帝皇方一律金黃（跟爆擊、大招同色），大不淨者方綠色 */
   .wg-float.crit { font-size: 40px; animation: wg-crit 1.6s ease-out forwards; }
   .wg-float.crit.up { color: #ffd100; } .wg-float.crit.down { color: #8dff3a; }
   .wg-float.say { font-size: 19px; font-weight: 800; }
