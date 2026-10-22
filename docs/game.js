@@ -47,7 +47,12 @@
   .wg-tguo { transform: translateX(-100%); } .wg-temp { transform: translateX(0); }
   /* 台股休市（週末、國定假日、颱風假）：亞空間條正中間掛「CASINO CLOSED」招牌 */
   .wg .wg-closed { left: 50%; bottom: calc((32% - 14px) / 2);  /* 亞空間條上緣 14px 是淡出，扣掉後的可見部分置中 */ height: calc(32% * .72); max-width: 82%; object-fit: contain; transform: translate(-50%, 50%); z-index: 3; display: none; }
-  .wg .wg-closed.on { display: block; }  /* 要寫 .wg 開頭：不然會被 .wg img { display: block } 蓋過，天天都出現 */
+  .wg .wg-closed.on { display: block; }
+  /* 休市日（跟招牌同時段）：上半部換成大家一起吃飯的休假圖，神祇和 VS／勝敗印章都不出現。
+     桌腳站在亞空間條上緣（跟神祇一樣留 8px），寬度不超過卡片 92% */
+  .wg .wg-dayoff { display: none; left: 50%; bottom: calc(32% + 4px); height: calc(68% - 10px); max-width: 92%; object-fit: contain; transform: translateX(-50%); z-index: 2; }
+  .wg.wg-off .wg-dayoff { display: block; }
+  .wg.wg-off .wg-god, .wg.wg-off .wg-result { visibility: hidden; }  /* 要寫 .wg 開頭：不然會被 .wg img { display: block } 蓋過，天天都出現 */
   .wg-cloud { bottom: -8%; height: 48%;  /* 往下沉一點（下緣被卡片切掉），雲跟部隊腳下同高 */ transform: translateX(-50%); transition: left 2s ease-in-out, opacity 1s; z-index: 2; }
   /* 神祇一直發光（帝皇金、大不淨者綠）；部隊只在大漲／大跌（±0.5% 以上）時發光 */
   .wg-emp { filter: drop-shadow(0 0 6px #ffd700); } .wg-guo { filter: drop-shadow(0 0 6px #00ff00); }
@@ -265,6 +270,7 @@
       <img class="wg-troop wg-temp" src="${A}Emperor_troops.webp" alt="">
       <img class="wg-cloud" src="${A}fight-cloud.webp" alt="">
       <img class="wg-closed" src="${A}casino_closed.webp" alt="休市">
+      <img class="wg-dayoff" alt="">
       <img class="wg-result" alt="">
       <img class="wg-result wg-vsg g" src="${A}vs.webp" alt=""><img class="wg-result wg-vsg y" src="${A}vs.webp" alt="">
       <div class="wg-flash"></div>
@@ -499,6 +505,9 @@
     const closedSign = !trading || (mins < 480 && !isTd(-1));
     const sleeping = trading && (mins >= 825 || (mins < 480 && isTd(-1)));
     $('.wg-closed').classList.toggle('on', closedSign);
+    // 休假圖只在休市時才載入（約 250KB）；網頁在背景或卡片不在畫面上時換靜止圖
+    el.classList.toggle('wg-off', closedSign);
+    if (closedSign) setSrc($('.wg-dayoff'), `${A}day_off${document.hidden || !visible ? '_still' : ''}.webp`);
     $('.wg-bar .zz').classList.toggle('on', sleeping);
     const pct = pctNow();
     const live = trading && mins >= 540 && mins < 811;          // 09:00-13:31 動畫
