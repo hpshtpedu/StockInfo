@@ -370,7 +370,12 @@
     img.src = `${A}${bull ? 'Emperor' : 'GUO'}_attack${ult ? '2' : ''}.webp`;
     img.style.height = `${h * (ult ? 2 / 3 : 1 / 4)}px`;
     img.style.top = `${from.top - a.top + h * (ult ? 0.18 : 0.38)}px`;
-    const target = (to.left + to.right) / 2 - a.left;
+    // 大招圖很寬（靈能閃電 300×160）：中心飛到目標中心的話前緣會穿過軀幹打到另一邊的手臂，
+    // 改成前緣剛好進到軀幹（人物重心再過去 10% 圖寬）就消失
+    const tm = meta[bull ? 'GUO' : 'Emperor'];
+    const torso = to.left + to.width * (tm?.cx ?? 0.5) - a.left;
+    const iw = h * (2 / 3) * (bull ? 300 : 256) / 160;
+    const target = ult ? torso + (bull ? 1 : -1) * iw * 0.4 : (to.left + to.right) / 2 - a.left;
     img.style.left = `${(bull ? from.left : from.right) - a.left}px`;
     img.style.transform = 'translateX(-50%)';
     arena.appendChild(img);
