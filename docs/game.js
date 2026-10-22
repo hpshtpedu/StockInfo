@@ -15,6 +15,10 @@
   .wg-bar .l { left: 0; background: rgba(47, 194, 127, .28); }
   .wg-bar .r { right: 0; background: rgba(255, 92, 92, .28); }
   .wg-bar .edge { width: 2px; margin-left: -1px; background: rgba(255,255,255,.55); }
+  /* 休息時間：收盤後 13:45 到隔天 08:00（隔天要開市才有）兩軍在戰場上睡覺的圖疊在亞空間上，淡入淡出；
+     跟亞空間共用條子上緣 14px 的淡出遮罩，夜空接進上方戰場。圖比條子高，取下半部（睡著的部隊） */
+  .wg-bar .zz { position: absolute; inset: 0; background: url(${A}sleep.webp) center 72% / cover; opacity: 0; transition: opacity 1.2s; }
+  .wg-bar .zz.on { opacity: 1; }
   @media (min-width: 600px) { .wg-arena { height: 176px; } }
   .wg img { position: absolute; display: block; pointer-events: none; user-select: none; -webkit-user-select: none; }
   .wg-god { bottom: calc(32% + 8px); height: calc(68% - 14px); transition: filter .6s; }  /* 跟亞空間條留 8px 空隙（素材已裁掉透明邊） */
@@ -42,8 +46,8 @@
   .wg-troop { bottom: 0; height: 32%; transition: left 2s ease-in-out, opacity 1s, transform .6s; }
   .wg-tguo { transform: translateX(-100%); } .wg-temp { transform: translateX(0); }
   /* 台股休市（週末、國定假日、颱風假）：亞空間條正中間掛「CASINO CLOSED」招牌 */
-  .wg-closed { left: 50%; bottom: calc((32% - 14px) / 2);  /* 亞空間條上緣 14px 是淡出，扣掉後的可見部分置中 */ height: calc(32% * .72); max-width: 82%; object-fit: contain; transform: translate(-50%, 50%); z-index: 3; display: none; }
-  .wg-closed.on { display: block; }
+  .wg .wg-closed { left: 50%; bottom: calc((32% - 14px) / 2);  /* 亞空間條上緣 14px 是淡出，扣掉後的可見部分置中 */ height: calc(32% * .72); max-width: 82%; object-fit: contain; transform: translate(-50%, 50%); z-index: 3; display: none; }
+  .wg .wg-closed.on { display: block; }  /* 要寫 .wg 開頭：不然會被 .wg img { display: block } 蓋過，天天都出現 */
   .wg-cloud { bottom: -8%; height: 48%;  /* 往下沉一點（下緣被卡片切掉），雲跟部隊腳下同高 */ transform: translateX(-50%); transition: left 2s ease-in-out, opacity 1s; z-index: 2; }
   /* 神祇一直發光（帝皇金、大不淨者綠）；部隊只在大漲／大跌（±0.5% 以上）時發光 */
   .wg-emp { filter: drop-shadow(0 0 6px #ffd700); } .wg-guo { filter: drop-shadow(0 0 6px #00ff00); }
@@ -235,7 +239,7 @@
   el.innerHTML = `<div class="wg-arena">
       <img class="wg-place wg-pguo" src="${A}GUO_place.webp" alt="">
       <img class="wg-place wg-pemp" src="${A}Emperor_place.webp" alt="">
-      <div class="wg-bar"><i class="l"></i><i class="r"></i><i class="edge"></i></div>
+      <div class="wg-bar"><b class="zz"></b><i class="l"></i><i class="r"></i><i class="edge"></i></div>
       <img class="wg-god wg-guo" alt="">
       <img class="wg-god wg-emp" alt="">
       <img class="wg-troop wg-tguo" src="${A}GUO_troops.webp" alt="">
@@ -268,6 +272,9 @@
   let counterShown = null;  // 這一波反攻號角播過了沒（同一波只播一次）
   let visible = true;
   let timer = null;
+
+  // 台北日期加減 k 天（YYYY-MM-DD）
+  const dayOffset = (k) => new Date(Date.now() + 8 * 3600000 + k * 86400000).toISOString().slice(0, 10);
 
   function now() {
     if (debug) {
@@ -432,7 +439,12 @@
   function draw(fromData) {
     const { mins, hhmm } = now();
     const trading = debug || data.tradingDay;
-    $('.wg-closed').classList.toggle('on', !trading);
+    // 休市招牌：休市日 00:00 起掛到下一個開市日 08:00；休息時間：開市日 13:45 起（隔天也開市）睡到隔天 08:00
+    const isTd = (k) => debug || (data.isTradingDay ? data.isTradingDay(dayOffset(k)) : true);
+    const closedSign = !trading || (mins < 480 && !isTd(-1));
+    const sleeping = trading && ((mins >= 825 && isTd(1)) || (mins < 480 && isTd(-1)));
+    $('.wg-closed').classList.toggle('on', closedSign);
+    $('.wg-bar .zz').classList.toggle('on', sleeping);
     const pct = pctNow();
     const live = trading && mins >= 540 && mins < 811;          // 09:00-13:31 動畫
     // 交易日 08:00 前和休市日：停在上一個交易日的結算畫面；08:00-09:00 待命（兩軍貼兩側、中間 VS）；
