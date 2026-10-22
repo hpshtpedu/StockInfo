@@ -186,11 +186,14 @@
   };
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
+  let lastRare = null;
   function report(pct, hhmm, rare) {
     if (hhmm >= '09:00' && hhmm <= '09:05') return `${D.open}`;
     if (hhmm >= '13:25' && hhmm < '13:30') return `${D.climax}`;
     if (hhmm >= '13:30') return pct >= 0 ? D.bullWin : D.bearWin;
-    if (rare) return pick(D.rare[rare]);
+    // 罕見事件（長影線常常整天成立）：剛出現時播一次，之後只佔四分之一，不然整天都是同一類戰報
+    if (rare && (rare !== lastRare || Math.random() < 0.25)) { lastRare = rare; return pick(D.rare[rare]); }
+    lastRare = rare;
     const { bull, bear, stalemate } = D;
     // 兩成機率插播銀河快訊；有方向時一半用擴充戰報、一半用組句
     if (Math.random() < 0.2) return pick(D.galaxy);
