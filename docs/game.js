@@ -103,17 +103,25 @@
   /* 大招：人物 2/3 大、飛 1.1 秒；大不淨者丟納垢靈走拋物線，帝皇的靈能閃電直線 */
   .wg-shot.ult { z-index: 5; transition: left 1.1s linear; }
   .wg-shot.arc { animation: wg-arc 1.1s ease-in-out; }
+  /* 招式外圈一層細光暈（陣營色，跟神祇的光同色），手搖鈴、瘟疫蒼蠅這種暗色圖在背景上才看得清楚 */
+  .wg-shot.emp { filter: drop-shadow(0 0 1px #ffd700) drop-shadow(0 0 3px #ffd700); }
+  .wg-shot.guo { filter: drop-shadow(0 0 1px #00ff00) drop-shadow(0 0 3px #00ff00); }
   /* 大不淨者大招二：手搖鈴像擲斧一樣順時針翻轉飛過去，帶一點拋物線（約 2.5 圈） */
   .wg-shot.bell { animation: wg-bell 1.1s linear; }
   @keyframes wg-bell { 0% { translate: 0 0; rotate: 0deg; } 25% { translate: 0 -13px; } 50% { translate: 0 -18px; }
     75% { translate: 0 -13px; } 100% { translate: 0 0; rotate: 900deg; } }
   /* 帝皇大招二：帝皇之爪不飛行，直接在大不淨者軀幹上抓兩下（第二下水平反轉）。
      每一下從右上角往左下斜著劃開（clip-path 展開）、亮一下再淡出；反轉的那張 clip 跟著鏡像，變成從左上劃下 */
-  .wg-claw { z-index: 5; translate: -50% -50%; animation: wg-claw .5s ease-out both; }
+  .wg-claw { z-index: 5; translate: -50% -50%; animation: wg-claw .7s ease-out both; }
   .wg-claw.flip { transform: scaleX(-1); }
-  @keyframes wg-claw { 0% { opacity: 0; clip-path: inset(0 0 100% 100%); scale: 1.15; }
-    25% { opacity: 1; clip-path: inset(0 0 0 0); scale: 1; filter: brightness(1.6); }
-    55% { opacity: 1; filter: brightness(1); } 100% { opacity: 0; clip-path: inset(0 0 0 0); scale: .97; } }
+  @keyframes wg-claw { 0% { opacity: 0; clip-path: inset(0 0 100% 100%); scale: 1.15; filter: brightness(1.6) drop-shadow(0 0 3px #ffd700); }
+    20% { opacity: 1; clip-path: inset(0 0 0 0); scale: 1; filter: brightness(1.6) drop-shadow(0 0 3px #ffd700); }
+    60% { opacity: 1; filter: brightness(1) drop-shadow(0 0 3px #ffd700); }
+    100% { opacity: 0; clip-path: inset(0 0 0 0); scale: .97; filter: brightness(1) drop-shadow(0 0 3px #ffd700); } }
+  /* 被帝皇之爪抓：震兩下，跟兩爪同步（0、0.5 秒） */
+  .wg-hurt-claw { animation: wg-hurtc .75s 1; }
+  @keyframes wg-hurtc { 0%, 22%, 66%, 88%, 100% { translate: 0; } 6% { translate: -8px 1px; } 14% { translate: 5px 0; }
+    72% { translate: 8px -1px; } 80% { translate: -5px 0; } }
   @keyframes wg-arc { 0% { translate: 0 0; } 50% { translate: 0 -22px; } 100% { translate: 0 0; } }
   /* 大招命中：明顯的三下（每 0.25 秒一下，左右交替），跟三個骷髏同步 */
   .wg-hurt-big { animation: wg-hurtb .75s 1; }
@@ -388,17 +396,16 @@
   // 一發攻擊：攻擊特效（人物 1/4 高）從攻擊方身前水平飛到被打方的人物中線，命中時被打方震動、頭上冒骷髏（人物 1/5 高）
   // 招式（每次出手兩種隨機挑一種）：普通攻擊＝原本的口水／劍氣，或第二套（帝皇靈能骷髏、大不淨者瘟疫蒼蠅）；
   // 大招＝靈能閃電／投擲納垢靈，或第二套（帝皇之爪、大不淨者擲手搖鈴）
-  function shot(bull, onHit, ult = false) {
+  function shot(bull, onHit, ult = false, alt = Math.random() < 0.5) {
     const a = arena.getBoundingClientRect();
     const from = (bull ? emp : guo).getBoundingClientRect();
     const to = (bull ? guo : emp).getBoundingClientRect();
     if (!a.width || !from.width || !to.width) return;
     const h = from.height;
-    const alt = Math.random() < 0.5;
     if (ult && bull && alt) return claw(a, to, h, onHit);
     const bell = ult && !bull && alt;
     const img = document.createElement('img');
-    img.className = `wg-shot${ult ? ' ult' : ''}${bell ? ' bell' : ult && !bull ? ' arc' : ''}`;
+    img.className = `wg-shot ${bull ? 'emp' : 'guo'}${ult ? ' ult' : ''}${bell ? ' bell' : ult && !bull ? ' arc' : ''}`;
     img.src = `${A}${bull ? 'Emperor' : 'GUO'}_attack${ult ? '2' : alt ? '1' : ''}${alt ? '_2' : ''}.webp`;
     // 高度：大招 2/3 人高（手搖鈴 1/2，轉起來夠大）；普通攻擊 1/4（第二套是方圖，1/3 才看得清楚）
     const sz = ult ? (bell ? 1 / 2 : 2 / 3) : alt ? 1 / 3 : 1 / 4;
@@ -420,11 +427,12 @@
       impact(bull, ult, a, to, onHit);
     }, ult ? 1110 : 910);
   }
-  // 帝皇之爪：在大不淨者軀幹（人物重心、上下一半）抓兩下，第二下水平反轉、晚 0.25 秒（對上三下震動的第二下）
+  // 帝皇之爪：在大不淨者軀幹（人物重心、上下一半）抓兩下，第二下水平反轉、晚 0.5 秒（前一爪快淡掉時），
+  // 看得出是兩下；大不淨者跟著震兩下、冒兩個骷髏
   function claw(a, to, h, onHit) {
     const x = to.left + to.width * (meta.GUO?.cx ?? 0.5) - a.left;
     const y = to.top - a.top + to.height * 0.5;
-    [0, 250].forEach((d, i) => setTimeout(() => {
+    [0, 500].forEach((d, i) => setTimeout(() => {
       const c = document.createElement('img');
       c.className = `wg-claw${i ? ' flip' : ''}`;
       c.src = `${A}Emperor_attack2_2.webp`;
@@ -432,15 +440,15 @@
       c.style.left = `${x}px`;
       c.style.top = `${y}px`;
       arena.appendChild(c);
-      setTimeout(() => c.remove(), 520);
+      setTimeout(() => c.remove(), 720);
     }, d));
-    setTimeout(() => impact(true, true, a, to, onHit), 100);  // 第一爪劃開的那一刻算命中
+    setTimeout(() => impact(true, true, a, to, onHit, true), 100);  // 第一爪劃開的那一刻算命中
   }
   // 命中：被打的神震動、頭上冒骷髏；大招震三下、三個骷髏、卡片也震
-  function impact(bull, ult, a, to, onHit) {
+  function impact(bull, ult, a, to, onHit, clawed = false) {
     const god = bull ? guo : emp;
-    const hurt = ult ? 'wg-hurt-big' : 'wg-hurt';
-    god.classList.remove('wg-hurt', 'wg-hurt-big'); void god.offsetWidth; god.classList.add(hurt);
+    const hurt = clawed ? 'wg-hurt-claw' : ult ? 'wg-hurt-big' : 'wg-hurt';
+    god.classList.remove('wg-hurt', 'wg-hurt-big', 'wg-hurt-claw'); void god.offsetWidth; god.classList.add(hurt);
     const sk = document.createElement('img');
     sk.className = 'wg-skull';
     sk.src = `${A}damage.webp`;
@@ -450,8 +458,8 @@
     sk.style.top = `${to.top - a.top + to.height * 0.05}px`;
     arena.appendChild(sk);
     setTimeout(() => sk.remove(), 1100);
-    if (ult) {  // 大招：再兩個骷髏，跟神祇的三下震動同步（0.25、0.5 秒），卡片也震一下
-      for (const d of [0.25, 0.5]) {
+    if (ult) {  // 大招：再兩個骷髏，跟神祇的三下震動同步（0.25、0.5 秒）；帝皇之爪再一個（0.5 秒，第二爪）；卡片也震一下
+      for (const d of clawed ? [0.5] : [0.25, 0.5]) {
         const s2 = sk.cloneNode();
         s2.style.left = `${to.left - a.left + Math.random() * Math.max(0, to.width - sh)}px`;
         s2.style.top = `${to.top - a.top + to.height * (0.05 + Math.random() * 0.3)}px`;
@@ -467,8 +475,9 @@
   }
   function ultimate(bull, onHit) { shot(bull, onHit, true); }
   function attack(bull, crit, onHit) {
-    shot(bull, () => onHit?.(0));
-    if (crit) setTimeout(() => shot(bull, () => onHit?.(1)), 250);  // 爆擊：快速第二發，被打方連震兩下、兩個骷髏
+    const alt = Math.random() < 0.5;
+    shot(bull, () => onHit?.(0), false, alt);
+    if (crit) setTimeout(() => shot(bull, () => onHit?.(1), false, alt), 250);  // 爆擊：同一招快速第二發，被打方連震兩下、兩個骷髏
   }
   let hitTimer = null;
   let chargeUntil = 0;  // 開盤衝鋒結束的時間
