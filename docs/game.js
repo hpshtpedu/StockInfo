@@ -405,6 +405,7 @@
   }
   let hitTimer = null;
   let chargeUntil = 0;  // 開盤衝鋒結束的時間
+  let walkStarted = false;  // 這次行軍已經放好起點了沒
 
   function draw(fromData) {
     const { mins, hhmm } = now();
@@ -412,7 +413,7 @@
     const pct = pctNow();
     const live = trading && mins >= 540 && mins < 811;          // 09:00-13:31 動畫
     // 交易日 08:00 前和休市日：停在上一個交易日的結算畫面；08:00-09:00 待命（兩軍貼兩側、中間 VS）；
-    // 09:00 起行軍（兩軍慢慢往中間走），第一次抓到今天的加權指數才衝 2 秒碰撞開打（開盤後才打開網頁就直接交火）
+    // 09:00 起行軍（兩軍同速慢慢往中間走，不碰撞），第一次抓到今天的加權指數才衝 2 秒碰撞開打（開盤後才打開網頁就直接交火）
     const t = data.twii?.time ? new Date(data.twii.time + 8 * 3600000) : null;
     const opened = mins >= 540 && (debug || (t && t.toISOString().slice(0, 10) === new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10)
       && t.getUTCHours() * 60 + t.getUTCMinutes() >= 540));
@@ -464,17 +465,31 @@
 
     // 戰線：昨收在中間，漲往左推（帝皇在右邊進攻），tanh 讓 ±2% 接近邊界
     front = 50 - 40 * Math.tanh(pct / 1.2);
-    // 部隊：待命時完整貼在兩側；09:00 起還沒有今天的指數時慢慢往中間走（09:02 走到八成，停住不碰撞，
-    // 戰線還沒有今天的漲跌，先朝正中間走）；抓到指數後 2 秒 CSS 過渡衝到戰線開打
-    const walking = phase === 'march' && !opened;
-    const q = phase === 'pre' ? 0 : walking ? 0.8 : 1;
-    const fr = walking ? 50 : front;
-    const sec = debug ? mins * 60 : (Date.now() / 1000 + 8 * 3600) % 86400;
-    for (const x of [tg, te]) x.style.transition = walking ? `left ${Math.max(2, 540 * 60 + 120 - sec)}s linear, opacity 1s, transform .6s` : '';
+    // 部隊：待命時完整貼在兩側；抓到指數後 2 秒 CSS 過渡衝到戰線開打。
+    // 09:00 起還沒有今天的指數時行軍：兩邊同一速度往中間走，09:05（最晚一定抓得到指數）走完，
+    // 走的距離＝離中線較近那邊的 85%，所以抓到指數前一定不會碰撞，之後停住等
     const aw = arena.getBoundingClientRect().width || 1;
     const gW = (tg.getBoundingClientRect().width / aw) * 100 || 25, eW = (te.getBoundingClientRect().width / aw) * 100 || 20;
-    tg.style.left = `${gW + (fr - gW) * q}%`;
-    te.style.left = `${100 - eW + (fr - (100 - eW)) * q}%`;
+    const walking = phase === 'march' && !opened;
+    if (walking) {
+      const sec = debug ? mins * 60 : (Date.now() / 1000 + 8 * 3600) % 86400;
+      const walk = 0.85 * Math.min(50 - gW, 100 - eW - 50);         // 兩邊走一樣遠
+      const at = (k) => { tg.style.left = `${gW + walk * k}%`; te.style.left = `${100 - eW - walk * k}%`; };
+      if (!walkStarted) {  // 中途才打開：先放到現在該在的位置，再接著走
+        walkStarted = true;
+        for (const x of [tg, te]) x.style.transition = 'none';
+        at(Math.min(1, Math.max(0, (sec - 540 * 60) / 300)));
+        void tg.offsetWidth;
+      }
+      for (const x of [tg, te]) x.style.transition = `left ${Math.max(1, 545 * 60 - sec)}s linear, opacity 1s, transform .6s`;
+      at(1);
+    } else {
+      walkStarted = false;
+      for (const x of [tg, te]) x.style.transition = '';
+      const q = phase === 'pre' ? 0 : 1;
+      tg.style.left = `${gW + (front - gW) * q}%`;
+      te.style.left = `${100 - eW + (front - (100 - eW)) * q}%`;
+    }
     cloud.style.left = `${front}%`;
     // 戰線條：交火時照戰線分紅綠＋白色拉扯線；行軍、待命、收盤後只有亞空間底圖
     const split = phase === 'battle' || phase === 'tension' ? front : null;
