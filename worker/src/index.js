@@ -388,7 +388,7 @@ async function refreshNews(kept, since = Date.now() - 3600000) {
   // 合併：標題相同只留一則；精確時間不變，估的取看過最早的，拿到精確時間就換
   const byTitle = new Map();
   // 之前轉好的標題也補上後來修的用字（「報道」→「報導」、「萬億」→「兆」）
-  const fixTw = (x) => ({ ...x, title: x.title.replace(/報道/g, '報導').replace(/萬億/g, '兆') });
+  const fixTw = (x) => ({ ...x, title: x.title.replace(/報道/g, '報導').replace(/萬億/g, '兆').replace(/([計規策籌謀刻])划/g, '$1劃') });
   for (const x of [...kept.filter((k) => !newsExcluded(k.title, toTw)).map(fixTw), ...fresh]) {
     const key = normTitle(x.title);
     const old = byTitle.get(key);
