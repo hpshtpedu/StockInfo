@@ -106,8 +106,8 @@
   /* 招式外圈一層細光暈（陣營色，跟神祇的光同色），手搖鈴、瘟疫蒼蠅這種暗色圖在背景上才看得清楚 */
   .wg-shot.emp { filter: drop-shadow(0 0 1px #ffd700) drop-shadow(0 0 3px #ffd700); }
   .wg-shot.guo { filter: drop-shadow(0 0 1px #00ff00) drop-shadow(0 0 3px #00ff00); }
-  /* 大不淨者大招二：手搖鈴像擲斧一樣順時針翻轉飛過去，帶一點拋物線（約 2.5 圈） */
-  .wg-shot.bell { animation: wg-bell 1.1s linear; }
+  /* 大不淨者大招二：手搖鈴像擲斧一樣順時針翻轉飛過去，帶一點拋物線（約 2.5 圈，1.6 秒） */
+  .wg-shot.bell { transition: left 1.6s linear; animation: wg-bell 1.6s linear; }  /* 飛慢一點（1.6 秒），翻轉看得清楚 */
   @keyframes wg-bell { 0% { translate: 0 0; rotate: 0deg; } 25% { translate: 0 -13px; } 50% { translate: 0 -18px; }
     75% { translate: 0 -13px; } 100% { translate: 0 0; rotate: 900deg; } }
   /* 帝皇大招二：帝皇之爪不飛行，直接在大不淨者軀幹上抓兩下（第二下水平反轉）。
@@ -430,7 +430,7 @@
       setTimeout(() => {
         img.remove();
         impact(bull, ult, a, to, onHit);
-      }, ult ? 1110 : 910);
+      }, bell ? 1610 : ult ? 1110 : 910);
     };
     if (img.complete) go(); else img.decode().then(go, go);
   }
