@@ -85,7 +85,7 @@ export default {
     ctx.waitUntil(cache.put(cacheKey, response.clone()));
     return withCors(response, env);
   },
-  // 颱風停班（wrangler.toml 的 crons）：查人事總處，臺北市全日停班就記成台股休市日
+  // 颱風停班（wrangler.toml 的 crons，每晚 21:30）：查人事總處，臺北市全日停班就記成台股休市日
   async scheduled(event, env, ctx) {
     ctx.waitUntil(checkTyphoon(env, UA));
   },
