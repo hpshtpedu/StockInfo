@@ -15,7 +15,7 @@
   .wg-bar .l { left: 0; background: rgba(47, 194, 127, .28); }
   .wg-bar .r { right: 0; background: rgba(255, 92, 92, .28); }
   .wg-bar .edge { width: 2px; margin-left: -1px; background: rgba(255,255,255,.55); }
-  /* 休息時間：收盤後 13:45 到隔天 08:00（隔天要開市才有）兩軍在戰場上睡覺的圖疊在亞空間上，淡入淡出；
+  /* 休息時間：開市日收盤後 13:45 起兩軍在戰場上睡覺的圖疊在亞空間上（睡到隔天 08:00，隔天休市就到午夜），淡入淡出；
      跟亞空間共用條子上緣 14px 的淡出遮罩，夜空接進上方戰場。圖比條子高，取下半部（睡著的部隊） */
   .wg-bar .zz { position: absolute; inset: 0; background: url(${A}sleep.webp) center 72% / cover; opacity: 0; transition: opacity 1.2s; }
   .wg-bar .zz.on { opacity: 1; }
@@ -439,10 +439,11 @@
   function draw(fromData) {
     const { mins, hhmm } = now();
     const trading = debug || data.tradingDay;
-    // 休市招牌：休市日 00:00 起掛到下一個開市日 08:00；休息時間：開市日 13:45 起（隔天也開市）睡到隔天 08:00
+    // 休市招牌：休市日 00:00 起掛到下一個開市日 08:00；休息時間：開市日 13:45 起睡覺，
+    // 隔天開市睡到隔天 08:00，隔天休市睡到午夜（之後換亞空間＋休市招牌）
     const isTd = (k) => debug || (data.isTradingDay ? data.isTradingDay(dayOffset(k)) : true);
     const closedSign = !trading || (mins < 480 && !isTd(-1));
-    const sleeping = trading && ((mins >= 825 && isTd(1)) || (mins < 480 && isTd(-1)));
+    const sleeping = trading && (mins >= 825 || (mins < 480 && isTd(-1)));
     $('.wg-closed').classList.toggle('on', closedSign);
     $('.wg-bar .zz').classList.toggle('on', sleeping);
     const pct = pctNow();
