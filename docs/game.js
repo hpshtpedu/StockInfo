@@ -71,9 +71,7 @@
   @keyframes wg-shake { 0%,100% { translate: 0; } 25% { translate: -2px 1px; } 75% { translate: 2px -1px; } }
   .wg-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 5; }
   .wg-flash.on { animation: wg-flash .6s 1; }
-  .wg-paused .wg-flash { animation-play-state: running !important; }
-  /* 跑馬燈：盤外（休市、收盤後）也要捲，不然長句看不完；只有網頁在背景或卡片不在畫面上才停 */
-  .wg-paused.wg-seen .wg-ticker span.scroll { animation-play-state: running !important; }  /* 收盤閃光不能被暫停凍住（13:31 後暫停，會卡在一片白） */
+  .wg-paused .wg-flash { animation-play-state: running !important; }  /* 收盤閃光不能被暫停凍住（13:31 後暫停，會卡在一片白） */
   @keyframes wg-flash { 0% { opacity: 0; } 40% { opacity: 1; } 100% { opacity: 0; } }  /* 先亮到全白，最白時底下換成結算，再淡出 */
   /* 魔獸世界風格戰鬥跳字：粗體黑描邊，從被打的一方頭上冒出往上飄；爆擊先放大彈出再縮回 */
   .wg-float { position: absolute; z-index: 4; font: 900 28px/1 Impact, "Arial Black", "Microsoft JhengHei", sans-serif; white-space: nowrap;
@@ -540,7 +538,6 @@
     const bullWin = pct >= 0;
     const paused = !live || document.hidden || !visible;
     el.classList.toggle('wg-paused', paused);
-    el.classList.toggle('wg-seen', visible && !document.hidden);
     el.classList.toggle('wg-march', phase === 'march');
     el.classList.toggle('wg-battle', phase === 'battle');
     el.classList.toggle('wg-tension', phase === 'tension');
@@ -653,7 +650,7 @@
       if (newCounter) counterShown = counter;
       const text = newCounter ? (counter === 'bear' ? D.counterBear : D.counterBull)
         : closedSign ? ''  // 休市：跑馬燈那列空著
-        : phase === 'last' ? (bullWin ? D.bullWin : D.bearWin)
+        : done ? (bullWin ? D.bullWin : D.bearWin)  // 收盤後（和開盤前）停在勝負台詞，不捲動
         : phase === 'pre' ? '【待命】雙方大軍集結於亞空間兩端，等待 09:00 開盤號角'
           : report(pct, hhmm, rareEvent(data.twii, data.tsmc, pct));
       const span = $('.wg-ticker span');
