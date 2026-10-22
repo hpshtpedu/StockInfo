@@ -649,6 +649,7 @@
       tickerAt = Date.now();
       if (newCounter) counterShown = counter;
       const text = newCounter ? (counter === 'bear' ? D.counterBear : D.counterBull)
+        : closedSign ? pick(D.galaxy)  // 休市：播中性新聞（每次資料更新換一則）
         : phase === 'last' ? (bullWin ? D.bullWin : D.bearWin)
         : phase === 'pre' ? '【待命】雙方大軍集結於亞空間兩端，等待 09:00 開盤號角'
           : report(pct, hhmm, rareEvent(data.twii, data.tsmc, pct));
