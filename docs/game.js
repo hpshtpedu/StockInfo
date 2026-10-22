@@ -247,6 +247,8 @@
   // 素材尺寸和人物中線（scripts/build_game_assets.py 產生）
   let meta = { Emperor: { w: 287, h: 240, cx: 0.54 }, GUO: { w: 371, h: 240, cx: 0.53 }, Emperor_win: { w: 343, h: 240 }, GUO_loss: { w: 251, h: 240 }, win: { w: 336, h: 120 } };
   fetch(`${A}meta.json`).then((r) => r.json()).then((m) => { meta = m; draw(false); }).catch(() => {});
+  // 中性新聞故事線（game/story.json，由 mini_game/storyline.txt 產生）：併進銀河快訊的抽選池
+  fetch(`${A}story.json`).then((r) => r.json()).then((s) => { if (Array.isArray(s)) D.galaxy = D.galaxy.concat(s); }).catch(() => {});
   let lastPrice = null;
   let resolvedShown = false;
   let lastPhase = null;   // 上一次畫的階段：用來判斷是不是「看著」收盤（要播轉場）
