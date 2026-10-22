@@ -95,9 +95,10 @@
   .wg-shot.ult { z-index: 5; transition: left 1.1s linear; }
   .wg-shot.arc { animation: wg-arc 1.1s ease-in-out; }
   @keyframes wg-arc { 0% { translate: 0 0; } 50% { translate: 0 -22px; } 100% { translate: 0 0; } }
-  .wg-hurt-big { animation: wg-hurtb .55s 1; }
-  @keyframes wg-hurtb { 0%,100% { translate: 0; } 12% { translate: -8px 1px; } 25% { translate: 8px -1px; } 37% { translate: -7px 0; }
-    50% { translate: 6px 1px; } 62% { translate: -5px 0; } 75% { translate: 4px 0; } 87% { translate: -2px 0; } }
+  /* 大招命中：明顯的三下（每 0.25 秒一下，左右交替），跟三個骷髏同步 */
+  .wg-hurt-big { animation: wg-hurtb .75s 1; }
+  @keyframes wg-hurtb { 0%, 22%, 33%, 55%, 66%, 88%, 100% { translate: 0; }
+    6% { translate: -8px 1px; } 14% { translate: 5px 0; } 39% { translate: 8px -1px; } 47% { translate: -5px 0; } 72% { translate: -8px 1px; } 80% { translate: 5px 0; } }
   .wg-hurt { animation: wg-hurt .28s 1; }
   @keyframes wg-hurt { 0%,100% { translate: 0; } 20% { translate: -4px 0; } 40% { translate: 4px 0; } 60% { translate: -3px 0; } 80% { translate: 3px 0; } }
   .wg-skull { z-index: 4; animation: wg-skull 1s ease-out forwards; }
@@ -389,12 +390,17 @@
       sk.style.top = `${to.top - a.top + to.height * 0.05}px`;
       arena.appendChild(sk);
       setTimeout(() => sk.remove(), 1100);
-      if (ult) {  // 大招多一個骷髏、卡片震一下
-        const sk2 = sk.cloneNode();
-        sk2.style.left = `${to.left - a.left + Math.random() * Math.max(0, to.width - sh)}px`;
-        sk2.style.animationDelay = '.12s';
-        arena.appendChild(sk2);
-        setTimeout(() => sk2.remove(), 1250);
+      if (ult) {  // 大招：再兩個骷髏，跟神祇的三下震動同步（0.25、0.5 秒），卡片也震一下
+        for (const d of [0.25, 0.5]) {
+          const s2 = sk.cloneNode();
+          s2.style.left = `${to.left - a.left + Math.random() * Math.max(0, to.width - sh)}px`;
+          s2.style.top = `${to.top - a.top + to.height * (0.05 + Math.random() * 0.3)}px`;
+          s2.style.opacity = '0';  // 輪到它之前先不顯示（動畫延遲期間）
+          s2.style.animationDelay = `${d}s`;
+          s2.style.animationFillMode = 'both';
+          arena.appendChild(s2);
+          setTimeout(() => s2.remove(), 1000 + d * 1000 + 50);
+        }
         el.classList.remove('wg-shake'); void el.offsetWidth; el.classList.add('wg-shake');
       }
       onHit?.();
