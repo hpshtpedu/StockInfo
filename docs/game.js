@@ -100,9 +100,9 @@
   @keyframes wg-marq { from { transform: translateX(0); } to { transform: translateX(var(--shift, 0)); } }
   /* 普通攻擊：口水／劍氣從攻擊方身前水平飛向對方人物中線；被打的一方震動、頭上冒骷髏 */
   .wg-shot { z-index: 4; transition: left 1.2s linear; }  /* 普通攻擊飛行 1.2 秒 */
-  /* 大招：人物 2/3 大、飛 1.1 秒；大不淨者丟納垢靈走拋物線，帝皇的靈能閃電直線 */
+  /* 大招：人物 2/3 大、飛 1.1 秒；納垢靈、靈能閃電都走直線 */
   .wg-shot.ult { z-index: 5; transition: left 1.1s linear; }
-  .wg-shot.arc { animation: wg-arc 1.1s ease-in-out; }
+  .wg-shot.arc { animation: wg-arc 1.2s ease-in-out; }  /* 瘟疫蒼蠅：飛行中往上拱一下（納垢靈不會飛，走直線） */
   /* 招式外圈一層細光暈（陣營色，跟神祇的光同色），手搖鈴、瘟疫蒼蠅這種暗色圖在背景上才看得清楚 */
   .wg-shot.emp { filter: drop-shadow(0 0 1px #ffd700) drop-shadow(0 0 3px #ffd700); }
   .wg-shot.guo { filter: drop-shadow(0 0 1px #00ff00) drop-shadow(0 0 3px #00ff00); }
@@ -408,7 +408,7 @@
     if (ult && bull && alt) return claw(a, to, h, onHit);
     const bell = ult && !bull && alt;
     const img = document.createElement('img');
-    img.className = `wg-shot ${bull ? 'emp' : 'guo'}${ult ? ' ult' : ''}${bell ? ' bell' : ult && !bull ? ' arc' : ''}`;
+    img.className = `wg-shot ${bull ? 'emp' : 'guo'}${ult ? ' ult' : ''}${bell ? ' bell' : !ult && !bull && alt ? ' arc' : ''}`;
     img.src = `${A}${bull ? 'Emperor' : 'GUO'}_attack${ult ? '2' : alt ? '1' : ''}${alt ? '_2' : ''}.webp`;
     // 高度：大招 2/3 人高（手搖鈴 1/2，轉起來夠大）；普通攻擊 1/4（第二套是方圖，1/3 才看得清楚）
     const sz = ult ? (bell ? 1 / 2 : 2 / 3) : alt ? 1 / 3 : 1 / 4;
