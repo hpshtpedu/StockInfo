@@ -31,6 +31,10 @@
   .wg-result { left: 50%; top: calc((68% - 8px) / 2); width: 40%; height: auto; transform: translate(-50%, -50%) scale(.6); opacity: 0; z-index: 3;
     transition: opacity .6s, transform .6s cubic-bezier(.2, 1.6, .4, 1); }
   .wg-result.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  /* 盤前 VS：同一張圖疊兩層，各切一半（V／S 在 49% 分開）各包對應神祇的光環——V 納垢綠、S 帝皇金，跟神祇的光一樣；
+     雙層光暈讓字從背景浮出來。外側不切（-40px），光暈不會被截掉 */
+  .wg-result.vs { filter: drop-shadow(0 0 3px #00ff00) drop-shadow(0 0 6px #00ff00); clip-path: inset(-40px 51% -40px -40px); }
+  .wg-vs2 { filter: drop-shadow(0 0 3px #ffd700) drop-shadow(0 0 6px #ffd700); clip-path: inset(-40px -40px -40px 49%); }
   .wg-troop { bottom: 0; height: 32%; transition: left 2s ease-in-out, opacity 1s, transform .6s; }
   .wg-tguo { transform: translateX(-100%); } .wg-temp { transform: translateX(0); }
   .wg-cloud { bottom: 0; height: 48%; transform: translateX(-50%); transition: left 2s ease-in-out, opacity 1s; z-index: 2; }
@@ -225,6 +229,7 @@
       <img class="wg-troop wg-temp" src="${A}Emperor_troops.webp" alt="">
       <img class="wg-cloud" src="${A}fight-cloud.webp" alt="">
       <img class="wg-result" alt="">
+      <img class="wg-result wg-vs2" src="${A}vs.webp" alt="">
       <div class="wg-flash"></div>
     </div>
     <div class="wg-ticker"><span></span></div>
@@ -463,6 +468,9 @@
     if (done) setSrc(stamp, `${A}${bullWin ? 'win' : 'loss'}.webp`);
     else if (standby) setSrc(stamp, `${A}vs.webp`);
     stamp.classList.toggle('on', done || standby);
+    const vs2 = $('.wg-vs2');
+    stamp.classList.toggle('vs', standby && !done);
+    vs2.classList.toggle('on', standby && !done);
     if (done || standby) {
       // 以卡片中線置中，左右空隙一樣：寬度＝離中線最近的神祇邊緣到中線的距離 × 2。
       // 用「收漲」那組立繪（帝皇勝利立繪最寬）算，收跌的 DEFEAT 也用同一個大小
@@ -475,6 +483,7 @@
         stamp.style.width = 'auto';
         stamp.style.height = `${w / ratio}px`;
         stamp.style.left = '50%';
+        vs2.style.width = 'auto'; vs2.style.height = stamp.style.height;
       }
     }
     if (done) {
