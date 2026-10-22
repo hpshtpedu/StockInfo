@@ -86,9 +86,11 @@
     border-top: 1px solid var(--line); white-space: nowrap; overflow: hidden; }
   .wg-ticker span { display: inline-block; vertical-align: top; }
   .wg-ticker .tz { color: #b06cff; } .wg-ticker .tb { color: var(--up); } .wg-ticker .tr { color: var(--down); }  /* 奸奇紫、多軍紅、空軍綠 */
-  /* 跑馬燈：先從頭顯示、停一下再往左捲到尾（不從右邊外面捲進來，否則開頭的「【」會在右下角露出一槓） */
-  .wg-ticker span.scroll { animation: wg-marq var(--dur, 14s) linear infinite; }
-  @keyframes wg-marq { 0%, 15% { transform: translateX(0); } 85%, 100% { transform: translateX(var(--shift, 0)); } }
+  /* 跑馬燈：放不下的長句接成「句子＋空白＋同一句」，一直往左等速捲，捲完一輪剛好接回開頭，無縫循環。
+     先從頭顯示停 1.5 秒才開始捲（不從右邊外面捲進來，否則開頭的「【」會在右下角露出一槓） */
+  .wg-ticker span.scroll { animation: wg-marq var(--dur, 14s) linear 1.5s infinite; }
+  .wg-ticker .gap { display: inline-block; width: 3em; }
+  @keyframes wg-marq { from { transform: translateX(0); } to { transform: translateX(var(--shift, 0)); } }
   /* 普通攻擊：口水／劍氣從攻擊方身前水平飛向對方人物中線；被打的一方震動、頭上冒骷髏 */
   .wg-shot { z-index: 4; transition: left .9s linear; }  /* 飛行 0.9 秒 */
   /* 大招：人物 2/3 大、飛 1.1 秒；大不淨者丟納垢靈走拋物線，帝皇的靈能閃電直線 */
@@ -575,10 +577,12 @@
         .replace('【帝皇之光普照】', '<b class="tb">【帝皇之光普照】</b>').replace('【慈父賜福全場】', '<b class="tr">【慈父賜福全場】</b>')
         .replace('【反攻號角】', `<b class="${counter === 'bear' ? 'tr' : 'tb'}">【反攻號角】</b>`);
       span.classList.remove('scroll');
-      const over = span.scrollWidth - ($('.wg-ticker').clientWidth - 20);
-      if (over > 0) {  // 放不下才捲：先停在開頭，再捲到尾，約每秒 30px
-        span.style.setProperty('--shift', `${-over}px`);
-        span.style.setProperty('--dur', `${Math.max(8, over / 30 / 0.7)}s`);
+      const w = span.scrollWidth;
+      if (w > $('.wg-ticker').clientWidth - 20) {  // 放不下才捲：接一份同樣的句子，捲一輪（句子＋空白）剛好無縫，約每秒 35px
+        span.innerHTML += `<i class="gap"></i>${span.innerHTML}`;
+        const loop = span.scrollWidth - w;
+        span.style.setProperty('--shift', `${-loop}px`);
+        span.style.setProperty('--dur', `${loop / 35}s`);
         span.classList.add('scroll');
       }
       lastTickerKey = key;
