@@ -31,13 +31,13 @@
   .wg-result { left: 50%; top: calc((68% - 8px) / 2); width: 40%; height: auto; transform: translate(-50%, -50%) scale(.6); opacity: 0; z-index: 3;
     transition: opacity .6s, transform .6s cubic-bezier(.2, 1.6, .4, 1); }
   .wg-result.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  /* 盤前 VS：V 包納垢綠、S 包帝皇金（跟神祇的光一樣），雙層光暈讓字從背景浮出來。
+  /* 盤前 VS：V 包納垢綠、S 包帝皇金（跟神祇的光一樣），字邊先一圈細黑邊跟背景隔開（左邊背景也是綠的），再兩層光暈往外散，字才浮得出來。
      做法：上層是沒加光的原圖；下面兩張光暈層用漸層遮罩在中間（43%～57%）交叉淡化，綠光慢慢過渡成金光，沒有切線。
      padding 讓遮罩範圍比圖大一圈，外側光暈不被截掉 */
-  .wg-vsg { z-index: 2; padding: 12px; }
-  .wg-vsg.g { filter: drop-shadow(0 0 3px #00ff00) drop-shadow(0 0 6px #00ff00);
+  .wg-vsg { z-index: 2; padding: 24px; }
+  .wg-vsg.g { filter: drop-shadow(0 0 1.5px #000) drop-shadow(0 0 3px #00ff00) drop-shadow(0 0 7px #00ff00) drop-shadow(0 0 14px rgba(0,255,0,.7));
     -webkit-mask-image: linear-gradient(to right, #000 43%, transparent 57%); mask-image: linear-gradient(to right, #000 43%, transparent 57%); }
-  .wg-vsg.y { filter: drop-shadow(0 0 3px #ffd700) drop-shadow(0 0 6px #ffd700);
+  .wg-vsg.y { filter: drop-shadow(0 0 1.5px #000) drop-shadow(0 0 3px #ffd700) drop-shadow(0 0 7px #ffd700) drop-shadow(0 0 14px rgba(255,215,0,.7));
     -webkit-mask-image: linear-gradient(to right, transparent 43%, #000 57%); mask-image: linear-gradient(to right, transparent 43%, #000 57%); }
   .wg-troop { bottom: 0; height: 32%; transition: left 2s ease-in-out, opacity 1s, transform .6s; }
   .wg-tguo { transform: translateX(-100%); } .wg-temp { transform: translateX(0); }
