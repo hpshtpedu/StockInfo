@@ -34,7 +34,7 @@
   /* 盤前 VS：V 包納垢綠、S 包帝皇金（跟神祇的光一樣），字邊先一圈黑暈跟背景隔開（左邊背景也是綠的），再兩層光暈往外散，字才浮得出來。
      做法：上層是沒加光的原圖；下面兩張光暈層用漸層遮罩在中間（43%～57%）交叉淡化，綠光慢慢過渡成金光，沒有切線。
      padding 讓遮罩範圍比圖大一圈，外側光暈不被截掉 */
-  .wg-vsg { z-index: 2; padding: 24px; }
+  .wg-vsg { z-index: 2; padding: 24px; box-sizing: content-box; }  /* 網頁全域是 border-box，不改的話 padding 會吃掉圖，光暈層變小整個被上層蓋住 */
   .wg-vsg.g { filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 4px #000) drop-shadow(0 0 2px #00ff00) drop-shadow(0 0 6px #00ff00) drop-shadow(0 0 12px #00ff00);
     -webkit-mask-image: linear-gradient(to right, #000 43%, transparent 57%); mask-image: linear-gradient(to right, #000 43%, transparent 57%); }
   .wg-vsg.y { filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 4px #000) drop-shadow(0 0 2px #ffd700) drop-shadow(0 0 6px #ffd700) drop-shadow(0 0 12px #ffd700);
