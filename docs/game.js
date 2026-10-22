@@ -279,6 +279,9 @@
   let data = { twii: null, tsmc: null, tradingDay: true };
   // 素材尺寸和人物中線（scripts/build_game_assets.py 產生）
   let meta = { Emperor: { w: 287, h: 240, cx: 0.54 }, GUO: { w: 371, h: 240, cx: 0.53 }, Emperor_win: { w: 343, h: 240 }, GUO_loss: { w: 251, h: 240 }, win: { w: 336, h: 120 } };
+  // 招式圖先預載：第一次出招不會等下載
+  for (const n of ['Emperor_attack', 'GUO_attack', 'Emperor_attack2', 'GUO_attack2', 'Emperor_attack1_2', 'GUO_attack1_2',
+    'Emperor_attack2_2', 'GUO_attack2_2', 'damage']) new Image().src = `${A}${n}.webp`;
   fetch(`${A}meta.json`).then((r) => r.json()).then((m) => { meta = m; draw(false); }).catch(() => {});
   // 中性新聞故事線（game/story.json，由 mini_game/storyline.txt 產生）：併進銀河快訊的抽選池
   fetch(`${A}story.json`).then((r) => r.json()).then((s) => { if (Array.isArray(s)) D.galaxy = D.galaxy.concat(s); }).catch(() => {});
@@ -419,13 +422,17 @@
     const target = ult ? torso + (bull ? 1 : -1) * iw * 0.4 : (to.left + to.right) / 2 - a.left;
     img.style.left = `${(bull ? from.left : from.right) - a.left}px`;
     img.style.transform = 'translateX(-50%)';
-    arena.appendChild(img);
-    void img.offsetWidth;
-    img.style.left = `${target}px`;
-    setTimeout(() => {
-      img.remove();
-      impact(bull, ult, a, to, onHit);
-    }, ult ? 1110 : 910);
+    // 圖還沒載入就開始飛的話，會在半路才突然出現（像從畫面中間飛出來）：等圖解碼好才起飛
+    const go = () => {
+      arena.appendChild(img);
+      void img.offsetWidth;
+      img.style.left = `${target}px`;
+      setTimeout(() => {
+        img.remove();
+        impact(bull, ult, a, to, onHit);
+      }, ult ? 1110 : 910);
+    };
+    if (img.complete) go(); else img.decode().then(go, go);
   }
   // 帝皇之爪：在大不淨者軀幹（人物重心、上下一半）抓兩下，第二下水平反轉、晚 0.5 秒（前一爪快淡掉時），
   // 看得出是兩下；大不淨者跟著震兩下、冒兩個骷髏
