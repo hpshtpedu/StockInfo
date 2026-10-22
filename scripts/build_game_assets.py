@@ -14,7 +14,8 @@ OUT.mkdir(parents=True, exist_ok=True)
 SIZES = {'Emperor': 240, 'GUO': 240, 'fight-cloud': 200, 'Emperor_win': 240, 'Emperor_loss': 240,
          'GUO_win': 240, 'GUO_loss': 240, 'Emperor_troops': 160, 'GUO_troops': 160, 'Immaterium': None,
          'win': 120, 'loss': 120, 'vs': 120, 'damage': 64, 'Emperor_attack': 96, 'GUO_attack': 96,
-         'GUO_place': 200, 'Emperor_place': 200, 'GUO_attack2': 160, 'Emperor_attack2': 160}
+         'GUO_place': 200, 'Emperor_place': 200, 'GUO_attack2': 160, 'Emperor_attack2': 160,
+         'casino_closed': None}
 
 
 def trim_box(im):

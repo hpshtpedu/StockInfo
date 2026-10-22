@@ -41,6 +41,9 @@
     -webkit-mask-image: linear-gradient(to right, transparent 43%, #000 57%); mask-image: linear-gradient(to right, transparent 43%, #000 57%); }
   .wg-troop { bottom: 0; height: 32%; transition: left 2s ease-in-out, opacity 1s, transform .6s; }
   .wg-tguo { transform: translateX(-100%); } .wg-temp { transform: translateX(0); }
+  /* 台股休市（週末、國定假日、颱風假）：亞空間條正中間掛「CASINO CLOSED」招牌 */
+  .wg-closed { left: 50%; bottom: 16%; height: calc(32% * .72); max-width: 82%; object-fit: contain; transform: translate(-50%, 50%); z-index: 3; display: none; }
+  .wg-closed.on { display: block; }
   .wg-cloud { bottom: -8%; height: 48%;  /* 往下沉一點（下緣被卡片切掉），雲跟部隊腳下同高 */ transform: translateX(-50%); transition: left 2s ease-in-out, opacity 1s; z-index: 2; }
   /* 神祇一直發光（帝皇金、大不淨者綠）；部隊只在大漲／大跌（±0.5% 以上）時發光 */
   .wg-emp { filter: drop-shadow(0 0 6px #ffd700); } .wg-guo { filter: drop-shadow(0 0 6px #00ff00); }
@@ -238,6 +241,7 @@
       <img class="wg-troop wg-tguo" src="${A}GUO_troops.webp" alt="">
       <img class="wg-troop wg-temp" src="${A}Emperor_troops.webp" alt="">
       <img class="wg-cloud" src="${A}fight-cloud.webp" alt="">
+      <img class="wg-closed" src="${A}casino_closed.webp" alt="休市">
       <img class="wg-result" alt="">
       <img class="wg-result wg-vsg g" src="${A}vs.webp" alt=""><img class="wg-result wg-vsg y" src="${A}vs.webp" alt="">
       <div class="wg-flash"></div>
@@ -428,6 +432,7 @@
   function draw(fromData) {
     const { mins, hhmm } = now();
     const trading = debug || data.tradingDay;
+    $('.wg-closed').classList.toggle('on', !trading);
     const pct = pctNow();
     const live = trading && mins >= 540 && mins < 811;          // 09:00-13:31 動畫
     // 交易日 08:00 前和休市日：停在上一個交易日的結算畫面；08:00-09:00 待命（兩軍貼兩側、中間 VS）；
