@@ -221,6 +221,9 @@
   .head .badges { display: flex; gap: 4px; min-width: 0; }
   .inst-foot { padding-top: 8px; }  /* 用 padding：margin-top 會被「最後一列貼底」的 margin-top: auto 蓋掉 */
   .card.wide .chg { font-size: clamp(13px, 4.6vw, 18px); }
+  /* 本年度累計（三大法人、八大）：比當日明細小一級的灰字標題＋整數億 */
+  .card.wide .chg.ytd { font-size: clamp(11.5px, 3.7vw, 15px); margin-top: 2px; }
+  .ytd .lbl, .gg .lbl { color: var(--muted); font-weight: 400; }
   .chg.big { font-size: clamp(14px, 4.4vw, 17px); }
   .error { color: var(--warn); font-size: 12px; }
   .cal { grid-column: 1 / -1; font-size: 14.3px; gap: 3px; }
@@ -481,11 +484,19 @@
     const rank = foreignRankBadge(inst);
     const parts = [['外資', inst.foreign], ['投信', inst.trust], ['自營商', inst.dealer]]
       .map(([k, v]) => `<span class="txt">${k}</span> <span class="${dir(v)}">${num(v)}</span>`).join(' · ');
+    // 本年度累計：排程（證交所月報表，算到 asOf）＋網頁拿到的更新的那一天
+    const y = history?.ytd;
+    const sameYear = y && y.asOf.slice(0, 4) === inst.date.slice(0, 4);
+    const ytdOf = (k) => (sameYear ? y[k] : 0) + (!sameYear || inst.date > y.asOf ? inst[k] : 0);
+    const int = (v) => `${v > 0 ? '+' : ''}${fmt(v, 0)}`;
+    const ytd = [['外資', 'foreign'], ['投信', 'trust'], ['自營', 'dealer']]
+      .map(([k, f]) => { const v = ytdOf(f); return `<span class="txt">${k}</span> <span class="${dir(v)}">${int(v)}</span>`; }).join(' · ');
     return `
       <div class="card wide">
         <div class="head"><div class="name">三大法人買賣超</div><div class="badges">${rank}${foreignStreak(inst, history, !!rank)}</div></div>
         <div class="price ${dir(inst.total)}">${num(inst.total)}<small> 億</small></div>
         <div class="chg">${parts}</div>
+        <div class="chg ytd"><span class="lbl">本年度</span> ${ytd}</div>
         <div class="foot inst-foot"><div class="meta">${m}/${d} 盤後</div>${inst.share != null
           // 法人成交比重：三大法人買＋賣 ÷（大盤成交金額 × 2），中性說明
           ? `<span class="badge note">法人成交比重${fmt(inst.share, 0)}%</span>` : ''}</div>
@@ -521,11 +532,17 @@
     // 台積電：當天有進八大買超／賣超前 30 名才顯示（排程的 JSON 和 Worker 取當天那筆）
     const tsmc = [govBanks?.tsmc, live?.tsmc].filter((t) => t?.date === last.date).at(-1);
     const gg = tsmc ? `<div class="gg">台積電 <b class="${tsmc.net > 0 ? 'up' : tsmc.net < 0 ? 'down' : ''}">${tsmc.net > 0 ? '+' : ''}${fmt(tsmc.net, 1)}億</b></div>` : '';
+    // 本年度累計：今年的日子加總。HiStock 只給半年，今年最早只補到 4/27：資料不是從年初開始就寫「M/D起」
+    const year = days.filter((d) => d.date.slice(0, 4) === last.date.slice(0, 4));
+    const ytdSum = year.reduce((t, d) => t + d.net, 0);
+    const [, ym, yd] = year[0].date.split('-').map(Number);
+    const ytdLabel = ym === 1 && yd <= 10 ? '本年度' : `${ym}/${yd}起`;
+    const ytd = `<div class="gg"><span class="lbl">${ytdLabel}</span> <b class="${ytdSum > 0 ? 'up' : 'down'}">${ytdSum > 0 ? '+' : ''}${fmt(ytdSum, 0)}億</b></div>`;
     return `
       <div class="card roomy">
         <div class="head"><div class="name">八大買賣超</div>${streak}</div>
         <div class="price ${dir}">${last.net > 0 ? '+' : ''}${fmt(last.net, 1)}<small> 億</small></div>
-        ${gg}
+        ${gg}${ytd}
         <div class="foot"><div class="meta">${mm}/${dd} 盤後</div>${note}</div>
       </div>`;
   }

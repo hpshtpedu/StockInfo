@@ -61,12 +61,16 @@ def main():
     if not days:
         print('HiStock: no data')
         return 0
-    # Our own stored days are the history (the 連N買/賣 streak counts on them); each fetch only adds
-    # newer days, plus the last few in case HiStock revised them.
+    # Our own stored days are the history (the 連N買/賣 streak counts on them); each fetch adds the
+    # days we don't have yet, and refreshes the last few in case HiStock revised them.
     known = {d['date']: d for d in old.get('days', [])}
-    for d in days[-5:] if known else days:
-        known[d['date']] = d
-    merged = [known[k] for k in sorted(known)][-KEEP:]
+    for i, d in enumerate(days):
+        if d['date'] not in known or i >= len(days) - 5:
+            known[d['date']] = d
+    # 留今年全部（網頁的「本年度」累計；HiStock 只給半年，今年能補到的最早是 4/27）和至少最近 KEEP 天
+    year = f'{now.year}-01-01'
+    merged = [known[k] for k in sorted(known)]
+    merged = [d for i, d in enumerate(merged) if d['date'] >= year or i >= len(merged) - KEEP]
     got_today = merged[-1]['date'] == today
     # TSMC: only when it is in the page's top-30 buy or sell list (萬元 -> 億元); otherwise None
     g = re.search(r'title="(\d{4}-\d\d-\d\d) [^"]*?\(2330\)[^"]*?(-?[\d,]+)萬', html)
