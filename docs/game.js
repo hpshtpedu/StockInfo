@@ -404,14 +404,21 @@
     if (crit) setTimeout(() => shot(bull, () => onHit?.(1)), 250);  // 爆擊：快速第二發，被打方連震兩下、兩個骷髏
   }
   let hitTimer = null;
+  let chargeUntil = 0;  // 開盤衝鋒結束的時間
 
   function draw(fromData) {
     const { mins, hhmm } = now();
     const trading = debug || data.tradingDay;
     const pct = pctNow();
     const live = trading && mins >= 540 && mins < 811;          // 09:00-13:31 動畫
-    // 交易日 08:00 前和休市日：停在上一個交易日的結算畫面；08:00-09:00 待命（兩軍貼兩側、中間 VS）
-    const phase = !trading || mins < 480 ? 'last' : mins < 540 ? 'pre' : mins < 550 ? 'march' : mins < 805 ? 'battle' : mins < 810 ? 'tension' : 'resolved';
+    // 交易日 08:00 前和休市日：停在上一個交易日的結算畫面；08:00 起待命（兩軍貼兩側、中間 VS），
+    // 09:00 後第一次抓到今天的加權指數才開打：親眼看著開盤的話兩軍先衝 2 秒（行軍）再交火
+    const t = data.twii?.time ? new Date(data.twii.time + 8 * 3600000) : null;
+    const opened = mins >= 540 && (debug || (t && t.toISOString().slice(0, 10) === new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10)
+      && t.getUTCHours() * 60 + t.getUTCMinutes() >= 540));
+    if (opened && lastPhase === 'pre' && mins < 805) { chargeUntil = Date.now() + 2000; setTimeout(() => draw(false), 2050); }
+    const phase = !trading || mins < 480 ? 'last' : mins < 805 ? (!opened ? 'pre' : Date.now() < chargeUntil ? 'march' : 'battle')
+      : mins < 810 ? 'tension' : 'resolved';
     const done = phase === 'resolved' || phase === 'last';
     // 收盤轉場：親眼看著交火進入收盤時，先打白光（保留盤中畫面），最白的那一刻（0.24 秒）才換成結算畫面
     if (phase === 'resolved' && (lastPhase === 'battle' || lastPhase === 'tension') && !resolvedShown) {
@@ -454,7 +461,7 @@
     // 戰線：昨收在中間，漲往左推（帝皇在右邊進攻），tanh 讓 ±2% 接近邊界
     front = 50 - 40 * Math.tanh(pct / 1.2);
     // 部隊：待命時完整貼在兩側，行軍時從兩側走到戰線，開打後在戰線上
-    const q = phase === 'pre' ? 0 : phase === 'march' ? Math.min(1, (mins - 540) / 10) : 1;
+    const q = phase === 'pre' ? 0 : 1;  // 行軍＝衝到戰線（部隊 left 的 2 秒 CSS 過渡）
     const aw = arena.getBoundingClientRect().width || 1;
     const gW = (tg.getBoundingClientRect().width / aw) * 100 || 25, eW = (te.getBoundingClientRect().width / aw) * 100 || 20;
     tg.style.left = `${gW + (front - gW) * q}%`;
