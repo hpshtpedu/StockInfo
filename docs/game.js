@@ -99,7 +99,7 @@
   .wg-ticker .gap { display: inline-block; width: 3em; }
   @keyframes wg-marq { from { transform: translateX(0); } to { transform: translateX(var(--shift, 0)); } }
   /* 普通攻擊：口水／劍氣從攻擊方身前水平飛向對方人物中線；被打的一方震動、頭上冒骷髏 */
-  .wg-shot { z-index: 4; transition: left .9s linear; }  /* 飛行 0.9 秒 */
+  .wg-shot { z-index: 4; transition: left 1.2s linear; }  /* 普通攻擊飛行 1.2 秒 */
   /* 大招：人物 2/3 大、飛 1.1 秒；大不淨者丟納垢靈走拋物線，帝皇的靈能閃電直線 */
   .wg-shot.ult { z-index: 5; transition: left 1.1s linear; }
   .wg-shot.arc { animation: wg-arc 1.1s ease-in-out; }
@@ -430,7 +430,7 @@
       setTimeout(() => {
         img.remove();
         impact(bull, ult, a, to, onHit);
-      }, bell ? 1610 : ult ? 1110 : 910);
+      }, bell ? 1610 : ult ? 1110 : 1210);
     };
     if (img.complete) go(); else img.decode().then(go, go);
   }
