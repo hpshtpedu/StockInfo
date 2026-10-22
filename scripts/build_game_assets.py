@@ -15,7 +15,8 @@ SIZES = {'Emperor': 240, 'GUO': 240, 'fight-cloud': 200, 'Emperor_win': 240, 'Em
          'GUO_win': 240, 'GUO_loss': 240, 'Emperor_troops': 160, 'GUO_troops': 160, 'Immaterium': None,
          'win': 120, 'loss': 120, 'vs': 120, 'damage': 64, 'Emperor_attack': 96, 'GUO_attack': 96,
          'GUO_place': 200, 'Emperor_place': 200, 'GUO_attack2': 160, 'Emperor_attack2': 160,
-         'casino_closed': None, 'sleep': None}
+         'casino_closed': None, 'sleep': None, 'Emperor_attack1_2': 128, 'GUO_attack1_2': 128,
+         'Emperor_attack2_2': 200, 'GUO_attack2_2': 160}
 
 
 def trim_box(im):

@@ -103,6 +103,17 @@
   /* 大招：人物 2/3 大、飛 1.1 秒；大不淨者丟納垢靈走拋物線，帝皇的靈能閃電直線 */
   .wg-shot.ult { z-index: 5; transition: left 1.1s linear; }
   .wg-shot.arc { animation: wg-arc 1.1s ease-in-out; }
+  /* 大不淨者大招二：手搖鈴像擲斧一樣順時針翻轉飛過去，帶一點拋物線（約 2.5 圈） */
+  .wg-shot.bell { animation: wg-bell 1.1s linear; }
+  @keyframes wg-bell { 0% { translate: 0 0; rotate: 0deg; } 25% { translate: 0 -13px; } 50% { translate: 0 -18px; }
+    75% { translate: 0 -13px; } 100% { translate: 0 0; rotate: 900deg; } }
+  /* 帝皇大招二：帝皇之爪不飛行，直接在大不淨者軀幹上抓兩下（第二下水平反轉）。
+     每一下從右上角往左下斜著劃開（clip-path 展開）、亮一下再淡出；反轉的那張 clip 跟著鏡像，變成從左上劃下 */
+  .wg-claw { z-index: 5; translate: -50% -50%; animation: wg-claw .5s ease-out both; }
+  .wg-claw.flip { transform: scaleX(-1); }
+  @keyframes wg-claw { 0% { opacity: 0; clip-path: inset(0 0 100% 100%); scale: 1.15; }
+    25% { opacity: 1; clip-path: inset(0 0 0 0); scale: 1; filter: brightness(1.6); }
+    55% { opacity: 1; filter: brightness(1); } 100% { opacity: 0; clip-path: inset(0 0 0 0); scale: .97; } }
   @keyframes wg-arc { 0% { translate: 0 0; } 50% { translate: 0 -22px; } 100% { translate: 0 0; } }
   /* 大招命中：明顯的三下（每 0.25 秒一下，左右交替），跟三個骷髏同步 */
   .wg-hurt-big { animation: wg-hurtb .75s 1; }
@@ -375,22 +386,29 @@
   }
 
   // 一發攻擊：攻擊特效（人物 1/4 高）從攻擊方身前水平飛到被打方的人物中線，命中時被打方震動、頭上冒骷髏（人物 1/5 高）
+  // 招式（每次出手兩種隨機挑一種）：普通攻擊＝原本的口水／劍氣，或第二套（帝皇靈能骷髏、大不淨者瘟疫蒼蠅）；
+  // 大招＝靈能閃電／投擲納垢靈，或第二套（帝皇之爪、大不淨者擲手搖鈴）
   function shot(bull, onHit, ult = false) {
     const a = arena.getBoundingClientRect();
     const from = (bull ? emp : guo).getBoundingClientRect();
     const to = (bull ? guo : emp).getBoundingClientRect();
     if (!a.width || !from.width || !to.width) return;
     const h = from.height;
+    const alt = Math.random() < 0.5;
+    if (ult && bull && alt) return claw(a, to, h, onHit);
+    const bell = ult && !bull && alt;
     const img = document.createElement('img');
-    img.className = `wg-shot${ult ? ' ult' : ''}${ult && !bull ? ' arc' : ''}`;
-    img.src = `${A}${bull ? 'Emperor' : 'GUO'}_attack${ult ? '2' : ''}.webp`;
-    img.style.height = `${h * (ult ? 2 / 3 : 1 / 4)}px`;
-    img.style.top = `${from.top - a.top + h * (ult ? 0.18 : 0.38)}px`;
+    img.className = `wg-shot${ult ? ' ult' : ''}${bell ? ' bell' : ult && !bull ? ' arc' : ''}`;
+    img.src = `${A}${bull ? 'Emperor' : 'GUO'}_attack${ult ? '2' : alt ? '1' : ''}${alt ? '_2' : ''}.webp`;
+    // 高度：大招 2/3 人高（手搖鈴 1/2，轉起來夠大）；普通攻擊 1/4（第二套是方圖，1/3 才看得清楚）
+    const sz = ult ? (bell ? 1 / 2 : 2 / 3) : alt ? 1 / 3 : 1 / 4;
+    img.style.height = `${h * sz}px`;
+    img.style.top = `${from.top - a.top + h * (ult ? (bell ? 0.22 : 0.18) : alt ? 0.32 : 0.38)}px`;
     // 大招圖很寬（靈能閃電 300×160）：中心飛到目標中心的話前緣會穿過軀幹打到另一邊的手臂，
-    // 改成前緣剛好進到軀幹（人物重心再過去 10% 圖寬）就消失
+    // 改成前緣剛好進到軀幹（人物重心再過去 10% 圖寬）就消失；手搖鈴差不多是方的，同樣前緣進到軀幹
     const tm = meta[bull ? 'GUO' : 'Emperor'];
     const torso = to.left + to.width * (tm?.cx ?? 0.5) - a.left;
-    const iw = h * (2 / 3) * (bull ? 300 : 256) / 160;
+    const iw = bell ? h / 2 : h * (2 / 3) * (bull ? 300 : 256) / 160;
     const target = ult ? torso + (bull ? 1 : -1) * iw * 0.4 : (to.left + to.right) / 2 - a.left;
     img.style.left = `${(bull ? from.left : from.right) - a.left}px`;
     img.style.transform = 'translateX(-50%)';
@@ -399,33 +417,53 @@
     img.style.left = `${target}px`;
     setTimeout(() => {
       img.remove();
-      const god = bull ? guo : emp;
-      const hurt = ult ? 'wg-hurt-big' : 'wg-hurt';
-      god.classList.remove('wg-hurt', 'wg-hurt-big'); void god.offsetWidth; god.classList.add(hurt);
-      const sk = document.createElement('img');
-      sk.className = 'wg-skull';
-      sk.src = `${A}damage.webp`;
-      const sh = to.height / 5;
-      sk.style.height = `${sh}px`;
-      sk.style.left = `${to.left - a.left + Math.random() * Math.max(0, to.width - sh)}px`;
-      sk.style.top = `${to.top - a.top + to.height * 0.05}px`;
-      arena.appendChild(sk);
-      setTimeout(() => sk.remove(), 1100);
-      if (ult) {  // 大招：再兩個骷髏，跟神祇的三下震動同步（0.25、0.5 秒），卡片也震一下
-        for (const d of [0.25, 0.5]) {
-          const s2 = sk.cloneNode();
-          s2.style.left = `${to.left - a.left + Math.random() * Math.max(0, to.width - sh)}px`;
-          s2.style.top = `${to.top - a.top + to.height * (0.05 + Math.random() * 0.3)}px`;
-          s2.style.opacity = '0';  // 輪到它之前先不顯示（動畫延遲期間）
-          s2.style.animationDelay = `${d}s`;
-          s2.style.animationFillMode = 'both';
-          arena.appendChild(s2);
-          setTimeout(() => s2.remove(), 1000 + d * 1000 + 50);
-        }
-        el.classList.remove('wg-shake'); void el.offsetWidth; el.classList.add('wg-shake');
-      }
-      onHit?.();
+      impact(bull, ult, a, to, onHit);
     }, ult ? 1110 : 910);
+  }
+  // 帝皇之爪：在大不淨者軀幹（人物重心、上下一半）抓兩下，第二下水平反轉、晚 0.25 秒（對上三下震動的第二下）
+  function claw(a, to, h, onHit) {
+    const x = to.left + to.width * (meta.GUO?.cx ?? 0.5) - a.left;
+    const y = to.top - a.top + to.height * 0.5;
+    [0, 250].forEach((d, i) => setTimeout(() => {
+      const c = document.createElement('img');
+      c.className = `wg-claw${i ? ' flip' : ''}`;
+      c.src = `${A}Emperor_attack2_2.webp`;
+      c.style.height = `${h * 0.6}px`;
+      c.style.left = `${x}px`;
+      c.style.top = `${y}px`;
+      arena.appendChild(c);
+      setTimeout(() => c.remove(), 520);
+    }, d));
+    setTimeout(() => impact(true, true, a, to, onHit), 100);  // 第一爪劃開的那一刻算命中
+  }
+  // 命中：被打的神震動、頭上冒骷髏；大招震三下、三個骷髏、卡片也震
+  function impact(bull, ult, a, to, onHit) {
+    const god = bull ? guo : emp;
+    const hurt = ult ? 'wg-hurt-big' : 'wg-hurt';
+    god.classList.remove('wg-hurt', 'wg-hurt-big'); void god.offsetWidth; god.classList.add(hurt);
+    const sk = document.createElement('img');
+    sk.className = 'wg-skull';
+    sk.src = `${A}damage.webp`;
+    const sh = to.height / 5;
+    sk.style.height = `${sh}px`;
+    sk.style.left = `${to.left - a.left + Math.random() * Math.max(0, to.width - sh)}px`;
+    sk.style.top = `${to.top - a.top + to.height * 0.05}px`;
+    arena.appendChild(sk);
+    setTimeout(() => sk.remove(), 1100);
+    if (ult) {  // 大招：再兩個骷髏，跟神祇的三下震動同步（0.25、0.5 秒），卡片也震一下
+      for (const d of [0.25, 0.5]) {
+        const s2 = sk.cloneNode();
+        s2.style.left = `${to.left - a.left + Math.random() * Math.max(0, to.width - sh)}px`;
+        s2.style.top = `${to.top - a.top + to.height * (0.05 + Math.random() * 0.3)}px`;
+        s2.style.opacity = '0';  // 輪到它之前先不顯示（動畫延遲期間）
+        s2.style.animationDelay = `${d}s`;
+        s2.style.animationFillMode = 'both';
+        arena.appendChild(s2);
+        setTimeout(() => s2.remove(), 1000 + d * 1000 + 50);
+      }
+      el.classList.remove('wg-shake'); void el.offsetWidth; el.classList.add('wg-shake');
+    }
+    onHit?.();
   }
   function ultimate(bull, onHit) { shot(bull, onHit, true); }
   function attack(bull, crit, onHit) {
