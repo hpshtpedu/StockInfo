@@ -1,4 +1,4 @@
-// love 帳號的放置型小遊戲：男生在最左邊等，女生從最右邊出發，一路用愛心（親親）打破中間三面牆，最後兩人走到一起。
+// love 帳號的放置型小遊戲：男生在最左邊等，女生從最右邊出發，一路用愛心（親親）打破中間四面牆，最後兩人走到一起。
 // 只有 love 帳號登入才載入（素材在 docs/love/，跟戰鎚的 docs/game/ 分開）。每天一定破關。
 //
 // 進度不是「開著網頁才累積」：任何時間打開，都用今天的盤中 15 分 K（加權）＋日期當種子，從 09:00 一分鐘一分鐘
@@ -14,16 +14,17 @@
 // 牆的血量：總共 60,000（平盤日約 12:40 破關，漲 1.5% 的日子 11:40 左右，大跌日靠最後衝刺）
 //   × 每天隨機 0.85～1.15 × 連漲／連跌加減（前幾個交易日連漲 N 天 +5%·N、連跌 −5%·N，最多 ±20%：
 //   連漲的日子盤勢好打得快，牆就厚一點；連跌的日子讓她輕鬆一點）。
-//   分給三面牆：左 42%、中 33%、右 25%（各 ±3% 隨機），越左越厚。
+//   分給四面牆：由左到右 34%、27%、22%、17%（各 ±2% 隨機，順序不會亂），越左越厚。
 // 保證破關：13:00 起若照目前速度趕不上，傷害自動提高到剛好 13:27 前打完（最後衝刺），13:29 前兩人會合。
 // 靠自己（沒用到最後衝刺）破關才顯示「大成功！費時 X 時 Y 分」（從 09:00 算到最後一面牆倒下）。
 (() => {
   const A = 'love/';
   const OPEN = 540, CLOSE = 810, CATCH = 780, DEADLINE = 807;  // 台北時間的分鐘數
   const WALK = 1, FINAL = 2;            // 走到下一面牆 1 分鐘；最後兩人走到一起 2 分鐘
-  const WALLS = [30, 50, 70];           // 牆的中心（卡片寬度 %），0 是最左邊
+  const WALLS = [26, 42, 58, 74];       // 牆的中心（卡片寬度 %），0 是最左邊
   const BOY = 7, GIRL0 = 93;            // 男生位置、女生起點（女生停在牆右邊多遠見 stop()）
-  const BASE_HP = 60000, SHARE = [0.42, 0.33, 0.25];
+  const BASE_HP = 60000, SHARE = [0.34, 0.27, 0.22, 0.17];
+  const LAST = WALLS.length - 1;        // 最右邊那面（第一個打）
 
   const css = `
   .card.lv { padding: 0; overflow: hidden; gap: 0; max-height: none; }
@@ -36,7 +37,7 @@
   @keyframes lv-step { 0% { margin-bottom: 0; rotate: 0deg; } 50% { margin-bottom: 3px; rotate: -2deg; } }
   /* 男生親親中：女生加持，發帝皇那種金光（亞空間背景是粉紅的，粉紅光看不出來） */
   .lv-girl.buff { filter: drop-shadow(0 0 3px #ffd700) drop-shadow(0 0 6px #ffd700); }
-  .lv-wall { position: absolute; bottom: 2px; height: 84%; aspect-ratio: 97 / 96; transform: translateX(-50%); z-index: 2;
+  .lv-wall { position: absolute; bottom: 2px; height: 76%; aspect-ratio: 97 / 96; transform: translateX(-50%); z-index: 2;
     transition: opacity .7s, scale .7s; }
   .lv-wall img { position: static; width: 100%; height: 100%; }
   .lv-wall.hit { animation: lv-shake .3s 1; }
@@ -91,7 +92,7 @@
   let closes = [];  // taiex_history.json：算前幾天連漲／連跌
   fetch('taiex_history.json').then((r) => r.json()).then((j) => { closes = j.closes ?? []; draw(); }).catch(() => {});
 
-  // 今天的牆：總血量、三面牆各自的血量
+  // 今天的牆：總血量、每面牆各自的血量
   function setup(day) {
     const seed = Number(day.replace(/-/g, ''));
     const past = closes.filter((c) => c.date < day);
@@ -102,7 +103,7 @@
       streak += s;
     }
     const total = BASE_HP * (0.85 + 0.3 * rnd(seed, 1, 0)) * (1 + clamp(0.05 * streak, -0.2, 0.2));
-    const j = SHARE.map((x, i) => x + (rnd(seed, 2, i) - 0.5) * 0.06);
+    const j = SHARE.map((x, i) => x + (rnd(seed, 2, i) - 0.5) * 0.04);
     const sum = j.reduce((a, b) => a + b, 0);
     return { seed, max: j.map((x) => (total * x) / sum) };
   }
@@ -149,7 +150,7 @@
     const S = setup(day);
     const hp = [...S.max];
     const broken = [];
-    let k = 2, phase = 'walk', since = OPEN, caught = false, cur = null;
+    let k = LAST, phase = 'walk', since = OPEN, caught = false, cur = null;
     let x = OPEN;
     const end = Math.min(t, CLOSE);
     while (x < end - 1e-9 && phase !== 'end') {
@@ -215,9 +216,9 @@
   function stop() {
     const a = arena.getBoundingClientRect();
     if (!a.width) return 12;
-    return ((a.height * 0.84 * (97 / 96) / 2 + a.height * 0.88 * (69 / 128) / 2 + 14) / a.width) * 100;
+    return ((a.height * 0.76 * (97 / 96) / 2 + a.height * 0.88 * (69 / 128) / 2 + 14) / a.width) * 100;
   }
-  const stopX = (k) => (k >= 2 ? GIRL0 : WALLS[k + 1] + stop());  // 打第 k 面牆之前站的地方
+  const stopX = (k) => (k >= LAST ? GIRL0 : WALLS[k + 1] + stop());  // 打第 k 面牆之前站的地方
   const meetX = () => (WALLS[0] + stop() + BOY) / 2;
 
   // 女生朝牆射一顆愛心：飛 0.8 秒，打到牆震一下、閃白、跳傷害
@@ -296,7 +297,7 @@
     if (!trading) {  // 休市：兩人在一起休息
       st = { phase: 'rest' };
     } else if (mins < OPEN) {
-      st = { phase: 'pre', hp: setup(day).max, k: 2 };
+      st = { phase: 'pre', hp: setup(day).max, k: LAST };
     } else {
       st = simulate(day, mins);
       if (st.phase !== 'end' && mins >= CLOSE) st.phase = 'end';  // 保險：收盤一定是結局
