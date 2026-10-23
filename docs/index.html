@@ -190,7 +190,7 @@
   .card.roomy .price, .card.inst .price { font-size: clamp(20px, 6.6vw, 30px); }  /* 三大法人（全寬）的大數字跟其他盤後卡片一樣大 */
   .card.roomy .chg, .card.roomy .cmp:not(.long) { font-size: clamp(12.5px, 4vw, 15.5px); }
   /* 加權、台指期同一排：漲跌一起放大，兩張字級一致；時間貼底對齊 */
-  .card.txf .chg, .card.has-k .chg { font-size: clamp(14px, 4.6vw, 18px); }
+  .card.txf .chg, .card.has-k .chg, .card.intl .chg { font-size: clamp(14px, 4.6vw, 18px); }  /* 國際市場的漲跌跟加權一樣大 */
   .card.txf .meta { margin-top: auto; }
   /* 外資成本（估）：上一行小字標籤、下一行數字，半寬卡片才放得下 */
   .card.txf .txcost { margin-top: 4px; color: var(--muted); font-size: clamp(11.5px, 3.3vw, 13px); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1542,7 +1542,7 @@
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
            ${txLower}`;
       return `
-        <div class="card${chart ? ' has-k' : ''}${q.id === 'txf' ? ' txf' : q.id === 'twii' ? ' twii' : ''}">
+        <div class="card${chart ? ' has-k' : ''}${q.id === 'txf' ? ' txf' : q.id === 'twii' ? ' twii' : MARKET_OF[q.id] !== 'tw' ? ' intl' : ''}">
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
           <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}</div>
           ${body}
