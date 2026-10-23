@@ -19,7 +19,7 @@
 // 靠自己（沒用到最後衝刺）破關才顯示「大成功！費時 X 時 Y 分」（從 09:00 算到最後一面牆倒下）。
 (() => {
   const A = 'love/';
-  const OPEN = 540, CLOSE = 810, CATCH = 780, DEADLINE = 807;  // 台北時間的分鐘數
+  const STANDBY = 535, OPEN = 540, CLOSE = 810, CATCH = 780, DEADLINE = 807;  // 台北時間的分鐘數（08:55 待命）
   const WALK = 1, FINAL = 2;            // 走到下一面牆 1 分鐘；最後兩人走到一起 2 分鐘
   const WALLS = [26, 42, 58, 74];       // 牆的中心（卡片寬度 %），0 是最左邊
   const BOY = 7, GIRL0 = 93;            // 男生位置、女生起點（女生停在牆右邊多遠見 stop()）
@@ -297,8 +297,15 @@
     const still = paused ? '_still' : '';
     const trading = debug || debugT || data.tradingDay;
     let st;
-    if (!trading) {  // 休市：兩人在一起休息
+    // 開市日 08:55 前還是前一天的畫面：前一天開市＝停在那天的結局（盤前的加權報價還是前一個交易日的 15 分 K，
+    // 用那天的日期重算一次），前一天休市＝繼續休息；08:55 起才進待命（兩人站兩端、牆完整）
+    const yday = new Date(Date.parse(`${day}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
+    const ydayTrading = debug || debugT || (data.isTradingDay ? data.isTradingDay(yday) : true);
+    if (!trading || (mins < STANDBY && !ydayTrading)) {  // 休市：兩人在一起休息
       st = { phase: 'rest' };
+    } else if (mins < STANDBY) {
+      st = simulate(yday, CLOSE);
+      st.phase = 'end';
     } else if (mins < OPEN) {
       st = { phase: 'pre', hp: setup(day).max, k: LAST };
     } else {
