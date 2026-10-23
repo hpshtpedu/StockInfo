@@ -288,7 +288,7 @@
   let meta = { Emperor: { w: 287, h: 240, cx: 0.54 }, GUO: { w: 371, h: 240, cx: 0.53 }, Emperor_win: { w: 343, h: 240 }, GUO_loss: { w: 251, h: 240 }, win: { w: 336, h: 120 } };
   // 招式圖先預載：第一次出招不會等下載
   for (const n of ['Emperor_attack', 'GUO_attack', 'Emperor_attack2', 'GUO_attack2', 'Emperor_attack1_2', 'GUO_attack1_2',
-    'Emperor_attack2_2', 'GUO_attack2_2', 'damage']) new Image().src = `${A}${n}.webp`;
+    'Emperor_attack2_2', 'GUO_attack2_2', 'damage', 'heart']) new Image().src = `${A}${n}.webp`;
   fetch(`${A}meta.json`).then((r) => r.json()).then((m) => { meta = m; draw(false); }).catch(() => {});
   // 中性新聞故事線（game/story.json，由 mini_game/storyline.txt 產生）：併進銀河快訊的抽選池
   fetch(`${A}story.json`).then((r) => r.json()).then((s) => { if (Array.isArray(s)) D.galaxy = D.galaxy.concat(s); }).catch(() => {});
@@ -372,8 +372,25 @@
     return null;
   }
 
+  // 補血：逆勢上漲（收跌但從低點反彈 ≥0.4%、短線在漲，跟「多軍反攻」同一個條件）時，帝皇身上冒愛心往上飄，
+  // 走法跟骷髏一樣；交火期間每次出手（約 3 秒）冒一顆
+  function heal() {
+    const a = arena.getBoundingClientRect(), to = emp.getBoundingClientRect();
+    if (!a.width || !to.width) return;
+    const hv = document.createElement('img');
+    hv.className = 'wg-skull';
+    hv.src = `${A}heart.webp`;
+    const sh = to.height / 5;
+    hv.style.height = `${sh}px`;
+    hv.style.left = `${to.left - a.left + Math.random() * Math.max(0, to.width - sh)}px`;
+    hv.style.top = `${to.top - a.top + to.height * (0.1 + Math.random() * 0.3)}px`;
+    arena.appendChild(hv);
+    setTimeout(() => hv.remove(), 1100);
+  }
+
   function hit() {
     const pct = pctNow();
+    if (counterattack(pct) === 'bull') heal();
     const sc = score(pct);
     const bull = Math.random() < 0.5 + 0.42 * sc;
     const edge = Math.min(1, Math.abs(sc) * 1.4);                       // 情勢一面倒的程度
