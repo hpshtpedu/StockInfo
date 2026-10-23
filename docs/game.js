@@ -149,6 +149,7 @@
   @keyframes wg-skull { 0% { opacity: 0; transform: translateY(4px) scale(.7); } 15% { opacity: 1; transform: translateY(0) scale(1.05); } 100% { opacity: 0; transform: translateY(-22px) scale(1); } }
   .wg-dbg { display: flex; gap: 6px; align-items: center; padding: 4px 8px; font-size: 12px; color: var(--muted); }
   .wg-dbg input[type=range] { flex: 1; }
+  .wg-dbg button { background: #20242c; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; font-size: 12px; }
   .wg-dbg input[type=number] { width: 4.5em; background: #20242c; color: var(--text); border: 1px solid var(--line); border-radius: 4px; }`;
   document.head.insertAdjacentHTML('beforeend', `<style>${css}</style>`);
 
@@ -287,7 +288,8 @@
       <div class="wg-flash"></div>
     </div>
     <div class="wg-ticker"><span></span></div>
-    ${debug ? '<div class="wg-dbg">時間<input type="range" min="470" max="815" step="1" value="600"><span class="t">10:00</span>漲跌%<input type="number" step="0.1" value="0"></div>' : ''}`;
+    ${debug ? '<div class="wg-dbg">時間<input type="range" min="470" max="815" step="1" value="600"><span class="t">10:00</span>漲跌%<input type="number" step="0.1" value="0"></div>'
+      + '<div class="wg-dbg">必殺技<button type="button" data-sp="1">滅絕令</button><button type="button" data-sp="0">憎惡鏈枷</button></div>' : ''}`;
   const $ = (s) => el.querySelector(s);
   const arena = $('.wg-arena');
   const guo = $('.wg-guo'), emp = $('.wg-emp'), tg = $('.wg-tguo'), te = $('.wg-temp'), cloud = $('.wg-cloud');
@@ -417,9 +419,9 @@
     const x = bull ? gR + 2 + Math.random() * 8 : eL - 2 - Math.random() * 8;
     // 神祇出手：多方＝帝皇揮劍氣打大不淨者，空方＝大不淨者吐口水打帝皇；爆擊連打兩發
     const side = bull ? 'up' : 'down';
-    // 必殺技（5%，大約一分鐘一次）：喊招式名、播動圖，被打方白閃三次、跳三個大傷害（各約 ×2）
-    if (Math.random() < 0.05) {
-      special(bull, (i) => float(`${Math.round(dmg * 2 * (0.85 + Math.random() * 0.3))}!`, side, true, x + (i - 1) * 3, ` ult n${i}`));
+    // 必殺技（5%，大約一分鐘一次；除錯模式 25%）：喊招式名、播動圖，被打方白閃三次、跳三個大傷害（各約 ×2）
+    if (Math.random() < (debug ? 0.25 : 0.05)) {
+      fireSpecial(bull, dmg, x);
       return;
     }
     // 大招（三成）：喊中文台詞＋放大招打一發，傷害 ×2（跟爆擊同時發生就用爆擊台詞）
@@ -522,6 +524,10 @@
     onHit?.();
   }
   function ultimate(bull, onHit) { shot(bull, onHit, true); }
+  function fireSpecial(bull, dmg, x) {
+    const side = bull ? 'up' : 'down';
+    special(bull, (i) => float(`${Math.round(dmg * 2 * (0.85 + Math.random() * 0.3))}!`, side, true, x + (i - 1) * 3, ` ult n${i}`));
+  }
 
   // 必殺技動圖每次都要從第一格播：先把檔案抓成 blob，每次放用新的 object URL（同一個網址的動圖會共用播放進度）
   const spBlob = {};
@@ -781,6 +787,14 @@
   const io = new IntersectionObserver((es) => { visible = es[0].isIntersecting; draw(false); });
   io.observe(el);
   document.addEventListener('visibilitychange', () => draw(false));
+  // 除錯：按鈕直接放必殺技（傷害 150～300，數字在被打的神旁邊）
+  if (debug) el.querySelectorAll('.wg-dbg button[data-sp]').forEach((b) => b.addEventListener('click', () => {
+    const bull = b.dataset.sp === '1';
+    const ar = arena.getBoundingClientRect();
+    const gR = ((guo.getBoundingClientRect().right - ar.left) / ar.width) * 100;
+    const eL = ((emp.getBoundingClientRect().left - ar.left) / ar.width) * 100;
+    fireSpecial(bull, 150 + Math.round(Math.random() * 150), bull ? gR + 5 : eL - 5);
+  }));
   if (debug) el.querySelectorAll('.wg-dbg input').forEach((i) => i.addEventListener('input', () => {
     $('.wg-dbg .t').textContent = now().hhmm; draw(true);
   }));
