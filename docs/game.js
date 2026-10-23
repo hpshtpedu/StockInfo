@@ -88,15 +88,16 @@
     text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 10px currentColor; }
   .wg-float.say.hi { top: 3% !important; }  /* 大招台詞固定在最上面，不疊到大數字 */
   /* 必殺技的三個大傷害：上中下錯開，不疊在一起 */
-  .wg-float.ult.n0 { top: 12% !important; } .wg-float.ult.n2 { top: 40% !important; }
+  .wg-float.ult.n0 { top: 30% !important; } .wg-float.ult.n1 { top: 44% !important; } .wg-float.ult.n2 { top: 58% !important; }  /* 口號在最上面，數字往下排 */
   /* 必殺技：滅絕令（從天而降的能量炮，直接打在大不淨者身上）、憎惡鏈枷（鏈枷第一格先淡入，再播動畫往右撞帝皇） */
   .wg-sp { z-index: 5; pointer-events: none; }
   .wg-sp.fadein { opacity: 0; transition: opacity .35s ease-out; }
   .wg-sp.fadein.on { opacity: 1; }
   .wg-sp.slide { transition: left .45s ease-in; }
-  /* 被必殺技打到：白色一閃（三次，對上三個傷害） */
-  .wg-flashw { animation: wg-flashw .2s 1; }
-  @keyframes wg-flashw { 0%, 100% { filter: none; } 40% { filter: brightness(3.2) saturate(0); } }
+  /* 被必殺技打到：整個人變成白色剪影一閃（三次，對上三個傷害）；前後不寫 filter，保留原本的光暈 */
+  .wg-flashw { animation: wg-flashw .2s linear 1; }
+  @keyframes wg-flashw { 8%, 65% { filter: brightness(0) invert(1) drop-shadow(0 0 4px #fff); } }
+  .wg-float.say.big { font-size: 38px; }  /* 必殺技口號：一般台詞的 2 倍 */
   .wg-float.ult.up { color: #ffd100; } .wg-float.ult.down { color: #8dff3a; }
   @keyframes wg-ult { 0% { opacity: 0; transform: translate(-50%, 0) scale(3); } 8% { opacity: 1; transform: translate(-50%, -2px) scale(1.6); }
     20% { transform: translate(-50%, -4px) scale(1.25); } 65% { opacity: 1; transform: translate(-50%, -10px) scale(1.2); }
@@ -339,9 +340,11 @@
     f.style.top = `${x == null ? 12 + Math.random() * 30 : 34 + Math.random() * 14}%`;
     f.style.setProperty('--dx', `${Math.round((Math.random() - 0.5) * 16)}px`);
     arena.appendChild(f);
-    // 不蓋到兩尊神：量出大不淨者的右緣、帝皇的左緣，字（含爆擊放大、左右飄移）限制在中間
+    // 不蓋到兩尊神：量出大不淨者的右緣、帝皇的左緣，字（含爆擊放大、左右飄移）限制在中間。
+    // 必殺技口號（big）例外：整張卡片正中間最上面，字太大夾不進兩尊神中間
     const a = arena.getBoundingClientRect();
-    if (a.width) {
+    if (extra.includes('big')) f.style.left = '50%';
+    else if (a.width) {
       const lo = guo.getBoundingClientRect().right - a.left + 4;
       const hi = emp.getBoundingClientRect().left - a.left - 4;
       const k = extra.includes('ult') ? 1.65 : crit ? 1.5 : 1.1;
@@ -544,7 +547,7 @@
     const from = (bull ? emp : guo).getBoundingClientRect();
     const to = (bull ? guo : emp).getBoundingClientRect();
     if (!a.width || !from.width || !to.width) return;
-    float(bull ? '滅絕令！' : '憎惡鏈枷！', bull ? 'up' : 'down', false, null, ' say hi');
+    float(bull ? '滅絕令！' : '憎惡鏈枷！', bull ? 'up' : 'down', false, null, ' say hi big');
     const target = bull ? guo : emp;
     const tm = meta[bull ? 'GUO' : 'Emperor'];
     const torso = to.left + to.width * (tm?.cx ?? 0.5) - a.left;
