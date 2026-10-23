@@ -19,9 +19,9 @@ KEEP = 30
 SYMBOLS = {'sox': '^SOX', 'kospi': '^KS11', 'nikkei': '^N225', 'usdtwd': 'TWD=X', 'us10y': '^TNX',
            'tw2330': '2330.TW'}
 # 台積電和國際指數要算季線（60 日），多抓一點
-LONG = {'tw2330': ('6mo', 70), 'sox': ('1y', 160), 'kospi': ('6mo', 70), 'nikkei': ('6mo', 70)}  # 國際指數的季線 badge
+LONG = {'tw2330': ('6mo', 70), 'sox': ('6mo', 70), 'kospi': ('6mo', 70), 'nikkei': ('6mo', 70)}  # 國際指數的季線 badge
 # 週K 要開高低（18 週＋往前 60 天算季線）
-OHLC = {'sox'}
+OHLC = set()  # 費半的週 K 拿掉了，只要收盤（月／季線 badge）
 
 
 def get_json(url):

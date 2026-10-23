@@ -85,6 +85,12 @@
   /* 加權卡片（有 K 線）：漲跌幅要緊接在漲跌下面，不把最後一列推到底 */
   .kw, .kw-foot { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   .kw[data-p="0"] .k1, .kw[data-p="1"] .k0, .kw-foot[data-p="0"] .k1, .kw-foot[data-p="1"] .k0 { display: none; }
+  /* 費半：價格＋漲跌 ↔ 30 分 K 疊在同一格，只切換看不看得到，卡片高度不變（跟 USD/TWD 一樣大） */
+  .kw.psw { display: grid; }
+  .kw.psw > * { grid-area: 1 / 1; }
+  .kw.psw[data-p="0"] .k1, .kw.psw[data-p="1"] .k0 { display: block; visibility: hidden; }
+  .kw.psw .krow { margin: 0; align-self: center; }
+  .kw.psw .kchart { height: 44px; }
   /* 加權的 15 分 K：整行寬，上下跟文字隔開；「15分K」放在時間那一行的最右邊 */
   .krow { margin: 8px 0 4px; }
   /* 加權、費半：漲跌和 K 線之間一條淡分隔線 */
@@ -1456,7 +1462,7 @@
       retailRatio: section('台股盤後'),
     };
     // 登入的帳號：主帳號（owner）玩戰鎚小遊戲；love 帳號玩自己的小遊戲。
-    // 我的自選股、費半只有主帳號看得到（沒登入、love 帳號都隱藏）
+    // 我的自選股只有主帳號看得到（沒登入、love 帳號都隱藏）
     const account = window.PrivateVault?.profile?.() ?? null;
     // 插在某張卡片後面的卡片：台指期後接我的持股（全寬，排在加權、台指期那一排下面）；
     // 外資淨OI 後接台指VIX、八大行庫
@@ -1468,10 +1474,7 @@
       foreignOi: institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii) + govBanksHtml(data.govBanks, byId.twii),
     };
     // USD/TWD 是國際外匯報價，排到國際市場最後（美債後面）
-    // 不是主帳號：國際市場不顯示費半，「國際市場」標題改插在 USD/TWD 前面
-    const hideIntl = account === 'owner' ? [] : ['sox'];
-    if (hideIntl.length) { before.usdtwd = before.sox; delete before.sox; }
-    const quotes = data.quotes.filter((q) => q.id !== 'usdtwd' && !hideIntl.includes(q.id));
+    const quotes = data.quotes.filter((q) => q.id !== 'usdtwd');
     const fx = data.quotes.find((q) => q.id === 'usdtwd');
     // USD/TWD 排在韓股前面（國際市場：費半、USD/TWD、韓股、日經、布蘭特、美債；兩兩一排剛好三排）
     if (fx) quotes.splice(Math.max(0, quotes.findIndex((q) => q.id === 'kospi')), 0, fx);
@@ -1530,25 +1533,26 @@
         : txLine ? `<div class="tw2">${txLine}</div>${meta}`
         : k60 ? `<div class="tw2"><div class="krow">${k60}</div></div><div class="foot">${meta}<span class="klabel">60分K</span></div>`
         : meta;
-      // 有 K 線的卡片（加權 15 分 K；費半 30 分 K）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K／30分K」
+      // 費半：跟 USD/TWD 一樣大的卡片，價格＋漲跌那塊點一下換成 30 分 K（同一格、高度不變），右下標示「30分K」
+      if (q.id === 'sox') {
+        const p = usKPage.sox ?? 0;
+        const top = `<div class="price">${fmt(q.price, q.digits)}</div><div class="chg ${dir}">${sign}${fmt(q.change, q.digits)} ${pct}</div>`;
+        return `
+        <div class="card" data-us="${q.time || 0}">
+          <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
+          ${chart ? `<div class="kw psw" data-id="sox" data-p="${p}"><div class="k0">${top}</div><div class="krow k1">${chart}</div></div>
+          <div class="foot kw-foot" data-p="${p}">${meta}<span class="klabel k1">30分K</span></div>` : `${top}${meta}`}
+        </div>`;
+      }
+      // 有 K 線的卡片（加權 15 分 K）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K」
       const body = chart
         ? `<div class="chg ${dir}">${sign}${fmt(q.change, q.digits)} ${pct}</div>
            ${q.id === 'twii'
              // 加權：點 K 線在 15 分 K ↔ 週 K 之間切換，右下標示跟著換
              ? `<div class="kw" data-p="${taiexKPage}"><div class="krow k0">${chart}</div><div class="krow k1">${weeklyCandles(q, undefined, undefined, twiiNearerMa(q))}</div></div>
            <div class="foot kw-foot" data-p="${taiexKPage}">${meta}<span class="klabel k0">15分K</span><span class="klabel k1">週K · ${twiiNearerMa(q) === 60 ? '季線' : '月線'}</span></div>`
-             // 費半：點 K 線在 30 分 K ↔ 週 K · 月線之間切換（週K 用每晚存的日開高低＋即時報價）
-             : (() => {
-               // 虛線跟右上 badge 同一條（沒有均線 badge 時也用離現價較近的那條）
-               const n = nearerMa(q);
-               const wk = weeklyCandles(q, globalHistory?.[q.id], new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(q.time)), n);
-               const p = usKPage[q.id] ?? 0;
-               return wk
-                 ? `<div class="kw" data-id="${q.id}" data-p="${p}"><div class="krow k0">${chart}</div><div class="krow k1">${wk}</div></div>
-           <div class="foot kw-foot" data-p="${p}">${meta}<span class="klabel k0">30分K</span><span class="klabel k1">週K · ${n === 60 ? '季線' : '月線'}</span></div>`
-                 : `<div class="krow">${chart}</div>
-           <div class="foot">${meta}<span class="klabel">30分K</span></div>`;
-             })()}`
+             : `<div class="krow">${chart}</div>
+           <div class="foot">${meta}</div>`}`
         : `<div class="chg ${dir}">${q.unit === 'yield'
             ? `${sign}${fmt(q.change * 100, 1)}bp`
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
