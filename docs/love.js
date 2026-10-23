@@ -57,7 +57,7 @@
   .lv-msg { position: absolute; left: 66%; top: 50%; transform: translate(-50%, -50%); z-index: 5; white-space: nowrap;
     font: 800 clamp(13px, 4vw, 16px)/1.2 "Microsoft JhengHei", sans-serif; color: #fff;
     text-shadow: 0 0 4px #ff4f9a, 0 0 8px #ff4f9a, 0 1px 2px #000; }
-  .lv-msg.big { font-size: clamp(18px, 5.6vw, 24px); letter-spacing: 2px; }  /* 「今天休息」字少，放大 */
+  .lv-msg.big { font-size: clamp(24px, 7.5vw, 34px); letter-spacing: 3px; }  /* 「今天休息」字少，放大 */
   .lv-paused * { animation-play-state: paused !important; }
   .lv-dbg { display: flex; gap: 6px; align-items: center; padding: 4px 8px; font-size: 12px; color: var(--muted); }
   .lv-dbg input[type=range] { flex: 1; }
