@@ -54,7 +54,6 @@
   .lv-rise { z-index: 4; animation: lv-rise 1.6s ease-out forwards; }
   .lv-rise.boy { animation-duration: 2.8s; filter: drop-shadow(0 0 2px #ffd700) drop-shadow(0 0 5px #ffd700); }  /* 男生親親冒的愛心：飄慢一點、包金光 */
   @keyframes lv-rise { 0% { opacity: 0; translate: -50% 0; scale: .6; } 20% { opacity: 1; } 100% { opacity: 0; translate: -50% -34px; scale: 1; } }
-  .lv-heart { z-index: 4; transform: translate(-50%, 0); }
   .lv-msg { position: absolute; left: 66%; top: 50%; transform: translate(-50%, -50%); z-index: 5; white-space: nowrap;
     font: 800 clamp(13px, 4vw, 16px)/1.2 "Microsoft JhengHei", sans-serif; color: #fff;
     text-shadow: 0 0 4px #ff4f9a, 0 0 8px #ff4f9a, 0 1px 2px #000; }
@@ -352,18 +351,6 @@
     else { clearTimeout(fireTimer); fireTimer = null; }
     if (st.phase === 'end' && !paused) { if (!endTimer || prevPhase !== 'end') endHearts(); }
     else { clearTimeout(endTimer); endTimer = null; }
-    // 結局但已經暫停（收盤後、休市）：中間放一顆不動的愛心
-    let still1 = arena.querySelector('.lv-heart');
-    if ((st.phase === 'end' || st.phase === 'rest') && paused) {
-      if (!still1) {
-        still1 = Object.assign(document.createElement('img'), { className: 'lv-heart', src: `${A}heart.webp`, alt: '' });
-        arena.appendChild(still1);
-      }
-      const h = arena.getBoundingClientRect().height || 61;
-      still1.style.height = `${h * 0.24}px`;
-      still1.style.left = `${meet}%`;
-      still1.style.top = `${h * 0.02}px`;
-    } else still1?.remove();
 
     clearInterval(timer);
     timer = !paused ? setInterval(draw, 1000) : null;
