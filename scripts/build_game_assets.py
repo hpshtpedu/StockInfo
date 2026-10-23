@@ -2,6 +2,8 @@
 
 Animated gods: 240 px tall, 10 fps (every other frame, each shown twice as long). Fight cloud: 200 px.
 Static art: 240 px tall. Background: as is. Transparent margins are trimmed (all frames). Also writes *_still.webp (first frame) for paused state.
+Also the love account's game art (docs/love/: walking/kissing couple, wall, heart, Immaterium background), kept
+in its own folder so that account never loads the Warhammer files and vice versa.
 Run: python scripts/build_game_assets.py
 """
 import json
@@ -35,7 +37,12 @@ def fit(im, h):
     return im if not h or im.height <= h else im.resize((round(im.width * h / im.height), h), Image.LANCZOS)
 
 
-for name, h in SIZES.items():
+LOVE = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'love'
+LOVE.mkdir(parents=True, exist_ok=True)
+LOVE_SIZES = {'m_walk': 128, 'm_kiss': 128, 'f_walk': 128, 'f_kiss': 128, 'wall': 96, 'heart': None, 'Immaterium': None}
+
+
+def build(name, h, OUT):
     im = Image.open(SRC / f'{name}.webp')
     n = getattr(im, 'n_frames', 1)
     box = trim_box(im) if im.mode in ('RGBA', 'P', 'LA') or 'transparency' in im.info else None
@@ -52,6 +59,16 @@ for name, h in SIZES.items():
     else:
         fit(crop(im.convert('RGBA' if im.mode in ('RGBA', 'P') else 'RGB')), h).save(OUT / f'{name}.webp', quality=78, method=6)
     print(name, (OUT / f'{name}.webp').stat().st_size // 1024, 'KB')
+
+
+for name, h in SIZES.items():
+    build(name, h, OUT)
+for name, h in LOVE_SIZES.items():
+    build(name, h, LOVE)
+# love 的人物寬高比（網頁用來把兩人面對面靠在一起）
+(LOVE / 'meta.json').write_text(json.dumps({n: dict(zip(('w', 'h'), Image.open(LOVE / f'{n}.webp').size))
+                                            for n in ('m_walk', 'm_kiss', 'f_walk', 'f_kiss', 'wall')}), encoding='utf-8')
+print('love total', sum(p.stat().st_size for p in LOVE.glob('*.webp')) // 1024, 'KB')
 # 人物中線：第一格不透明像素的水平重心（武器讓圖片偏一邊，不能用圖片中心），網頁用來左右對稱擺放
 meta = {}
 for name in ('Emperor', 'GUO'):

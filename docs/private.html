@@ -66,11 +66,16 @@
     <div class="note">單位是「張」，0 代表沒有；零股可填到小數 3 位（0.001 張＝1 股）。投入成本選填，填券商庫存頁的「投入成本」（整數金額），首頁就會多一個總損益，算法跟券商一樣。張數和投入成本只加密存在這個瀏覽器，換手機或電腦要重新設定。</div>
   </form>
 
+  <div id="other" class="card" hidden>
+    已登入
+    <div class="btns"><button type="button" class="plain" id="lock2">登出</button><button type="button" id="back2">返回</button></div>
+  </div>
+
   <div id="noSetup" class="card" hidden>
     尚未設定密碼：請在電腦上執行 <code>python scripts/make_private_verifier.py</code>，把產生的 docs/private-verifier.json 推上去。
   </div>
 </main>
-<script src="private-vault.js?v=3"></script>
+<script src="private-vault.js?v=4"></script>
 <script>
   const PV = window.PrivateVault;
   const $ = (id) => document.getElementById(id);
@@ -95,6 +100,7 @@
       $('pw').value = '';
       if (!ok) { $('loginMsg').textContent = '密碼不正確'; return; }
       $('loginMsg').textContent = '';
+      if (PV.profile() !== 'owner') { home(); return; }  // 其他帳號沒有張數要填，直接回首頁
       await showLots();
     } catch (err) {
       $('login').hidden = true;
@@ -115,9 +121,12 @@
   });
 
   $('lockBtn').addEventListener('click', () => { PV.lock(); home(); });
+  $('lock2').addEventListener('click', () => { PV.lock(); home(); });
   $('back1').addEventListener('click', home);
+  $('back2').addEventListener('click', home);
 
   (async () => {
+    if (PV.unlocked() && PV.profile() !== 'owner') { $('other').hidden = false; return; }
     if (PV.unlocked() && (await PV.readLots()) !== null) await showLots();
     else { PV.lock(); $('login').hidden = false; $('pw').focus(); }
   })();

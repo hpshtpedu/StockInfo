@@ -269,7 +269,7 @@
 </header>
 <main id="list"></main>
 <footer id="source">資料來源：Yahoo、證交所、期交所、HiStock、金十數據</footer>
-<script src="private-vault.js?v=3"></script>
+<script src="private-vault.js?v=4"></script>
 <script>
   const API = 'https://stockinfo-quotes.hpshtpedu.workers.dev/quotes';
   const POLL_MS = 120 * 1000;
@@ -949,18 +949,21 @@
       </div>`;
   }
 
-  // 戰鎚小遊戲（docs/game.js）：第一次要用時才載入，之後每次重畫把同一個遊戲元素搬回原位
-  let gameLoading = null;
+  // 小遊戲：第一次要用時才載入，之後每次重畫把同一個遊戲元素搬回原位。主帳號是戰鎚（docs/game.js），
+  // love 帳號是自己的遊戲（docs/love.js、素材在 docs/love/）：只載入登入帳號的那一套，另一套的檔案完全不抓
+  const GAMES = { owner: ['game.js?v=60', 'WarGame'], love: ['love.js?v=1', 'LoveGame'] };
+  const gameLoading = {};
   function attachGame(d) {
-    gameLoading ??= new Promise((ok) => {
+    const [src, name] = GAMES[window.PrivateVault?.profile?.()] ?? GAMES.owner;
+    gameLoading[src] ??= new Promise((ok) => {
       const s = document.createElement('script');
-      s.src = 'game.js?v=60';
+      s.src = src;
       s.onload = ok;
       document.head.appendChild(s);
     });
-    gameLoading.then(() => {
+    gameLoading[src].then(() => {
       const slot = document.getElementById('game-slot');
-      if (slot && window.WarGame) window.WarGame.attach(slot, d);
+      if (slot && window[name]) window[name].attach(slot, d);
     });
   }
 
@@ -1448,12 +1451,14 @@
       sox: section('國際市場'),
       retailRatio: section('台股盤後'),
     };
+    // 登入的帳號：主帳號（owner）玩戰鎚小遊戲；love 帳號玩自己的小遊戲、不顯示我的自選股
+    const account = window.PrivateVault?.profile?.() ?? null;
     // 插在某張卡片後面的卡片：台指期後接我的持股（全寬，排在加權、台指期那一排下面）；
     // 外資淨OI 後接台指VIX、八大行庫
     const after = {
       // 漲跌家數（一行的扁卡片）放在我的自選股上面
       txf: (byId.breadth && !byId.breadth.error ? breadthHtml(byId.breadth, byId.twii, data.holdings?.find((h) => h.code === '2330'), data.holdings?.find((h) => h.code === '00685L')) : '')
-        + holdingsHtml(data.holdings, byId.twii, data.flows),
+        + (account === 'love' ? '' : holdingsHtml(data.holdings, byId.twii, data.flows)),
       // 散戶多空比、外資淨OI 一排在最上面，接著三大法人（全寬），再來台指VIX、八大行庫
       foreignOi: institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii) + govBanksHtml(data.govBanks, byId.twii),
     };
@@ -1547,7 +1552,7 @@
           ${body}
         </div>`;
     };
-    const gameOn = !!window.PrivateVault?.unlocked();  // 小遊戲：登入（私人頁解鎖）才有
+    const gameOn = !!account;  // 小遊戲：登入（私人頁解鎖）才有
     $list.innerHTML = calendarHtml() + jin10Html(data.jin10) + (gameOn ? '<div id="game-slot"></div>' : '')
       + quotes.map((q) => (before[q.id] ?? '') + cardFor(q) + (after[q.id] ?? '')).join('')
       + (margin ? marginHtml(margin) + marginBalanceHtml(margin) : '');
