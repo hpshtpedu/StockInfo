@@ -16,7 +16,7 @@
 //   連漲的日子盤勢好打得快，牆就厚一點；連跌的日子讓她輕鬆一點）。
 //   分給三面牆：左 42%、中 33%、右 25%（各 ±3% 隨機），越左越厚。
 // 保證破關：13:00 起若照目前速度趕不上，傷害自動提高到剛好 13:27 前打完（最後衝刺），13:29 前兩人會合。
-// 靠自己（沒用到最後衝刺）破關才顯示「大成功！費時 X 時 Y 分 Z 秒」（從 09:00 算到最後一面牆倒下）。
+// 靠自己（沒用到最後衝刺）破關才顯示「大成功！費時 X 時 Y 分」（從 09:00 算到最後一面牆倒下）。
 (() => {
   const A = 'love/';
   const OPEN = 540, CLOSE = 810, CATCH = 780, DEADLINE = 807;  // 台北時間的分鐘數
@@ -57,6 +57,7 @@
   .lv-msg { position: absolute; left: 66%; top: 50%; transform: translate(-50%, -50%); z-index: 5; white-space: nowrap;
     font: 800 clamp(13px, 4vw, 16px)/1.2 "Microsoft JhengHei", sans-serif; color: #fff;
     text-shadow: 0 0 4px #ff4f9a, 0 0 8px #ff4f9a, 0 1px 2px #000; }
+  .lv-msg.big { font-size: clamp(18px, 5.6vw, 24px); letter-spacing: 2px; }  /* 「今天休息」字少，放大 */
   .lv-paused * { animation-play-state: paused !important; }
   .lv-dbg { display: flex; gap: 6px; align-items: center; padding: 4px 8px; font-size: 12px; color: var(--muted); }
   .lv-dbg input[type=range] { flex: 1; }
@@ -338,12 +339,13 @@
     girl.classList.toggle('walking', !paused && (st.phase === 'walk' || st.phase === 'final'));
     boy.classList.toggle('walking', !paused && st.phase === 'final');
     // 結局文字：靠自己破關寫「大成功！費時…」，最後衝刺才破的寫「成功！」；休市寫「今天休息」
+    msg.classList.toggle('big', st.phase === 'rest');
     if (st.phase === 'rest') msg.textContent = '今天休息';
     else if (st.phase === 'end') {
       const used = (st.broken?.[0] ?? CLOSE) - OPEN;
-      const hh = Math.floor(used / 60), mm = Math.floor(used % 60), ss = Math.floor((used % 1) * 60);
+      const hh = Math.floor(used / 60), mm = Math.floor(used % 60);
       msg.textContent = st.caught || st.broken?.[0] == null ? '成功！'
-        : `大成功！費時 ${hh ? `${hh} 時 ` : ''}${mm} 分 ${ss} 秒`;
+        : `大成功！費時 ${hh ? `${hh} 時 ` : ''}${mm} 分`;
     } else msg.textContent = '';
 
     // 動作：射愛心、結局冒愛心（只在盤中、畫面上才跑）
