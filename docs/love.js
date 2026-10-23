@@ -301,8 +301,8 @@
     // 用那天的日期重算一次），前一天休市＝繼續休息；08:55 起才進待命（兩人站兩端、牆完整）
     const yday = new Date(Date.parse(`${day}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
     const ydayTrading = debug || debugT || (data.isTradingDay ? data.isTradingDay(yday) : true);
-    if (!trading || (mins < STANDBY && !ydayTrading)) {  // 休市：兩人在一起休息
-      st = { phase: 'rest' };
+    if (!trading || (mins < STANDBY && !ydayTrading)) {  // 休市：兩人在一起休息（今天開市、只是前一天休市的話不寫字）
+      st = { phase: 'rest', quiet: trading };
     } else if (mins < STANDBY) {
       st = simulate(yday, CLOSE);
       st.phase = 'end';
@@ -352,7 +352,7 @@
     boy.classList.toggle('idle', !paused && !kiss && (st.phase === 'shoot' || st.phase === 'walk'));
     // 結局文字：靠自己破關寫「大成功！費時…」，最後衝刺才破的寫「成功！」；休市寫「今天休息」
     msg.classList.toggle('big', st.phase === 'rest');
-    if (st.phase === 'rest') msg.textContent = '今天休息';
+    if (st.phase === 'rest') msg.textContent = st.quiet ? '' : '今天休息';
     else if (st.phase === 'end') {
       const used = (st.broken?.[0] ?? CLOSE) - OPEN;
       const hh = Math.floor(used / 60), mm = Math.floor(used % 60);
