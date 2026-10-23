@@ -372,10 +372,11 @@
     return null;
   }
 
-  // 補血：逆勢上漲（收跌但從低點反彈 ≥0.4%、短線在漲，跟「多軍反攻」同一個條件）時，帝皇身上冒愛心往上飄，
+  // 補血：逆勢上漲（收跌但從低點反彈 ≥0.4%、短線在漲，跟「多軍反攻」同一個條件）時帝皇身上冒愛心往上飄；
+  // 反過來逆勢下跌（收漲但從高點回落 ≥0.4%、短線在跌，「空軍反攻」）換大不淨者補血。
   // 走法跟骷髏一樣；交火期間每次出手（約 3 秒）冒一顆
-  function heal() {
-    const a = arena.getBoundingClientRect(), to = emp.getBoundingClientRect();
+  function heal(bull) {
+    const a = arena.getBoundingClientRect(), to = (bull ? emp : guo).getBoundingClientRect();
     if (!a.width || !to.width) return;
     const hv = document.createElement('img');
     hv.className = 'wg-skull';
@@ -390,7 +391,8 @@
 
   function hit() {
     const pct = pctNow();
-    if (counterattack(pct) === 'bull') heal();
+    const counter = counterattack(pct);
+    if (counter) heal(counter === 'bull');
     const sc = score(pct);
     const bull = Math.random() < 0.5 + 0.42 * sc;
     const edge = Math.min(1, Math.abs(sc) * 1.4);                       // 情勢一面倒的程度
