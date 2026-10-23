@@ -187,7 +187,7 @@
   .chg { font-size: clamp(11.5px, 3.4vw, 13px); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* 拿掉明細行的卡片（台指VIX、外資淨OI、散戶多空比、融資維持率）：主數字放大，空間往上推 */
   .card.roomy { justify-content: space-between; }
-  .card.roomy .price { font-size: clamp(20px, 6.6vw, 30px); }
+  .card.roomy .price, .card.inst .price { font-size: clamp(20px, 6.6vw, 30px); }  /* 三大法人（全寬）的大數字跟其他盤後卡片一樣大 */
   .card.roomy .chg, .card.roomy .cmp:not(.long) { font-size: clamp(12.5px, 4vw, 15.5px); }
   /* 加權、台指期同一排：漲跌一起放大，兩張字級一致；時間貼底對齊 */
   .card.txf .chg, .card.has-k .chg { font-size: clamp(14px, 4.6vw, 18px); }
@@ -496,7 +496,7 @@
     const ytd = [['外資', 'foreign'], ['投信', 'trust'], ['自營', 'dealer']]
       .map(([k, f]) => { const v = ytdOf(f); return `<span class="txt">${k}</span> <span class="${dir(v)}">${int(v)}</span>`; }).join(' · ');
     return `
-      <div class="card wide">
+      <div class="card wide inst">
         <div class="head"><div class="name">三大法人買賣超</div><div class="badges">${rank}${foreignStreak(inst, history, !!rank)}</div></div>
         <div class="price ${dir(inst.total)}">${num(inst.total)}<small> 億</small></div>
         <div class="chg">${parts}</div>
