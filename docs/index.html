@@ -1463,7 +1463,10 @@
       foreignOi: institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii) + govBanksHtml(data.govBanks, byId.twii),
     };
     // USD/TWD 是國際外匯報價，排到國際市場最後（美債後面）
-    const quotes = data.quotes.filter((q) => q.id !== 'usdtwd');
+    // love 帳號：國際市場不顯示費半、TSM，「國際市場」標題改插在小納前面
+    const hideIntl = account === 'love' ? ['sox', 'tsm'] : [];
+    if (hideIntl.length) { before.nq = before.sox; delete before.sox; }
+    const quotes = data.quotes.filter((q) => q.id !== 'usdtwd' && !hideIntl.includes(q.id));
     const fx = data.quotes.find((q) => q.id === 'usdtwd');
     // USD/TWD 排在小納後面（國際市場：費半、TSM、小納、USD/TWD、韓股、日經、布蘭特、美債）
     if (fx) quotes.splice(quotes.findIndex((q) => q.id === 'nq') + 1, 0, fx);
