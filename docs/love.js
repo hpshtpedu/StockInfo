@@ -16,13 +16,13 @@
 //   連漲的日子盤勢好打得快，牆就厚一點；連跌的日子讓她輕鬆一點）。
 //   分給三面牆：左 42%、中 33%、右 25%（各 ±3% 隨機），越左越厚。
 // 保證破關：13:00 起若照目前速度趕不上，傷害自動提高到剛好 13:27 前打完（最後衝刺），13:29 前兩人會合。
-// 靠自己（沒用到最後衝刺）破關才顯示「成功，費時 X 分 Y 秒」（從 09:00 算到最後一面牆倒下）。
+// 靠自己（沒用到最後衝刺）破關才顯示「大成功！費時 X 時 Y 分 Z 秒」（從 09:00 算到最後一面牆倒下）。
 (() => {
   const A = 'love/';
   const OPEN = 540, CLOSE = 810, CATCH = 780, DEADLINE = 807;  // 台北時間的分鐘數
   const WALK = 1, FINAL = 2;            // 走到下一面牆 1 分鐘；最後兩人走到一起 2 分鐘
   const WALLS = [30, 50, 70];           // 牆的中心（卡片寬度 %），0 是最左邊
-  const BOY = 7, GIRL0 = 93, STOP = 12; // 男生位置、女生起點、女生停在牆右邊多遠
+  const BOY = 7, GIRL0 = 93;            // 男生位置、女生起點（女生停在牆右邊多遠見 stop()）
   const BASE_HP = 60000, SHARE = [0.42, 0.33, 0.25];
 
   const css = `
@@ -31,6 +31,9 @@
   @media (min-width: 600px) { .lv-arena { height: 84px; } }
   .lv img { position: absolute; display: block; pointer-events: none; user-select: none; -webkit-user-select: none; }
   .lv-boy, .lv-girl { bottom: 2px; height: 88%; transform: translateX(-50%); transition: left 1s linear, filter .4s; z-index: 3; }
+  /* 走路時一步一步上下晃（跟戰鎚部隊行軍一樣） */
+  .lv-boy.walking, .lv-girl.walking { animation: lv-step .5s steps(2) infinite; }
+  @keyframes lv-step { 0% { margin-bottom: 0; rotate: 0deg; } 50% { margin-bottom: 3px; rotate: -2deg; } }
   .lv-girl.buff { filter: drop-shadow(0 0 3px #ff7eb9) drop-shadow(0 0 6px #ff7eb9); }  /* 男生親親中：女生加持 */
   .lv-wall { position: absolute; bottom: 2px; height: 84%; aspect-ratio: 97 / 96; transform: translateX(-50%); z-index: 2;
     transition: opacity .7s, scale .7s; }
@@ -206,8 +209,14 @@
     return (debug || debugT || data.tradingDay) && mins >= OPEN && mins < CLOSE + 1;
   };
   const active = () => live() && visible && !document.hidden;
-  const stopX = (k) => (k >= 2 ? GIRL0 : WALLS[k + 1] + STOP);  // 打第 k 面牆之前站的地方
-  const meet = (WALLS[0] + STOP + BOY) / 2;
+  // 女生停在牆右邊多遠（卡片寬 %）：牆半寬＋女生半寬＋14px，手機窄也不會貼著牆像在親牆
+  function stop() {
+    const a = arena.getBoundingClientRect();
+    if (!a.width) return 12;
+    return ((a.height * 0.84 * (97 / 96) / 2 + a.height * 0.88 * (69 / 128) / 2 + 14) / a.width) * 100;
+  }
+  const stopX = (k) => (k >= 2 ? GIRL0 : WALLS[k + 1] + stop());  // 打第 k 面牆之前站的地方
+  const meetX = () => (WALLS[0] + stop() + BOY) / 2;
 
   // 女生朝牆射一顆愛心：飛 0.8 秒，打到牆震一下、閃白、跳傷害
   function fire() {
@@ -258,13 +267,13 @@
     clearTimeout(endTimer);
     if (!active() || last?.phase !== 'end') return;
     const h = arena.getBoundingClientRect().height;
-    rise(meet + (Math.random() - 0.5) * 4, h * 0.25, h * (0.18 + Math.random() * 0.1));
+    rise(meetX() + (Math.random() - 0.5) * 4, h * 0.15, h * (0.27 + Math.random() * 0.15));  // 親親的愛心大一點（1.5 倍）
     endTimer = setTimeout(endHearts, 650);
   }
   // 男生親親時頭上冒一顆小愛心
   function boyHeart() {
     const h = arena.getBoundingClientRect().height;
-    rise(BOY + 2, h * 0.15, h * 0.16);
+    rise(BOY + 2, h * 0.05, h * 0.24);
   }
 
   function place(img, x) { img.style.left = `${x}%`; }
@@ -292,7 +301,7 @@
     }
     const prevPhase = last?.phase;
     last = st;
-    const G = gap();
+    const G = gap(), SP = stop(), meet = meetX();
 
     // 牆
     walls.forEach((w, i) => {
@@ -310,7 +319,7 @@
       const f = clamp((st.t - st.since) / FINAL, 0, 1);
       setSrc(boy, `${A}m_walk${still}.webp`); setSrc(girl, `${A}f_walk${still}.webp`);
       place(boy, BOY + (meet - G / 2 - BOY) * f);
-      place(girl, WALLS[0] + STOP - (WALLS[0] + STOP - meet - G / 2) * f);
+      place(girl, WALLS[0] + SP - (WALLS[0] + SP - meet - G / 2) * f);
     } else {
       setSrc(boy, `${A}${kiss ? 'm_kiss' : 'm_walk'}${kiss ? still : '_still'}.webp`);  // 沒在親的時候站著不動
       place(boy, BOY);
@@ -318,17 +327,20 @@
       else if (st.phase === 'walk') {
         const f = clamp((st.t - st.since) / WALK, 0, 1);
         setSrc(girl, `${A}f_walk${still}.webp`);
-        place(girl, stopX(st.k) + (WALLS[st.k] + STOP - stopX(st.k)) * f);
-      } else { setSrc(girl, `${A}f_kiss${still}.webp`); place(girl, WALLS[st.k] + STOP); }
+        place(girl, stopX(st.k) + (WALLS[st.k] + SP - stopX(st.k)) * f);
+      } else { setSrc(girl, `${A}f_kiss${still}.webp`); place(girl, WALLS[st.k] + SP); }
     }
     if (kiss && !paused && Math.random() < 0.35) boyHeart();
 
-    // 結局文字：靠自己破關寫費時，最後衝刺才破的寫「成功！」；休市寫「今天休息」
+    girl.classList.toggle('walking', !paused && (st.phase === 'walk' || st.phase === 'final'));
+    boy.classList.toggle('walking', !paused && st.phase === 'final');
+    // 結局文字：靠自己破關寫「大成功！費時…」，最後衝刺才破的寫「成功！」；休市寫「今天休息」
     if (st.phase === 'rest') msg.textContent = '今天休息';
     else if (st.phase === 'end') {
       const used = (st.broken?.[0] ?? CLOSE) - OPEN;
+      const hh = Math.floor(used / 60), mm = Math.floor(used % 60), ss = Math.floor((used % 1) * 60);
       msg.textContent = st.caught || st.broken?.[0] == null ? '成功！'
-        : `成功，費時 ${Math.floor(used)} 分 ${Math.floor((used % 1) * 60)} 秒`;
+        : `大成功！費時 ${hh ? `${hh} 時 ` : ''}${mm} 分 ${ss} 秒`;
     } else msg.textContent = '';
 
     // 動作：射愛心、結局冒愛心（只在盤中、畫面上才跑）
