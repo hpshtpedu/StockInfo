@@ -558,6 +558,16 @@
     const hits = (t0, gaps) => gaps.forEach((g, i) => setTimeout(() => {
       target.classList.remove('wg-flashw', 'wg-hurt', 'wg-hurt-big', 'wg-hurt-claw'); void target.offsetWidth; target.classList.add('wg-flashw');
       el.classList.remove('wg-shake'); void el.offsetWidth; el.classList.add('wg-shake');
+      // 每一下也冒一個骷髏（跟普通攻擊一樣，被打方身上隨機位置）
+      const sk = document.createElement('img');
+      sk.className = 'wg-skull';
+      sk.src = `${A}damage.webp`;
+      const sh = to.height / 5;
+      sk.style.height = `${sh}px`;
+      sk.style.left = `${to.left - a.left + Math.random() * Math.max(0, to.width - sh)}px`;
+      sk.style.top = `${to.top - a.top + to.height * (0.05 + Math.random() * 0.35)}px`;
+      arena.appendChild(sk);
+      setTimeout(() => sk.remove(), 1100);
       onHit?.(i);
     }, t0 + g));
     if (bull) {
