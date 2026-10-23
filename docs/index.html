@@ -1451,20 +1451,21 @@
       sox: section('國際市場'),
       retailRatio: section('台股盤後'),
     };
-    // 登入的帳號：主帳號（owner）玩戰鎚小遊戲；love 帳號玩自己的小遊戲、不顯示我的自選股
+    // 登入的帳號：主帳號（owner）玩戰鎚小遊戲；love 帳號玩自己的小遊戲。
+    // 我的自選股、費半、TSM 只有主帳號看得到（沒登入、love 帳號都隱藏）
     const account = window.PrivateVault?.profile?.() ?? null;
     // 插在某張卡片後面的卡片：台指期後接我的持股（全寬，排在加權、台指期那一排下面）；
     // 外資淨OI 後接台指VIX、八大行庫
     const after = {
       // 漲跌家數（一行的扁卡片）放在我的自選股上面
       txf: (byId.breadth && !byId.breadth.error ? breadthHtml(byId.breadth, byId.twii, data.holdings?.find((h) => h.code === '2330'), data.holdings?.find((h) => h.code === '00685L')) : '')
-        + (account === 'love' ? '' : holdingsHtml(data.holdings, byId.twii, data.flows)),
+        + (account === 'owner' ? holdingsHtml(data.holdings, byId.twii, data.flows) : ''),
       // 散戶多空比、外資淨OI 一排在最上面，接著三大法人（全寬），再來台指VIX、八大行庫
       foreignOi: institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii) + govBanksHtml(data.govBanks, byId.twii),
     };
     // USD/TWD 是國際外匯報價，排到國際市場最後（美債後面）
-    // love 帳號：國際市場不顯示費半、TSM，「國際市場」標題改插在小納前面
-    const hideIntl = account === 'love' ? ['sox', 'tsm'] : [];
+    // 不是主帳號：國際市場不顯示費半、TSM，「國際市場」標題改插在小納前面
+    const hideIntl = account === 'owner' ? [] : ['sox', 'tsm'];
     if (hideIntl.length) { before.nq = before.sox; delete before.sox; }
     const quotes = data.quotes.filter((q) => q.id !== 'usdtwd' && !hideIntl.includes(q.id));
     const fx = data.quotes.find((q) => q.id === 'usdtwd');
