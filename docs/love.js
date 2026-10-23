@@ -315,7 +315,9 @@
     const kiss = st.cur?.kiss && (st.phase === 'shoot' || st.phase === 'walk');
     girl.classList.toggle('buff', !!kiss);
     if (st.phase === 'rest' || st.phase === 'end') {
-      setSrc(boy, `${A}m_kiss${still}.webp`); setSrc(girl, `${A}f_kiss${still}.webp`);
+      // 結局（收盤後、休市也是）一直親：卡片在畫面上就播動圖，只有網頁在背景或卡片捲走才換靜止圖
+      const kissStill = document.hidden || !visible ? '_still' : '';
+      setSrc(boy, `${A}m_kiss${kissStill}.webp`); setSrc(girl, `${A}f_kiss${kissStill}.webp`);
       place(boy, meet - G / 2); place(girl, meet + G / 2);
     } else if (st.phase === 'final') {
       const f = clamp((st.t - st.since) / FINAL, 0, 1);
