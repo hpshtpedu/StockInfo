@@ -1467,10 +1467,12 @@
       foreignOi: institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii) + govBanksHtml(data.govBanks, byId.twii),
     };
     // USD/TWD 是國際外匯報價，排到國際市場最後（美債後面）
-    const quotes = data.quotes.filter((q) => q.id !== 'usdtwd');
+    const quotes = data.quotes.filter((q) => q.id !== 'usdtwd' && q.id !== 'us10y');
     const fx = data.quotes.find((q) => q.id === 'usdtwd');
-    // USD/TWD 排在韓股前面（國際市場：費半、USD/TWD、韓股、日經、布蘭特、美債；兩兩一排剛好三排）
-    if (fx) quotes.splice(Math.max(0, quotes.findIndex((q) => q.id === 'kospi')), 0, fx);
+    // 國際市場：費半、美債（美股時段）／韓股、日經（亞洲時段）／布蘭特、USD/TWD，兩兩一排剛好三排，同一排開盤時間接近
+    const us10y = data.quotes.find((q) => q.id === 'us10y');
+    if (us10y) quotes.splice(Math.max(0, quotes.findIndex((q) => q.id === 'kospi')), 0, us10y);
+    if (fx) quotes.splice(quotes.findIndex((q) => q.id === 'brent') + 1 || quotes.length, 0, fx);
     // 台股盤後依更新先後排：散戶多空比、外資淨OI（期交所 15:00）在前，台指VIX、八大行庫在後
     const rr = quotes.findIndex((q) => q.id === 'retailRatio');
     const oi = quotes.findIndex((q) => q.id === 'foreignOi');
