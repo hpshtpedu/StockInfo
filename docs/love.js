@@ -53,7 +53,10 @@
   .lv-msg { position: absolute; left: 66%; top: 50%; transform: translate(-50%, -50%); z-index: 5; white-space: nowrap;
     font: 800 clamp(13px, 4vw, 16px)/1.2 "Microsoft JhengHei", sans-serif; color: #fff;
     text-shadow: 0 0 4px #ff4f9a, 0 0 8px #ff4f9a, 0 1px 2px #000; }
-  .lv-paused * { animation-play-state: paused !important; }`;
+  .lv-paused * { animation-play-state: paused !important; }
+  .lv-dbg { display: flex; gap: 6px; align-items: center; padding: 4px 8px; font-size: 12px; color: var(--muted); }
+  .lv-dbg input[type=range] { flex: 1; }
+  .lv-dbg input[type=number] { width: 4.5em; background: #20242c; color: var(--text); border: 1px solid var(--line); border-radius: 4px; }`;
   document.head.appendChild(Object.assign(document.createElement('style'), { textContent: css }));
 
   // 隨機：同一天、同一分鐘、同一用途永遠是同一個數（跟抽的順序無關）
@@ -69,8 +72,11 @@
     const m = q.get('love') === 'debug' && /^(\d+):(\d+)$/.exec(q.get('t') ?? '');
     return m ? { at: Date.now(), mins: Number(m[1]) * 60 + Number(m[2]) } : null;
   })();
+  // 網址加 ?game=debug：跟戰鎚一樣出現時間滑桿和漲跌幅輸入（用假的 15 分 K：一路平穩走到輸入的漲跌幅）
+  const debug = new URLSearchParams(location.search).get('game') === 'debug';
   function now() {
     const tw = new Date(Date.now() + 8 * 3600000);
+    if (debug) return { mins: Number(el.querySelector('.lv-dbg input[type=range]').value), day: tw.toISOString().slice(0, 10) };
     const mins = debugT ? debugT.mins + (Date.now() - debugT.at) / 60000
       : tw.getUTCHours() * 60 + tw.getUTCMinutes() + tw.getUTCSeconds() / 60;
     return { mins, day: tw.toISOString().slice(0, 10) };
@@ -97,8 +103,17 @@
   }
 
   // 09:00 起第 m 分鐘的盤勢：用那根 15 分 K 從開到收線性內插
+  function fakeTwii() {
+    const pct = Number(el.querySelector('.lv-dbg input[type=number]').value) || 0;
+    const prev = 23000, at = (f) => prev * (1 + (pct / 100) * f + 0.002 * Math.sin(f * 9));
+    const candles = Array.from({ length: 18 }, (_, i) => {
+      const o = at(i / 18), c = at((i + 1) / 18);
+      return [o, Math.max(o, c), Math.min(o, c), c];
+    });
+    return { prev, price: at(1), changePct: pct, candles };
+  }
   function market(m) {
-    const t = data.twii;
+    const t = debug ? fakeTwii() : data.twii;
     const k = t?.candles ?? [];
     const slot = clamp(Math.floor(m / 15), 0, 17);
     const c = k[slot];
@@ -175,7 +190,8 @@
       <img class="lv-boy" alt="">
       <img class="lv-girl" alt="">
       <div class="lv-msg"></div>
-    </div>`;
+    </div>
+    ${debug ? '<div class="lv-dbg">時間<input type="range" min="480" max="825" step="1" value="600"><span class="t">10:00</span>漲跌%<input type="number" step="0.1" value="0"></div>' : ''}`;
   const arena = el.querySelector('.lv-arena');
   const boy = el.querySelector('.lv-boy'), girl = el.querySelector('.lv-girl');
   const walls = [...el.querySelectorAll('.lv-wall')];
@@ -187,7 +203,7 @@
   let visible = true, timer = null, fireTimer = null, endTimer = null, last = null;
   const live = () => {
     const { mins } = now();
-    return (debugT || data.tradingDay) && mins >= OPEN && mins < CLOSE + 1;
+    return (debug || debugT || data.tradingDay) && mins >= OPEN && mins < CLOSE + 1;
   };
   const active = () => live() && visible && !document.hidden;
   const stopX = (k) => (k >= 2 ? GIRL0 : WALLS[k + 1] + STOP);  // 打第 k 面牆之前站的地方
@@ -264,7 +280,7 @@
     const paused = !active();
     el.classList.toggle('lv-paused', paused);
     const still = paused ? '_still' : '';
-    const trading = debugT || data.tradingDay;
+    const trading = debug || debugT || data.tradingDay;
     let st;
     if (!trading) {  // 休市：兩人在一起休息
       st = { phase: 'rest' };
@@ -337,6 +353,11 @@
     timer = !paused ? setInterval(draw, 1000) : null;
   }
 
+  if (debug) el.querySelectorAll('.lv-dbg input').forEach((i) => i.addEventListener('input', () => {
+    const m = Number(el.querySelector('.lv-dbg input[type=range]').value);
+    el.querySelector('.lv-dbg .t').textContent = `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    draw();
+  }));
   const io = new IntersectionObserver((es) => { visible = es[0].isIntersecting; draw(); });
   io.observe(el);
   document.addEventListener('visibilitychange', draw);
