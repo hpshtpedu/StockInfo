@@ -52,7 +52,8 @@
      桌腳站在亞空間條上緣（跟神祇一樣留 8px），寬度不超過卡片 92% */
   .wg .wg-dayoff { display: none; left: 50%; bottom: calc(32% + 4px); height: calc(68% - 10px); max-width: 92%; object-fit: contain; transform: translateX(-50%); z-index: 2; }
   .wg.wg-off .wg-dayoff { display: block; filter: drop-shadow(0 0 1px #ffd700) drop-shadow(0 0 3px #ffd700); }  /* 薄薄一層金光，跟背景分開 */
-  .wg.wg-off .wg-god, .wg.wg-off .wg-result { visibility: hidden; }  /* 要寫 .wg 開頭：不然會被 .wg img { display: block } 蓋過，天天都出現 */
+  .wg.wg-off .wg-god, .wg.wg-off .wg-result { visibility: hidden; }
+  .wg.wg-off .wg-ticker { display: none; }  /* 休市：跑馬燈那列整條拿掉，卡片跟著變矮 */  /* 要寫 .wg 開頭：不然會被 .wg img { display: block } 蓋過，天天都出現 */
   .wg-cloud { bottom: -8%; height: 48%;  /* 往下沉一點（下緣被卡片切掉），雲跟部隊腳下同高 */ transform: translateX(-50%); transition: left 2s ease-in-out, opacity 1s; z-index: 2; }
   /* 神祇一直發光（帝皇金、大不淨者綠）；部隊只在大漲／大跌（±0.5% 以上）時發光 */
   .wg-emp { filter: drop-shadow(0 0 6px #ffd700); } .wg-guo { filter: drop-shadow(0 0 6px #00ff00); }
