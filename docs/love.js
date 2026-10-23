@@ -34,9 +34,9 @@
   .lv-boy, .lv-girl { bottom: 2px; height: 88%; transform: translateX(-50%); transition: left 1s linear, filter .4s; z-index: 3; }
   /* 走路時一步一步上下晃（跟戰鎚部隊行軍一樣） */
   .lv-boy.walking, .lv-girl.walking { animation: lv-step .5s steps(2) infinite; }
-  /* 男生站著等的時候：原地輕微呼吸（約 2.4 秒一次，微微起伏），不像在走路 */
-  .lv-boy.idle { transform-origin: 50% 100%; animation: lv-breathe 2.4s ease-in-out infinite; }
-  @keyframes lv-breathe { 0%, 100% { margin-bottom: 0; scale: 1 1; } 50% { margin-bottom: 1.5px; scale: 1 1.02; } }
+  /* 男生站著等的時候：原地呼吸（2 秒一次，身體伸展 5%、浮起 3px），看得出在動但不像在走路 */
+  .lv-boy.idle { transform-origin: 50% 100%; animation: lv-breathe 2s ease-in-out infinite; }
+  @keyframes lv-breathe { 0%, 100% { margin-bottom: 0; scale: 1 1; } 50% { margin-bottom: 3px; scale: 1.02 1.05; } }
   @keyframes lv-step { 0% { margin-bottom: 0; rotate: 0deg; } 50% { margin-bottom: 3px; rotate: -2deg; } }
   /* 男生親親中：女生加持，發帝皇那種金光（亞空間背景是粉紅的，粉紅光看不出來） */
   .lv-girl.buff { filter: drop-shadow(0 0 3px #ffd700) drop-shadow(0 0 6px #ffd700); }
