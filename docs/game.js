@@ -87,6 +87,16 @@
   .wg-float.ult { top: 26% !important; font-size: 46px; text-align: center; animation: wg-ult 2s ease-out forwards;
     text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 10px currentColor; }
   .wg-float.say.hi { top: 3% !important; }  /* 大招台詞固定在最上面，不疊到大數字 */
+  /* 必殺技的三個大傷害：上中下錯開，不疊在一起 */
+  .wg-float.ult.n0 { top: 12% !important; } .wg-float.ult.n2 { top: 40% !important; }
+  /* 必殺技：滅絕令（從天而降的能量炮，直接打在大不淨者身上）、憎惡鏈枷（鏈枷第一格先淡入，再播動畫往右撞帝皇） */
+  .wg-sp { z-index: 5; pointer-events: none; }
+  .wg-sp.fadein { opacity: 0; transition: opacity .35s ease-out; }
+  .wg-sp.fadein.on { opacity: 1; }
+  .wg-sp.slide { transition: left .45s ease-in; }
+  /* 被必殺技打到：白色一閃（三次，對上三個傷害） */
+  .wg-flashw { animation: wg-flashw .2s 1; }
+  @keyframes wg-flashw { 0%, 100% { filter: none; } 40% { filter: brightness(3.2) saturate(0); } }
   .wg-float.ult.up { color: #ffd100; } .wg-float.ult.down { color: #8dff3a; }
   @keyframes wg-ult { 0% { opacity: 0; transform: translate(-50%, 0) scale(3); } 8% { opacity: 1; transform: translate(-50%, -2px) scale(1.6); }
     20% { transform: translate(-50%, -4px) scale(1.25); } 65% { opacity: 1; transform: translate(-50%, -10px) scale(1.2); }
@@ -213,7 +223,7 @@
       '【銀河快訊】導航員家族回報星炬光芒微幅晃動，建議全銀河艦長在亞空間航行時握緊扶手！',
       '【爆彈神話】極限老兵馬拉姆·凱多單槍匹馬擊殺三隻大不淨者、四隻萬變魔君與五隻地獄獸！', '【個人秀時間】戰場傳來怒吼！馬拉姆·凱多手持爆彈槍突入空軍指揮所，三隻大不淨者慘遭鏈鋸劍原地大卸八塊！',
       '【格拉亞大捷】監測到一名叫馬拉姆·凱多的阿斯塔特獨自踏平空軍重鎮，屠盡五隻地獄獸與四隻萬變魔君，多軍士氣突破天際！', '【忠誠暴走】馬拉姆·凱多：『我的仇恨就是我的護盾！』'],
-    floatBull: ['忠誠推進！', '多單挺進！', '為了帝皇！', '神聖護盤！'],
+    floatBull: ['忠誠推進！', '多單挺進！', '神聖護盤！'],
     floatBullCrit: ['異端！通通淨化！', '神皇之怒！', '靈能滅絕！', '全面軋空！'],
     floatBear: ['慈父賜福！', '瘟疫蔓延！', '主力倒貨！', '賣壓湧現！'],
     floatBearCrit: ['慈父包容世間一切生靈！', '納垢大瘟疫！', '亞空間風暴逆襲！', '加入慈父納垢與他的「快樂大家庭」！'],
@@ -407,6 +417,11 @@
     const x = bull ? gR + 2 + Math.random() * 8 : eL - 2 - Math.random() * 8;
     // 神祇出手：多方＝帝皇揮劍氣打大不淨者，空方＝大不淨者吐口水打帝皇；爆擊連打兩發
     const side = bull ? 'up' : 'down';
+    // 必殺技（5%，大約一分鐘一次）：喊招式名、播動圖，被打方白閃三次、跳三個大傷害（各約 ×2）
+    if (Math.random() < 0.05) {
+      special(bull, (i) => float(`${Math.round(dmg * 2 * (0.85 + Math.random() * 0.3))}!`, side, true, x + (i - 1) * 3, ` ult n${i}`));
+      return;
+    }
     // 大招（三成）：喊中文台詞＋放大招打一發，傷害 ×2（跟爆擊同時發生就用爆擊台詞）
     if (Math.random() < 0.3) {
       ultimate(bull, () => {
@@ -507,6 +522,68 @@
     onHit?.();
   }
   function ultimate(bull, onHit) { shot(bull, onHit, true); }
+
+  // 必殺技動圖每次都要從第一格播：先把檔案抓成 blob，每次放用新的 object URL（同一個網址的動圖會共用播放進度）
+  const spBlob = {};
+  for (const n of ['Emperor_attack_sp', 'GUO_attack_sp']) {
+    fetch(`${A}${n}.webp`).then((r) => r.blob()).then((b) => { spBlob[n] = b; }).catch(() => {});
+    new Image().src = `${A}${n}_still.webp`;
+  }
+  const freshSrc = (n) => (spBlob[n] ? URL.createObjectURL(spBlob[n]) : `${A}${n}.webp?${Date.now()}`);
+  // 動圖每格 70ms（scripts/build_game_assets.py 的 SP_FRAME_MS）：
+  //   滅絕令 16 格 1.12 秒，光柱第 8 格落地 → 0.56、0.76、0.96 秒命中
+  //   憎惡鏈枷 先淡入 0.35 秒，18 格 1.26 秒，第 6 格骷髏撞上 → 淡入後 0.42、0.65、0.88 秒命中
+  function special(bull, onHit) {
+    const a = arena.getBoundingClientRect();
+    const from = (bull ? emp : guo).getBoundingClientRect();
+    const to = (bull ? guo : emp).getBoundingClientRect();
+    if (!a.width || !from.width || !to.width) return;
+    float(bull ? '滅絕令！' : '憎惡鏈枷！', bull ? 'up' : 'down', false, null, ' say hi');
+    const target = bull ? guo : emp;
+    const tm = meta[bull ? 'GUO' : 'Emperor'];
+    const torso = to.left + to.width * (tm?.cx ?? 0.5) - a.left;
+    const name = bull ? 'Emperor_attack_sp' : 'GUO_attack_sp';
+    const img = document.createElement('img');
+    img.className = `wg-sp${bull ? '' : ' fadein'}`;
+    let url = null;
+    const hits = (t0, gaps) => gaps.forEach((g, i) => setTimeout(() => {
+      target.classList.remove('wg-flashw'); void target.offsetWidth; target.classList.add('wg-flashw');
+      el.classList.remove('wg-shake'); void el.offsetWidth; el.classList.add('wg-shake');
+      onHit?.(i);
+    }, t0 + g));
+    if (bull) {
+      // 光柱：寬高比 209:128，底部對齊大不淨者腳底，水平置中在他的人物重心
+      const h = to.height * 1.15;
+      img.style.height = `${h}px`;
+      img.style.left = `${torso}px`;
+      img.style.top = `${to.bottom - a.top - h}px`;
+      img.style.transform = 'translateX(-50%)';
+      img.src = url = freshSrc(name);
+      arena.appendChild(img);
+      hits(0, [560, 760, 960]);
+      setTimeout(() => { img.remove(); if (url?.startsWith('blob:')) URL.revokeObjectURL(url); }, 1250);
+      return;
+    }
+    // 鏈枷：寬高比 228:128，握把在左、骷髏在右（約圖寬 72% 處）；從大不淨者身前出發，
+    // 骷髏碰不到帝皇的人物重心就在播的時候往右滑過去
+    const h = from.height * 0.62;
+    const w = (h * 228) / 128;
+    const left = from.right - a.left - w * 0.08;
+    img.style.height = `${h}px`;
+    img.style.top = `${from.top - a.top + from.height * 0.5 - h / 2}px`;
+    img.style.left = `${left}px`;
+    img.src = `${A}${name}_still.webp`;
+    arena.appendChild(img);
+    void img.offsetWidth;
+    img.classList.add('on');
+    setTimeout(() => {
+      img.src = url = freshSrc(name);
+      const shift = torso - (left + w * 0.72);
+      if (shift > 0) { img.classList.add('slide'); void img.offsetWidth; img.style.left = `${left + shift}px`; }
+    }, 350);
+    hits(350, [420, 650, 880]);
+    setTimeout(() => { img.remove(); if (url?.startsWith('blob:')) URL.revokeObjectURL(url); }, 350 + 1400);
+  }
   function attack(bull, crit, onHit) {
     const alt = Math.random() < 0.5;
     shot(bull, () => onHit?.(0), false, alt);

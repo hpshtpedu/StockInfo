@@ -18,7 +18,10 @@ SIZES = {'Emperor': 240, 'GUO': 240, 'fight-cloud': 200, 'Emperor_win': 240, 'Em
          'win': 120, 'loss': 120, 'vs': 120, 'damage': 64, 'Emperor_attack': 96, 'GUO_attack': 96,
          'GUO_place': 200, 'Emperor_place': 200, 'GUO_attack2': 160, 'Emperor_attack2': 160,
          'casino_closed': None, 'sleep': None, 'Emperor_attack1_2': 128, 'GUO_attack1_2': 128,
-         'Emperor_attack2_2': 200, 'GUO_attack2_2': 160, 'day_off': 160, 'heart': None}
+         'Emperor_attack2_2': 200, 'GUO_attack2_2': 160, 'day_off': 160, 'heart': None,
+         'Emperor_attack_sp': None, 'GUO_attack_sp': None}
+# 必殺技動圖：每一格都留、每格 70ms（網頁照這個節奏對傷害時間點）
+SP_FRAME_MS = 70
 
 
 def trim_box(im):
@@ -49,10 +52,11 @@ def build(name, h, OUT):
     crop = (lambda x: x.crop(box)) if box else (lambda x: x)
     if n > 1:
         frames, durs = [], []
-        for i in range(0, n, 2):  # 20 fps -> 10 fps
+        sp = name.endswith('_sp')
+        for i in range(0, n, 1 if sp else 2):  # 20 fps -> 10 fps（必殺技不減格）
             im.seek(i)
             frames.append(fit(crop(im.convert('RGBA')), h))
-            durs.append(im.info.get('duration', 50) * 2)
+            durs.append(SP_FRAME_MS if sp else (im.info.get('duration') or 50) * 2)
         frames[0].save(OUT / f'{name}.webp', save_all=True, append_images=frames[1:], duration=durs, loop=0,
                        quality=70, method=6, lossless=False)
         frames[0].save(OUT / f'{name}_still.webp', quality=75, method=6)
