@@ -34,6 +34,9 @@
   .lv-boy, .lv-girl { bottom: 2px; height: 88%; transform: translateX(-50%); transition: left 1s linear, filter .4s; z-index: 3; }
   /* 走路時一步一步上下晃（跟戰鎚部隊行軍一樣） */
   .lv-boy.walking, .lv-girl.walking { animation: lv-step .5s steps(2) infinite; }
+  /* 男生站著等的時候：原地輕微呼吸（約 2.4 秒一次，微微起伏），不像在走路 */
+  .lv-boy.idle { transform-origin: 50% 100%; animation: lv-breathe 2.4s ease-in-out infinite; }
+  @keyframes lv-breathe { 0%, 100% { margin-bottom: 0; scale: 1 1; } 50% { margin-bottom: 1.5px; scale: 1 1.02; } }
   @keyframes lv-step { 0% { margin-bottom: 0; rotate: 0deg; } 50% { margin-bottom: 3px; rotate: -2deg; } }
   /* 男生親親中：女生加持，發帝皇那種金光（亞空間背景是粉紅的，粉紅光看不出來） */
   .lv-girl.buff { filter: drop-shadow(0 0 3px #ffd700) drop-shadow(0 0 6px #ffd700); }
@@ -339,6 +342,7 @@
 
     girl.classList.toggle('walking', !paused && (st.phase === 'walk' || st.phase === 'final'));
     boy.classList.toggle('walking', !paused && st.phase === 'final');
+    boy.classList.toggle('idle', !paused && !kiss && (st.phase === 'shoot' || st.phase === 'walk'));
     // 結局文字：靠自己破關寫「大成功！費時…」，最後衝刺才破的寫「成功！」；休市寫「今天休息」
     msg.classList.toggle('big', st.phase === 'rest');
     if (st.phase === 'rest') msg.textContent = '今天休息';
