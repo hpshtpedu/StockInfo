@@ -161,6 +161,7 @@
   .hold .fl.ma { font-weight: 400; }
   .hold .fl.ma b { color: var(--warn); font-weight: 700; }
   .hold .fl.ma .wide { grid-column: 1 / -1; }
+  .hold .fl.ma b.up { color: var(--up); } .hold .fl.ma b.down { color: var(--down); }
   .hold .fl.cmp2 b.down { color: var(--down); }
   .hold .fl.cmp2 b.up { color: var(--up); }
   .hold .fl.cmp2 b.fp { color: var(--muted); font-weight: 400; }
@@ -485,7 +486,7 @@
     const dir = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : '');
     const num = (v) => `${v > 0 ? '+' : ''}${fmt(v, 1)}`;
     const rank = foreignRankBadge(inst);
-    const parts = [['外資', inst.foreign], ['投信', inst.trust], ['自營商', inst.dealer]]
+    const parts = [['外資', inst.foreign], ['投信', inst.trust], ['自營', inst.dealer]]
       .map(([k, v]) => `<span class="txt">${k}</span> <span class="${dir(v)}">${num(v)}</span>`).join(' · ');
     // 本年度累計：排程（證交所月報表，算到 asOf）＋網頁拿到的更新的那一天
     const y = history?.ytd;
@@ -532,9 +533,6 @@
     // 右上：連買/賣（狀態）；右下：護盤（有觸發才出現，灰色說明）；大數字放大跟左邊卡片對齊
     const streak = sign ? `<span class="badge ${sign > 0 ? 'up' : 'down'}">連${n}${sign > 0 ? '買' : '賣'}</span>` : '';
     const note = rescue ? '<span class="badge note">護盤</span>' : '';
-    // 台積電：當天有進八大買超／賣超前 30 名才顯示（排程的 JSON 和 Worker 取當天那筆）
-    const tsmc = [govBanks?.tsmc, live?.tsmc].filter((t) => t?.date === last.date).at(-1);
-    const gg = tsmc ? `<div class="gg">台積電 <b class="${tsmc.net > 0 ? 'up' : tsmc.net < 0 ? 'down' : ''}">${tsmc.net > 0 ? '+' : ''}${fmt(tsmc.net, 1)}億</b></div>` : '';
     // 本年度累計：今年的日子加總。HiStock 只給半年，今年最早只補到 4/27：資料不是從年初開始就寫「M/D起」
     const year = days.filter((d) => d.date.slice(0, 4) === last.date.slice(0, 4));
     const ytdSum = year.reduce((t, d) => t + d.net, 0);
@@ -545,7 +543,7 @@
       <div class="card roomy">
         <div class="head"><div class="name">八大買賣超</div>${streak}</div>
         <div class="price ${dir}">${last.net > 0 ? '+' : ''}${fmt(last.net, 1)}<small> 億</small></div>
-        ${ytd}${gg}
+        ${ytd}
         <div class="foot"><div class="meta">${mm}/${dd} 盤後</div>${note}</div>
       </div>`;
   }
@@ -1048,8 +1046,22 @@
     return total ? (below / total) * 100 : null;
   }
 
+  // 八大買賣台積電（億）：當天有進八大買超／賣超前 30 名才有，排程的 JSON 和 Worker 取最新那天；沒有回 null
+  let govLive = null;
+  function govTsmc() {
+    const last = [...(govBanks?.days ?? []), ...(govLive?.days ?? [])].map((d) => d.date).sort().at(-1);
+    return [govBanks?.tsmc, govLive?.tsmc].filter((t) => t?.date === last).at(-1) ?? null;
+  }
+
   function lowerToggle(h, first) {
     let second = '';
+    // 2330 第 2 頁（外／投後面）：八大公股行庫買賣台積電；沒進前 30 名寫「—」
+    let gov = '';
+    if (h.code === '2330') {
+      const t = govTsmc();
+      const v = t ? `<b class="${t.net > 0 ? 'up' : t.net < 0 ? 'down' : ''}">${t.net > 0 ? '+' : ''}${fmt(t.net, 1)}億</b>` : '<b>—</b>';
+      gov = `<div class="fl ma"><span class="wide">公股 ${v}</span></div>`;
+    }
     if (h.code === '2330') {
       const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
       const closes = [...(globalHistory?.tw2330 ?? []).filter((c) => c.date < today).map((c) => c.close), h.price];
@@ -1073,14 +1085,15 @@
     // 第 3 頁：股東 PR（登入、有張數才有）
     const pr = shareholderPr(h.code);
     const third = pr == null ? '' : `<div class="fl ma" title="集保戶股權分散表 ${tdcc.date}"><span class="wide">集保戶股權PR <b>${pr >= 99.95 ? '99.9' : pr.toFixed(1)}</b></span></div>`;
-    const pages = [first, second, third].filter(Boolean);
+    const pages = [first, gov, second, third].filter(Boolean);
     if (pages.length < 2) return first;
     const p = (lowerPage[h.code] ?? 0) % pages.length;
     return `<div class="tsw" data-code="${h.code}" data-n="${pages.length}" data-p="${p}">${pages.map((x, i) => `<div class="pg" data-i="${i}">${x}</div>`).join('')}</div>`;
   }
 
-  function holdingsHtml(list, twii, flows) {
+  function holdingsHtml(list, twii, flows, gov) {
     twiiQuote = twii;
+    govLive = gov;
     if (!list?.length) return '';
     // 台積電收盤集合競價（13:25-13:30）比盤中最後一筆漲 2 檔以上＝尾盤拉雞，跌 2 檔以上＝尾盤殺雞
     const auction = list.find((h) => h.code === '2330')?.auction;
@@ -1459,7 +1472,7 @@
     const after = {
       // 漲跌家數（一行的扁卡片）放在我的自選股上面
       txf: (byId.breadth && !byId.breadth.error ? breadthHtml(byId.breadth, byId.twii, data.holdings?.find((h) => h.code === '2330'), data.holdings?.find((h) => h.code === '00685L')) : '')
-        + (account === 'owner' ? holdingsHtml(data.holdings, byId.twii, data.flows) : ''),
+        + (account === 'owner' ? holdingsHtml(data.holdings, byId.twii, data.flows, data.govBanks) : ''),
       // 散戶多空比、外資淨OI 一排在最上面，接著三大法人（全寬），再來台指VIX、八大行庫
       foreignOi: institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii) + govBanksHtml(data.govBanks, byId.twii),
     };
