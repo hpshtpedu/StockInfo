@@ -87,7 +87,7 @@
   .kw[data-p="0"] .k1, .kw[data-p="1"] .k0, .kw-foot[data-p="0"] .k1, .kw-foot[data-p="1"] .k0 { display: none; }
   /* 加權的 15 分 K：整行寬，上下跟文字隔開；「15分K」放在時間那一行的最右邊 */
   .krow { margin: 8px 0 4px; }
-  /* 加權、費半、TSM：漲跌和 K 線之間一條淡分隔線 */
+  /* 加權、費半：漲跌和 K 線之間一條淡分隔線 */
   .card.has-k > .kw { margin-top: 4px; border-top: 1px solid var(--line); }
   .card.has-k:not(.twii) > .krow { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
   .card.has-k .foot { align-items: center; }
@@ -199,7 +199,6 @@
   .seg + .seg { margin-left: 10px; }
   /* 漲跌家數：一行的扁卡片（名稱、▲上漲 ▼下跌、最右邊壓雞盤／拉雞盤） */
   .brd-dn { margin-left: 10px; }
-  /* TSM：ADR 溢價 badge 放在價格右邊、靠卡片右緣（跟上面月／季線 badge 切齊），字級跟一般 badge 一樣 */
   .card.flat { gap: 0; }
   .card.flat .head { justify-content: flex-start; gap: 12px; }
   .card.flat .bcnt { font-size: clamp(15px, 4.6vw, 18px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -685,7 +684,6 @@
   }
 
   // 價差 = 台指期 - 加權指數
-  // TSM ADR 溢價率：ADR 換算成台幣每股（1 ADR = 5 股）÷ 2330 − 1；溢價紅、折價綠
   // 每晚存的日收盤（global_history.json）+ 即時報價當最新一天；檔案落後一天時用報價的昨收補上
   // 歷史日收盤的日期是各交易所當地日期；即時報價那天（或之後）的歷史收盤先拿掉，避免同一天算兩次
   const MARKET_TZ = { sox: 'America/New_York', nq: 'America/New_York', us10y: 'America/New_York', tsm: 'America/New_York',
@@ -747,12 +745,6 @@
     if (move > 0 && streak <= -3) return '<span class="badge warn">資金外流</span>';
     if (move < 0 && streak >= 3) return '<span class="badge buy">資金回流</span>';
     return `<span class="badge note">台幣急${move > 0 ? '貶' : '升'}</span>`;
-  }
-
-  function adrBadge(tsm) {
-    const p = tsm?.adrPremium;
-    if (p == null) return '';
-    return `<span class="badge ${p > 0 ? 'up' : p < 0 ? 'down' : ''}">${p >= 0 ? '溢價' : '折價'}${p > 0 ? '+' : ''}${fmt(p, 1)}%</span>`;
   }
 
   function basisBadge(txf, twii) {
@@ -1181,7 +1173,7 @@
   }
 
   let txKPage = 0;  // 台指期下半部：0 外資空單成本、1 60 分K
-  // 加權的月線（20 日）、季線（60 日）哪條離現價近：週K 的虛線畫這條（跟費半、TSM 同一個規則）
+  // 加權的月線（20 日）、季線（60 日）哪條離現價近：週K 的虛線畫這條（跟費半同一個規則）
   function twiiNearerMa(twii) {
     const closes = taiexHistory?.closes;
     if (!twii?.price || !closes?.length) return 20;
@@ -1404,8 +1396,8 @@
   // 加權週 K（虛線＝月線）：每晚存的日開高低收（證交所） + 今天（盤中 15 分 K 的開高低、即時指數當收），依週（週一起算）分組，
   // 最近 18 週：開＝該週第一天開盤、高低＝該週最高最低、收＝該週最後一筆。舊資料沒有開高低時退回只用收盤
   let taiexKPage = 0;
-  const usKPage = {};  // 費半、TSM 的 30分K ↔ 週K
-  // 加權、費半、TSM 共用：hist＝每晚存的日開高低收，today＝即時報價所屬的交易日（美股用美東日期）
+  const usKPage = {};  // 費半的 30分K ↔ 週K
+  // 加權、費半共用：hist＝每晚存的日開高低收，today＝即時報價所屬的交易日（美股用美東日期）
   // n＝虛線用的均線天數（20 月線、60 季線）
   function weeklyCandles(twii, hist = taiexHistory?.closes, today = twii?.time ? new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10) : null, n = 20) {
     const days = (hist ?? []).filter((c) => !today || c.date < today)
@@ -1450,11 +1442,9 @@
     const badges = {
       twii: turnoverBadge(byId.twii, profile),
       txf: basisBadge(byId.txf, byId.twii),
-      tsm: monthLineBadge(byId.tsm),  // ADR 溢價移到價格右邊
       us10y: us10yBadge(byId.us10y),
       usdtwd: usdtwdBadge(byId.usdtwd, data.institutional, instHistory),
       sox: monthLineBadge(byId.sox),
-      nq: monthLineBadge(byId.nq),
       kospi: monthLineBadge(byId.kospi),
       nikkei: monthLineBadge(byId.nikkei),
     };
@@ -1466,7 +1456,7 @@
       retailRatio: section('台股盤後'),
     };
     // 登入的帳號：主帳號（owner）玩戰鎚小遊戲；love 帳號玩自己的小遊戲。
-    // 我的自選股、費半、TSM 只有主帳號看得到（沒登入、love 帳號都隱藏）
+    // 我的自選股、費半只有主帳號看得到（沒登入、love 帳號都隱藏）
     const account = window.PrivateVault?.profile?.() ?? null;
     // 插在某張卡片後面的卡片：台指期後接我的持股（全寬，排在加權、台指期那一排下面）；
     // 外資淨OI 後接台指VIX、八大行庫
@@ -1478,13 +1468,13 @@
       foreignOi: institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii) + govBanksHtml(data.govBanks, byId.twii),
     };
     // USD/TWD 是國際外匯報價，排到國際市場最後（美債後面）
-    // 不是主帳號：國際市場不顯示費半、TSM，「國際市場」標題改插在小納前面
-    const hideIntl = account === 'owner' ? [] : ['sox', 'tsm'];
-    if (hideIntl.length) { before.nq = before.sox; delete before.sox; }
+    // 不是主帳號：國際市場不顯示費半，「國際市場」標題改插在 USD/TWD 前面
+    const hideIntl = account === 'owner' ? [] : ['sox'];
+    if (hideIntl.length) { before.usdtwd = before.sox; delete before.sox; }
     const quotes = data.quotes.filter((q) => q.id !== 'usdtwd' && !hideIntl.includes(q.id));
     const fx = data.quotes.find((q) => q.id === 'usdtwd');
-    // USD/TWD 排在小納後面（國際市場：費半、TSM、小納、USD/TWD、韓股、日經、布蘭特、美債）
-    if (fx) quotes.splice(quotes.findIndex((q) => q.id === 'nq') + 1, 0, fx);
+    // USD/TWD 排在韓股前面（國際市場：費半、USD/TWD、韓股、日經、布蘭特、美債；兩兩一排剛好三排）
+    if (fx) quotes.splice(Math.max(0, quotes.findIndex((q) => q.id === 'kospi')), 0, fx);
     // 台股盤後依更新先後排：散戶多空比、外資淨OI（期交所 15:00）在前，台指VIX、八大行庫在後
     const rr = quotes.findIndex((q) => q.id === 'retailRatio');
     const oi = quotes.findIndex((q) => q.id === 'foreignOi');
@@ -1540,16 +1530,16 @@
         : txLine ? `<div class="tw2">${txLine}</div>${meta}`
         : k60 ? `<div class="tw2"><div class="krow">${k60}</div></div><div class="foot">${meta}<span class="klabel">60分K</span></div>`
         : meta;
-      // 有 K 線的卡片（加權 15 分 K；費半、TSM 30 分 K）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K／30分K」
+      // 有 K 線的卡片（加權 15 分 K；費半 30 分 K）：K 線獨立一整行，最下面一列左邊時間、右邊「15分K／30分K」
       const body = chart
         ? `<div class="chg ${dir}">${sign}${fmt(q.change, q.digits)} ${pct}</div>
            ${q.id === 'twii'
              // 加權：點 K 線在 15 分 K ↔ 週 K 之間切換，右下標示跟著換
              ? `<div class="kw" data-p="${taiexKPage}"><div class="krow k0">${chart}</div><div class="krow k1">${weeklyCandles(q, undefined, undefined, twiiNearerMa(q))}</div></div>
            <div class="foot kw-foot" data-p="${taiexKPage}">${meta}<span class="klabel k0">15分K</span><span class="klabel k1">週K · ${twiiNearerMa(q) === 60 ? '季線' : '月線'}</span></div>`
-             // 費半、TSM：點 K 線在 30 分 K ↔ 週 K · 月線之間切換（週K 用每晚存的日開高低＋即時報價）
+             // 費半：點 K 線在 30 分 K ↔ 週 K · 月線之間切換（週K 用每晚存的日開高低＋即時報價）
              : (() => {
-               // 虛線跟右上 badge 同一條（TSM 沒有均線 badge，也用離現價較近的那條）
+               // 虛線跟右上 badge 同一條（沒有均線 badge 時也用離現價較近的那條）
                const n = nearerMa(q);
                const wk = weeklyCandles(q, globalHistory?.[q.id], new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(q.time)), n);
                const p = usKPage[q.id] ?? 0;
@@ -1564,7 +1554,7 @@
             : `${sign}${fmt(q.change, q.digits)} ${pct}`}</div>
            ${txLower}`;
       return `
-        <div class="card${chart ? ' has-k' : ''}${q.id === 'txf' ? ' txf' : q.id === 'twii' ? ' twii' : ''}"${q.id === 'sox' || q.id === 'tsm' ? ` data-us="${q.time || 0}"` : ''}${q.id === 'kospi' || q.id === 'nikkei' ? ' data-asia' : ''}>
+        <div class="card${chart ? ' has-k' : ''}${q.id === 'txf' ? ' txf' : q.id === 'twii' ? ' twii' : ''}"${q.id === 'sox' ? ` data-us="${q.time || 0}"` : ''}${q.id === 'kospi' || q.id === 'nikkei' ? ' data-asia' : ''}>
           <div class="head"><div class="name">${q.name}</div>${badges[q.id] ?? ''}</div>
           <div class="price">${fmt(q.price, q.digits)}${q.unit === 'yield' ? '%' : ''}</div>
           ${body}
@@ -1591,7 +1581,7 @@
       const m = [...card.querySelectorAll('.meta')].map((x) => x.textContent).join(' ').match(/(\d+\/\d+) 盤後/);
       card.classList.toggle('pend', due && !!m && m[1] !== today);
     }
-    // 費半、TSM：台股有開盤的日子 09:00 起，到美股今天的交易時段開始（拿到美東今天日期的報價）為止，
+    // 費半：台股有開盤的日子 09:00 起，到美股今天的交易時段開始（拿到美東今天日期的報價）為止，
     // 卡片上是昨晚的收盤，同樣蓋上鋼琴烤漆；美股今天休市就不蓋（等不到新的）。午夜到 09:00 不蓋
     const usOff = (econEvents[key(tw)] ?? []).some((e) => e.label.startsWith('美股休市'));
     const usDue = !isMarketHoliday('tw') && !usOff && tw.getUTCHours() >= 9;

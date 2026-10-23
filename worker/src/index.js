@@ -9,10 +9,8 @@ const YAHOO = {
   kospi: { name: '韓股', symbol: '^KS11', digits: 2, delayMin: 20 },
   // Yahoo's trading period ignores the TSE lunch break (11:30-12:30 JST = 02:30-03:30 UTC).
   nikkei: { name: '日經', symbol: '^N225', digits: 2, delayMin: 15, breaksUtc: [[150, 210]] },
-  tsm: { name: 'TSM', symbol: 'TSM', digits: 2, k30: true },
   brent: { name: '布蘭特原油', symbol: 'BZ=F', digits: 2, delayMin: 10 },
   usdtwd: { name: 'USD/TWD', symbol: 'TWD=X', digits: 3 },
-  nq: { name: '小納 NQ', symbol: 'NQ=F', digits: 2, delayMin: 10 },
   us10y: { name: '美債 10Y', symbol: '^TNX', digits: 3, unit: 'yield' },
 };
 
@@ -34,7 +32,7 @@ const CHIPS = {
   retailRatio: { name: '小台散戶多空比' },
 };
 
-const ORDER = ['twii', 'txf', 'breadth', 'usdtwd', 'sox', 'tsm', 'nq', 'kospi', 'nikkei', 'brent', 'us10y', 'foreignOi', 'retailRatio'];
+const ORDER = ['twii', 'txf', 'breadth', 'usdtwd', 'sox', 'kospi', 'nikkei', 'brent', 'us10y', 'foreignOi', 'retailRatio'];
 
 const NAMES = Object.fromEntries(
   Object.entries({ ...YAHOO, ...YAHOO_TW, ...BREADTH, ...CHIPS }).map(([id, cfg]) => [id, cfg.name]),
@@ -130,14 +128,6 @@ async function buildQuotes(origin, ctx) {
       }
     }),
   );
-
-  // TSM ADR premium: ADR price in TWD per share (1 ADR = 5 shares) vs 2330 on the TWSE.
-  const tsm = quotes.find((q) => q.id === 'tsm');
-  const usdtwd = quotes.find((q) => q.id === 'usdtwd');
-  const tw2330 = await pick(tw, 'tw2330').catch(() => null);
-  if (tsm?.price && usdtwd?.price && tw2330?.price) {
-    tsm.adrPremium = ((tsm.price * usdtwd.price) / 5 / tw2330.price - 1) * 100;
-  }
 
   const [holidays, institutional, margin] = await Promise.all([
     fetchHolidays(origin, ctx).catch(() => []),
