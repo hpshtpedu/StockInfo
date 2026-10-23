@@ -5,7 +5,7 @@ const DELAY_GRACE_MIN = 20;
 
 // delayMin: typical Yahoo feed delay, measured; shown when the market is not open.
 const YAHOO = {
-  sox: { name: '費半 SOX', symbol: '^SOX', digits: 2, k30: true },
+  sox: { name: '費半 SOX', symbol: '^SOX', digits: 2 },
   kospi: { name: '韓股', symbol: '^KS11', digits: 2, delayMin: 20 },
   // Yahoo's trading period ignores the TSE lunch break (11:30-12:30 JST = 02:30-03:30 UTC).
   nikkei: { name: '日經', symbol: '^N225', digits: 2, delayMin: 15, breaksUtc: [[150, 210]] },
@@ -692,7 +692,7 @@ async function fetchYahoo({ name, symbol, digits, unit, delayMin, breaksUtc, k30
 
   const price = meta.regularMarketPrice;
   const prev = meta.chartPreviousClose ?? meta.previousClose;
-  // 費半、TSM 的 30 分 K：同一個回應裡的 5 分 K（range=1d 只含一般交易時段）每 30 分鐘合成一根，不多抓
+  // 30 分 K（設定 k30 的才算）：同一個回應裡的 5 分 K（range=1d 只含一般交易時段）每 30 分鐘合成一根，不多抓
   const candles = k30 ? candles30(chart) : undefined;
   return {
     candles,
