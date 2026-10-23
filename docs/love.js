@@ -34,7 +34,8 @@
   /* 走路時一步一步上下晃（跟戰鎚部隊行軍一樣） */
   .lv-boy.walking, .lv-girl.walking { animation: lv-step .5s steps(2) infinite; }
   @keyframes lv-step { 0% { margin-bottom: 0; rotate: 0deg; } 50% { margin-bottom: 3px; rotate: -2deg; } }
-  .lv-girl.buff { filter: drop-shadow(0 0 3px #ff7eb9) drop-shadow(0 0 6px #ff7eb9); }  /* 男生親親中：女生加持 */
+  /* 男生親親中：女生加持，發帝皇那種金光（亞空間背景是粉紅的，粉紅光看不出來） */
+  .lv-girl.buff { filter: drop-shadow(0 0 3px #ffd700) drop-shadow(0 0 6px #ffd700); }
   .lv-wall { position: absolute; bottom: 2px; height: 84%; aspect-ratio: 97 / 96; transform: translateX(-50%); z-index: 2;
     transition: opacity .7s, scale .7s; }
   .lv-wall img { position: static; width: 100%; height: 100%; }
@@ -51,6 +52,7 @@
   @keyframes lv-up { 0% { opacity: 0; translate: 0 6px; } 15% { opacity: 1; translate: 0 0; } 100% { opacity: 0; translate: 0 -10px; } }
   @keyframes lv-crit { 0% { opacity: 0; scale: 2; } 12% { opacity: 1; scale: 1.15; } 30% { scale: 1; } 100% { opacity: 0; translate: 0 -10px; } }
   .lv-rise { z-index: 4; animation: lv-rise 1.6s ease-out forwards; }
+  .lv-rise.boy { animation-duration: 2.8s; filter: drop-shadow(0 0 2px #ffd700) drop-shadow(0 0 5px #ffd700); }  /* 男生親親冒的愛心：飄慢一點、包金光 */
   @keyframes lv-rise { 0% { opacity: 0; translate: -50% 0; scale: .6; } 20% { opacity: 1; } 100% { opacity: 0; translate: -50% -34px; scale: 1; } }
   .lv-heart { z-index: 4; transform: translate(-50%, 0); }
   .lv-msg { position: absolute; left: 66%; top: 50%; transform: translate(-50%, -50%); z-index: 5; white-space: nowrap;
@@ -253,15 +255,15 @@
   }
 
   // 結局：兩人中間一直冒愛心
-  function rise(x, y, size) {
+  function rise(x, y, size, cls = '') {
     const r = document.createElement('img');
-    r.className = 'lv-rise';
+    r.className = `lv-rise${cls}`;
     r.src = `${A}heart.webp`;
     r.style.height = `${size}px`;
     r.style.left = `${x}%`;
     r.style.top = `${y}px`;
     arena.appendChild(r);
-    setTimeout(() => r.remove(), 1650);
+    setTimeout(() => r.remove(), cls ? 2850 : 1650);
   }
   function endHearts() {
     clearTimeout(endTimer);
@@ -273,7 +275,7 @@
   // 男生親親時頭上冒一顆小愛心
   function boyHeart() {
     const h = arena.getBoundingClientRect().height;
-    rise(BOY + 2, h * 0.05, h * 0.24);
+    rise(BOY + 2, h * 0.05, h * 0.24, ' boy');
   }
 
   function place(img, x) { img.style.left = `${x}%`; }
