@@ -157,7 +157,8 @@
   .tsw { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   /* 下半部分頁：每頁包一層 .pg（data-i），只顯示目前那頁 */
   .tsw > .pg { display: none; }
-  .tsw[data-p="0"] > .pg[data-i="0"], .tsw[data-p="1"] > .pg[data-i="1"], .tsw[data-p="2"] > .pg[data-i="2"] { display: block; }
+  .tsw[data-p="0"] > .pg[data-i="0"], .tsw[data-p="1"] > .pg[data-i="1"], .tsw[data-p="2"] > .pg[data-i="2"],
+  .tsw[data-p="3"] > .pg[data-i="3"], .tsw[data-p="4"] > .pg[data-i="4"] { display: block; }  /* 2330 有 4 頁（外投、公股、月季、PR），多留一頁 */
   .hold .fl.ma { font-weight: 400; }
   .hold .fl.ma b { color: var(--warn); font-weight: 700; }
   .hold .fl.ma .wide { grid-column: 1 / -1; }
