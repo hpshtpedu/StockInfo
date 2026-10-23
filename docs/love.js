@@ -23,7 +23,6 @@
   const WALK = 1, FINAL = 2;            // 走到下一面牆 1 分鐘；最後兩人走到一起 2 分鐘
   const WALLS = [30, 50, 70];           // 牆的中心（卡片寬度 %），0 是最左邊
   const BOY = 7, GIRL0 = 93, STOP = 12; // 男生位置、女生起點、女生停在牆右邊多遠
-  const GAP = 6;                        // 最後兩人中心的距離（臉貼臉）
   const BASE_HP = 60000, SHARE = [0.42, 0.33, 0.25];
 
   const css = `
@@ -33,7 +32,7 @@
   .lv img { position: absolute; display: block; pointer-events: none; user-select: none; -webkit-user-select: none; }
   .lv-boy, .lv-girl { bottom: 2px; height: 88%; transform: translateX(-50%); transition: left 1s linear, filter .4s; z-index: 3; }
   .lv-girl.buff { filter: drop-shadow(0 0 3px #ff7eb9) drop-shadow(0 0 6px #ff7eb9); }  /* 男生親親中：女生加持 */
-  .lv-wall { position: absolute; bottom: 2px; height: 62%; aspect-ratio: 97 / 96; transform: translateX(-50%); z-index: 2;
+  .lv-wall { position: absolute; bottom: 2px; height: 84%; aspect-ratio: 97 / 96; transform: translateX(-50%); z-index: 2;
     transition: opacity .7s, scale .7s; }
   .lv-wall img { position: static; width: 100%; height: 100%; }
   .lv-wall.hit { animation: lv-shake .3s 1; }
@@ -41,9 +40,6 @@
   .lv-wall.broken { opacity: 0; scale: .7; }
   @keyframes lv-shake { 0%,100% { translate: 0; } 25% { translate: -3px 0; } 50% { translate: 3px 0; } 75% { translate: -2px 0; } }
   @keyframes lv-flash { 0%,100% { filter: none; } 30% { filter: brightness(2.6) saturate(.3); } }
-  /* 血條：牆上方細細一條粉紅 */
-  .lv-wall i { position: absolute; left: 15%; right: 15%; top: -6px; height: 3px; border-radius: 2px; background: rgba(0,0,0,.55); }
-  .lv-wall i b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: #ff7eb9; transition: width 1s linear; }
   .lv-shot { z-index: 4; transform: translate(-50%, -50%); transition: left .8s linear; filter: drop-shadow(0 0 2px #ff7eb9); }
   .lv-float { position: absolute; z-index: 5; top: 2px; transform: translateX(-50%); white-space: nowrap; pointer-events: none;
     font: 900 17px/1 Impact, "Arial Black", sans-serif; color: #ff8cc2; animation: lv-up 1.3s ease-out forwards;
@@ -175,7 +171,7 @@
   const el = document.createElement('div');
   el.className = 'card wide lv lv-paused';
   el.innerHTML = `<div class="lv-arena">
-      ${WALLS.map((x, i) => `<div class="lv-wall" data-i="${i}" style="left:${x}%"><img src="${A}wall.webp" alt=""><i><b></b></i></div>`).join('')}
+      ${WALLS.map((x, i) => `<div class="lv-wall" data-i="${i}" style="left:${x}%"><img src="${A}wall.webp" alt=""></div>`).join('')}
       <img class="lv-boy" alt="">
       <img class="lv-girl" alt="">
       <div class="lv-msg"></div>
@@ -210,7 +206,7 @@
     shot.className = 'lv-shot';
     shot.src = `${A}heart.webp`;
     shot.style.height = `${size}px`;
-    shot.style.top = `${h * 0.42}px`;
+    shot.style.top = `${h * 0.55}px`;  // 打在牆身中間
     const g = girl.getBoundingClientRect();
     shot.style.left = `${g.left - a.left + g.width * 0.2}px`;
     arena.appendChild(shot);
@@ -256,6 +252,13 @@
   }
 
   function place(img, x) { img.style.left = `${x}%`; }
+  // 最後兩人中心的距離（卡片寬 %）：兩張親嘴圖各一半寬再收 10%，臉貼臉但身體不疊在一起
+  function gap() {
+    const a = arena.getBoundingClientRect();
+    if (!a.width) return 8;
+    const h = a.height * 0.88;
+    return ((h * (56 / 128) + h * (69 / 128)) / 2 * 0.9 / a.width) * 100;
+  }
   function draw() {
     const { mins, day } = now();
     const paused = !active();
@@ -273,14 +276,12 @@
     }
     const prevPhase = last?.phase;
     last = st;
-    const S = st.S ?? (st.hp ? { max: st.hp } : null);
+    const G = gap();
 
     // 牆
     walls.forEach((w, i) => {
       const gone = st.phase === 'rest' || st.phase === 'end' || st.phase === 'final' || (st.broken?.[i] != null);
       w.classList.toggle('broken', gone);
-      const max = S?.max?.[i] ?? 1;
-      w.querySelector('b').style.width = `${gone ? 0 : clamp((st.hp?.[i] ?? max) / max, 0, 1) * 100}%`;
     });
 
     // 人物
@@ -288,12 +289,12 @@
     girl.classList.toggle('buff', !!kiss);
     if (st.phase === 'rest' || st.phase === 'end') {
       setSrc(boy, `${A}m_kiss${still}.webp`); setSrc(girl, `${A}f_kiss${still}.webp`);
-      place(boy, meet - GAP / 2); place(girl, meet + GAP / 2);
+      place(boy, meet - G / 2); place(girl, meet + G / 2);
     } else if (st.phase === 'final') {
       const f = clamp((st.t - st.since) / FINAL, 0, 1);
       setSrc(boy, `${A}m_walk${still}.webp`); setSrc(girl, `${A}f_walk${still}.webp`);
-      place(boy, BOY + (meet - GAP / 2 - BOY) * f);
-      place(girl, WALLS[0] + STOP - (WALLS[0] + STOP - meet - GAP / 2) * f);
+      place(boy, BOY + (meet - G / 2 - BOY) * f);
+      place(girl, WALLS[0] + STOP - (WALLS[0] + STOP - meet - G / 2) * f);
     } else {
       setSrc(boy, `${A}${kiss ? 'm_kiss' : 'm_walk'}${kiss ? still : '_still'}.webp`);  // 沒在親的時候站著不動
       place(boy, BOY);

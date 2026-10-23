@@ -25,9 +25,9 @@ def main():
     ap.add_argument('--profile', help='其他帳號的名稱（例如 love）；不給就是主帳號')
     args = ap.parse_args()
     who = f'「{args.profile}」帳號' if args.profile else '主帳號'
-    pw = getpass.getpass(f'{who}密碼（至少 10 個字）：')
-    if len(pw) < 10:
-        print('密碼太短，至少 10 個字')
+    pw = getpass.getpass(f'{who}密碼（至少 6 個字）：')
+    if len(pw) < 6:
+        print('密碼太短，至少 6 個字')
         return 1
     if getpass.getpass('再輸入一次：') != pw:
         print('兩次不一樣')
