@@ -95,7 +95,7 @@
   .wg-sp.fadein.on { opacity: 1; }
   .wg-sp.slide { transition: left .45s ease-in; }
   /* 被必殺技打到：整個人變成白色剪影一閃（三次，對上三個傷害）；前後不寫 filter，保留原本的光暈 */
-  .wg-flashw { animation: wg-flashw .2s linear 1; }
+  .wg-god.wg-flashw { animation: wg-flashw .2s linear 1; }  /* 寫兩個 class：被普通攻擊打過會留著 .wg-hurt，它的 animation 不能蓋掉閃白 */
   @keyframes wg-flashw { 8%, 65% { filter: brightness(0) invert(1) drop-shadow(0 0 4px #fff); } }
   .wg-float.say.big { font-size: 38px; }  /* 必殺技口號：一般台詞的 2 倍 */
   .wg-float.ult.up { color: #ffd100; } .wg-float.ult.down { color: #8dff3a; }
@@ -556,7 +556,7 @@
     img.className = `wg-sp${bull ? '' : ' fadein'}`;
     let url = null;
     const hits = (t0, gaps) => gaps.forEach((g, i) => setTimeout(() => {
-      target.classList.remove('wg-flashw'); void target.offsetWidth; target.classList.add('wg-flashw');
+      target.classList.remove('wg-flashw', 'wg-hurt', 'wg-hurt-big', 'wg-hurt-claw'); void target.offsetWidth; target.classList.add('wg-flashw');
       el.classList.remove('wg-shake'); void el.offsetWidth; el.classList.add('wg-shake');
       onHit?.(i);
     }, t0 + g));
