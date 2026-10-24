@@ -140,10 +140,9 @@
     20% { opacity: 1; clip-path: inset(0 0 0 0); scale: 1; filter: brightness(1.6) drop-shadow(0 0 3px #ffd700); }
     60% { opacity: 1; filter: brightness(1) drop-shadow(0 0 3px #ffd700); }
     100% { opacity: 0; clip-path: inset(0 0 0 0); scale: .97; filter: brightness(1) drop-shadow(0 0 3px #ffd700); } }
-  /* 被帝皇之爪抓：震兩下，跟兩爪同步（0、0.5 秒） */
-  .wg-hurt-claw { animation: wg-hurtc .75s 1; }
-  @keyframes wg-hurtc { 0%, 22%, 66%, 88%, 100% { translate: 0; } 6% { translate: -8px 1px; } 14% { translate: 5px 0; }
-    72% { translate: 8px -1px; } 80% { translate: -5px 0; } }
+  /* 被帝皇之爪抓：每一爪震一下（第二爪時程式重新觸發一次，不靠同一段動畫的後半，比較可靠） */
+  .wg-hurt-claw { animation: wg-hurtc .3s 1; }
+  @keyframes wg-hurtc { 0%, 100% { translate: 0; } 20% { translate: -8px 1px; } 45% { translate: 5px 0; } 70% { translate: -3px 0; } }
   @keyframes wg-arc { 0% { translate: 0 0; } 50% { translate: 0 -22px; } 100% { translate: 0 0; } }
   /* 大招命中：明顯的三下（每 0.25 秒一下，左右交替），跟三個骷髏同步 */
   .wg-hurt-big { animation: wg-hurtb .75s 1; }
@@ -538,6 +537,7 @@
       setTimeout(() => c.remove(), 720);
     }, d));
     setTimeout(() => impact(true, true, a, to, onHit, true), 100);  // 第一爪劃開的那一刻算命中
+    setTimeout(() => { guo.classList.remove('wg-hurt', 'wg-hurt-big', 'wg-hurt-claw'); void guo.offsetWidth; guo.classList.add('wg-hurt-claw'); }, 600);  // 第二爪
   }
   // 命中：被打的神震動、頭上冒骷髏；大招震三下、三個骷髏、卡片也震
   function impact(bull, ult, a, to, onHit, clawed = false) {
