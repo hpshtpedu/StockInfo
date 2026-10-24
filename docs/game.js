@@ -87,7 +87,7 @@
   .wg-float.up { color: #ffd100; } .wg-float.down { color: #3fdc8a; }  /* 帝皇方一律金黃（跟爆擊、大招同色），大不淨者方綠色 */
   .wg-float.crit { font-size: 40px; animation: wg-crit 1.6s ease-out forwards; }
   .wg-float.crit.up { color: #ffd100; } .wg-float.crit.down { color: #8dff3a; }
-  .wg-float.say { font-size: 26px; font-weight: 800; line-height: 1.15; text-align: center; animation: wg-up 2s ease-out forwards; }  /* 中文台詞：往上飄、淡出慢一點（2 秒）才讀得完 */
+  .wg-float.say { font-size: 22px; font-weight: 800; line-height: 1.15; text-align: center; animation: wg-up 2s ease-out forwards; }  /* 中文台詞：往上飄、淡出慢一點（2 秒）才讀得完 */
   /* 大招傷害（魔獸世界浮動戰鬥文字：×2 的巨大數字，先巨大彈出再縮回，發光描邊） */
   .wg-float.ult { top: 26% !important; font-size: 46px; text-align: center; animation: wg-ult 2s ease-out forwards;
     text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 10px currentColor; }
@@ -318,7 +318,7 @@
     </div>
     <div class="wg-ticker"><span></span></div>
     ${debug ? '<div class="wg-dbg">時間<input type="range" min="470" max="815" step="1" value="600"><span class="t">10:00</span>漲跌%<input type="number" step="0.1" value="0"></div>'
-      + '<div class="wg-dbg">必殺技<button type="button" data-sp="1">滅絕令</button><button type="button" data-sp="0">憎惡鏈枷</button></div>' : ''}`;
+      + '<div class="wg-dbg">必殺技<button type="button" data-sp="1">滅絕令</button><button type="button" data-sp="0">憎惡鏈枷</button><button type="button" data-claw>帝皇之爪</button></div>' : ''}`;
   const $ = (s) => el.querySelector(s);
   const arena = $('.wg-arena');
   const guo = $('.wg-guo'), emp = $('.wg-emp'), tg = $('.wg-tguo'), te = $('.wg-temp'), cloud = $('.wg-cloud');
@@ -382,21 +382,22 @@
     f.style.setProperty('--dx', `${Math.round((Math.random() - 0.5) * 16)}px`);
     arena.appendChild(f);
     // 不蓋到兩尊神：量出大不淨者的右緣、帝皇的左緣，字（含爆擊放大、左右飄移）限制在中間。
-    // 必殺技口號（big）例外：整張卡片正中間最上面，字太大夾不進兩尊神中間
+    // 中文台詞（say，含必殺技口號）例外：放卡片正中間，可以跨到神祇身上；比卡片寬就拆兩行——
+    // 優先拆在中間附近的「！」「，」後面，沒有就從正中間拆
     const a = arena.getBoundingClientRect();
-    if (extra.includes('big')) f.style.left = '50%';
-    else if (a.width) {
-      const lo = guo.getBoundingClientRect().right - a.left + 4;
-      const hi = emp.getBoundingClientRect().left - a.left - 4;
-      const k = extra.includes('ult') ? 1.65 : crit ? 1.5 : 1.1;
-      // 中文台詞放不下就拆兩行：優先拆在中間附近的「！」「，」後面，沒有就從正中間拆
-      if (extra.includes('say') && text.length >= 4 && f.offsetWidth * k + 16 > hi - lo) {
+    if (extra.includes('say')) {
+      f.style.left = '50%';
+      if (a.width && text.length >= 4 && f.offsetWidth * 1.1 + 16 > a.width) {
         const mid = text.length / 2;
         const cuts = [...text].map((ch, i) => i + 1).filter((i) => i < text.length && '！，、'.includes(text[i - 1]));
         const cut = cuts.length ? cuts.reduce((b, i) => (Math.abs(i - mid) < Math.abs(b - mid) ? i : b)) : Math.ceil(mid);
         f.textContent = '';
         f.append(text.slice(0, cut), document.createElement('br'), text.slice(cut));
       }
+    } else if (a.width) {
+      const lo = guo.getBoundingClientRect().right - a.left + 4;
+      const hi = emp.getBoundingClientRect().left - a.left - 4;
+      const k = extra.includes('ult') ? 1.65 : crit ? 1.5 : 1.1;
       let half = (f.offsetWidth * k) / 2 + 8;
       if (hi - lo < 2 * half) {  // 比中間的空間寬：字縮小到放得下
         const size = parseFloat(getComputedStyle(f).fontSize) * (hi - lo) / (2 * half);
@@ -545,7 +546,11 @@
       setTimeout(() => c.remove(), 720);
     }, d));
     setTimeout(() => impact(true, true, a, to, onHit, true), 100);  // 第一爪劃開的那一刻算命中
-    setTimeout(() => { guo.classList.remove('wg-hurt', 'wg-hurt-big', 'wg-hurt-claw'); void guo.offsetWidth; guo.classList.add('wg-hurt-claw'); }, 600);  // 第二爪
+    // 第二爪：跟第一爪一樣，大不淨者震一下、整張卡片也震一下
+    setTimeout(() => {
+      guo.classList.remove('wg-hurt', 'wg-hurt-big', 'wg-hurt-claw'); void guo.offsetWidth; guo.classList.add('wg-hurt-claw');
+      el.classList.remove('wg-shake'); void el.offsetWidth; el.classList.add('wg-shake');
+    }, 600);
   }
   // 命中：被打的神震動、頭上冒骷髏；大招震三下、三個骷髏、卡片也震
   function impact(bull, ult, a, to, onHit, clawed = false) {
@@ -887,6 +892,7 @@
     const eL = ((emp.getBoundingClientRect().left - ar.left) / ar.width) * 100;
     fireSpecial(bull, 150 + Math.round(Math.random() * 150), bull ? gR + 5 : eL - 5);
   }));
+  if (debug) el.querySelector('.wg-dbg button[data-claw]').addEventListener('click', () => shot(true, () => float('300!', 'up', true, 40, ' ult'), true, true));
   if (debug) el.querySelectorAll('.wg-dbg input').forEach((i) => i.addEventListener('input', () => {
     $('.wg-dbg .t').textContent = now().hhmm; draw(true);
   }));
