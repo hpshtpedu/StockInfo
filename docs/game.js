@@ -324,6 +324,17 @@
   fetch(`${A}meta.json`).then((r) => r.json()).then((m) => { meta = m; draw(false); }).catch(() => {});
   // 中性新聞故事線（game/story.json，由 mini_game/storyline.txt 產生）：併進銀河快訊的抽選池
   fetch(`${A}story.json`).then((r) => r.json()).then((s) => { if (Array.isArray(s)) D.galaxy = D.galaxy.concat(s); }).catch(() => {});
+  // 最近的波動度 σ：今天以前 20 個交易日日漲跌（%）的標準差，最低 0.8%（taiex_history.json，每晚更新）。
+  // 戰線和情勢分數都先除以 σ（z-score）：大起大落的時期同樣 1% 推得少，平靜時推得多，只有罕見的大漲大跌才推到底
+  let sigma = 1.3;
+  fetch('taiex_history.json').then((r) => r.json()).then((j) => {
+    const c = (j.closes ?? []).filter((x) => x.date < dayOffset(0)).slice(-21).map((x) => x.close);
+    const r = c.slice(1).map((x, i) => (x / c[i] - 1) * 100);
+    if (r.length < 10) return;
+    const m = r.reduce((a, b) => a + b, 0) / r.length;
+    sigma = Math.max(0.8, Math.sqrt(r.reduce((a, b) => a + (b - m) ** 2, 0) / r.length));
+    draw(false);
+  }).catch(() => {});
   let lastPrice = null;
   let resolvedShown = false;
   let lastPhase = null;   // 上一次畫的階段：用來判斷是不是「看著」收盤（要播轉場）
@@ -394,9 +405,9 @@
     const hi = Math.max(price, ...k.map((x) => x[1])), lo = Math.min(price, ...k.map((x) => x[2]));
     return { mom: (price - ref) / t.prev * 100, pull: (price - hi) / t.prev * 100, bounce: (price - lo) / t.prev * 100 };
   }
-  // 情勢分數（-1 空 … +1 多）：今天漲跌幅 55%、短線動能 45%。漲多但正在下滑時，大不淨者出手變多（反撲）
+  // 情勢分數（-1 空 … +1 多）：今天漲跌幅（以波動度 σ 為單位）55%、短線動能 45%。漲多但正在下滑時，大不淨者出手變多（反撲）
   function score(pct) {
-    return 0.55 * Math.tanh(pct / 0.8) + 0.45 * Math.tanh(momentum().mom / 0.25);
+    return 0.55 * Math.tanh(pct / (1.1 * sigma)) + 0.45 * Math.tanh(momentum().mom / 0.25);
   }
   // 反攻號角：收漲但從高點回落 ≥0.4% 且短線在跌 → 空軍反攻；收跌但從低點反彈 ≥0.4% 且短線在漲 → 多軍反攻
   function counterattack(pct) {
@@ -700,8 +711,8 @@
       } else emp.style.right = `${-pad}px`;
     }
 
-    // 戰線：昨收在中間，漲往左推（帝皇在右邊進攻），tanh 讓 ±2% 接近邊界
-    front = 50 - 40 * Math.tanh(pct / 1.2);
+    // 戰線：昨收在中間，漲往左推（帝皇在右邊進攻）；漲跌幅除以波動度 σ 再套 tanh，約 3σ 才接近邊界
+    front = 50 - 40 * Math.tanh(pct / (1.6 * sigma));
     // 部隊：待命時完整貼在兩側；抓到指數後 2 秒 CSS 過渡衝到戰線開打。
     // 09:00 起還沒有今天的指數時行軍：兩邊同一速度往中間走，09:05（最晚一定抓得到指數）走完，
     // 走的距離＝離中線較近那邊的 85%，所以抓到指數前一定不會碰撞，之後停住等
