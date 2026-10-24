@@ -67,10 +67,7 @@ def main():
     for i, d in enumerate(days):
         if d['date'] not in known or i >= len(days) - 5:
             known[d['date']] = d
-    # 留今年全部（網頁的「本年度」累計；HiStock 只給半年，今年能補到的最早是 4/27）和至少最近 KEEP 天
-    year = f'{now.year}-01-01'
-    merged = [known[k] for k in sorted(known)]
-    merged = [d for i, d in enumerate(merged) if d['date'] >= year or i >= len(merged) - KEEP]
+    merged = [known[k] for k in sorted(known)][-KEEP:]
     got_today = merged[-1]['date'] == today
     # TSMC: only when it is in the page's top-30 buy or sell list (萬元 -> 億元); otherwise None
     g = re.search(r'title="(\d{4}-\d\d-\d\d) [^"]*?\(2330\)[^"]*?(-?[\d,]+)萬', html)

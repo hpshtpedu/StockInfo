@@ -69,9 +69,6 @@
     color: #d6e4ff; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
   .section .sec-tg { color: #9fb4d6; font-size: 14px; letter-spacing: 0; }
   .sec-hidden { display: none !important; }
-  /* 八大行庫卡片：台積電的八大買賣超（有上排行才出現） */
-  .gg { font-size: clamp(14px, 4.6vw, 18px); font-weight: 400; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .gg b { font-weight: 600; }  /* 數字跟其他盤後卡片的「較前日」一樣粗 */
   /* 盤後還沒開獎的卡片：黑色亮漆（上半部高光＋水平反光線、很淡的斜向微光、上亮下暗的邊），字還看得到 */
   .card.pend { position: relative; }
   .card.pend::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
@@ -227,9 +224,6 @@
   .head .badges { display: flex; gap: 4px; min-width: 0; }
   .inst-foot { padding-top: 8px; }  /* 用 padding：margin-top 會被「最後一列貼底」的 margin-top: auto 蓋掉 */
   .card.wide .chg { font-size: clamp(13px, 4.6vw, 18px); }
-  /* 本年度累計（三大法人、八大）：比當日明細小一級的灰字標題＋整數億 */
-  .card.wide .chg.ytd { font-size: clamp(11.5px, 3.7vw, 15px); margin-top: 2px; }
-  .ytd .lbl, .gg .lbl { color: var(--muted); font-weight: 400; }
   .chg.big { font-size: clamp(14px, 4.4vw, 17px); }
   .error { color: var(--warn); font-size: 12px; }
   .cal { grid-column: 1 / -1; font-size: 14.3px; gap: 3px; }
@@ -479,8 +473,6 @@
     return `<span class="badge ${v > 0 ? 'buy' : 'sell'}">外資${v > 0 ? '買' : '賣'}超史上第${rank}名</span>`;
   }
 
-  // 億元的累計數字：破萬億改用「兆」（-21,960億 → -2.20兆），不到一萬照常寫整數億
-  const bigYi = (v) => (Math.abs(v) >= 10000 ? `${fmt(v / 10000, 2)}兆` : `${fmt(v, 0)}億`);
 
   // 三大法人買賣超：一直顯示；當日 15:10 到下個交易日 08:00 是新資料（彩色），其餘時間整塊轉灰
   function institutionalHtml(inst, history) {
@@ -493,19 +485,11 @@
     const rank = foreignRankBadge(inst);
     const parts = [['外資', inst.foreign], ['投信', inst.trust], ['自營', inst.dealer]]
       .map(([k, v]) => `<span class="txt">${k}</span> <span class="${dir(v)}">${num(v)}</span>`).join(' · ');
-    // 本年度累計：排程（證交所月報表，算到 asOf）＋網頁拿到的更新的那一天
-    const y = history?.ytd;
-    const sameYear = y && y.asOf.slice(0, 4) === inst.date.slice(0, 4);
-    const ytdOf = (k) => (sameYear ? y[k] : 0) + (!sameYear || inst.date > y.asOf ? inst[k] : 0);
-    const int = (v) => `${v > 0 ? '+' : ''}${bigYi(v)}`;
-    const ytd = [['外資', 'foreign'], ['投信', 'trust'], ['自營', 'dealer']]
-      .map(([k, f]) => { const v = ytdOf(f); return `<span class="txt">${k}</span> <span class="${dir(v)}">${int(v)}</span>`; }).join(' · ');
     return `
       <div class="card wide inst">
         <div class="head"><div class="name">三大法人買賣超</div><div class="badges">${rank}${foreignStreak(inst, history, !!rank)}</div></div>
         <div class="price ${dir(inst.total)}">${num(inst.total)}<small> 億</small></div>
         <div class="chg">${parts}</div>
-        <div class="chg ytd"><span class="lbl">本年度</span> ${ytd}</div>
         <div class="foot inst-foot"><div class="meta">${m}/${d} 盤後</div>${inst.share != null
           // 法人成交比重：三大法人買＋賣 ÷（大盤成交金額 × 2），中性說明
           ? `<span class="badge note">法人成交比重${fmt(inst.share, 0)}%</span>` : ''}</div>
@@ -538,17 +522,10 @@
     // 右上：連買/賣（狀態）；右下：護盤（有觸發才出現，灰色說明）；大數字放大跟左邊卡片對齊
     const streak = sign ? `<span class="badge ${sign > 0 ? 'up' : 'down'}">連${n}${sign > 0 ? '買' : '賣'}</span>` : '';
     const note = rescue ? '<span class="badge warn">護盤</span>' : '';
-    // 本年度累計：今年的日子加總。HiStock 只給半年，今年最早只補到 4/27：資料不是從年初開始就寫「M/D起」
-    const year = days.filter((d) => d.date.slice(0, 4) === last.date.slice(0, 4));
-    const ytdSum = year.reduce((t, d) => t + d.net, 0);
-    const [, ym, yd] = year[0].date.split('-').map(Number);
-    const ytdLabel = ym === 1 && yd <= 10 ? '本年度' : `${ym}/${yd}起`;
-    const ytd = `<div class="gg"><span class="lbl">${ytdLabel}</span> <b class="${ytdSum > 0 ? 'up' : 'down'}">${ytdSum > 0 ? '+' : ''}${bigYi(ytdSum)}</b></div>`;
     return `
       <div class="card roomy">
         <div class="head"><div class="name">八大買賣超</div>${streak}</div>
         <div class="price ${dir}">${last.net > 0 ? '+' : ''}${fmt(last.net, 1)}<small> 億</small></div>
-        ${ytd}
         <div class="foot"><div class="meta">${mm}/${dd} 盤後</div>${note}</div>
       </div>`;
   }
