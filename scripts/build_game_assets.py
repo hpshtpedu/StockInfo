@@ -21,12 +21,17 @@ SIZES = {'Emperor': 240, 'GUO': 240, 'fight-cloud': 200, 'Emperor_win': 240, 'Em
          'Emperor_attack2_2': 200, 'GUO_attack2_2': 160, 'day_off': 160, 'heart': None,
          'Emperor_attack_sp': None, 'GUO_attack_sp': None, 'GUO_mini_troops': 96, 'Emperor_mini_troops': 96,
          'GUO_troops2': 160, 'GUO_troops3': 160, 'Emperor_troops2': 160, 'Emperor_troops3': 160,
-         'GUO_mini_troops2': 96, 'Emperor_mini_troops2': 96}
+         'GUO_mini_troops2': 96, 'Emperor_mini_troops2': 96, 'webway': None, 'Ghazghkull': 160}
 # 神祇的光暈直接畫進圖裡（以前是網頁上 CSS drop-shadow，動圖每換一格瀏覽器就要重算一次，吃 CPU）。
 # 四邊各留 GLOW_PAD px（圖高 240 的 10%）給光暈；網頁那邊把神祇放大 1.2 倍、往下移 10% 抵銷，人物大小位置不變
 GLOW = {'Emperor': (255, 215, 0), 'Emperor_win': (255, 215, 0), 'Emperor_loss': (255, 215, 0),
         'GUO': (0, 255, 0), 'GUO_win': (0, 255, 0), 'GUO_loss': (0, 255, 0)}
 GLOW_PAD, GLOW_SIGMA, GLOW_GAIN = 24, 10, 1.7  # 手機上神祇約 73px 高：σ 10、加強 1.7 倍，跟原本 CSS 的 drop-shadow(0 0 6px) 差不多
+
+
+# 亂入的網道和碎骨者：外圈一層網道漩渦的藍色光暈（四邊留 16px）
+WARP = {'webway', 'Ghazghkull'}
+WARP_BLUE = (90, 180, 255)
 
 
 # 休假吃飯圖：薄薄一層金光（原本 CSS 的 drop-shadow 1px＋3px），四邊各留 8px（圖高 160 的 5%）
@@ -48,6 +53,8 @@ def glow(frame, color, pad=GLOW_PAD, layers=((GLOW_SIGMA, GLOW_GAIN),)):
 
 # 必殺技動圖：每一格都留、每格 70ms（網頁照這個節奏對傷害時間點）
 SP_FRAME_MS = 70
+# 碎骨者動圖：原檔就是 33 格、每格 120ms（Pillow 讀不到這個檔的每格時間），每一格都留；網頁照 3.96 秒排傷害
+GHAZ_FRAME_MS = 120
 
 
 def trim_box(im):
@@ -79,17 +86,21 @@ def build(name, h, OUT):
     # 神祇：裁、縮好之後才加光暈（光暈的大小才跟顯示大小對得上）
     finish = ((lambda f: glow(f, GLOW[name])) if name in GLOW
               else (lambda f: glow(f, (255, 215, 0), DAYOFF_PAD, ((1, 2.0), (3, 1.4)))) if name == 'day_off'
+              else (lambda f: glow(f, WARP_BLUE, 16, ((6, 1.8),))) if name in WARP
               else (lambda f: f))
     if n > 1:
         frames, durs = [], []
         sp = name.endswith('_sp')
-        for i in range(0, n, 1 if sp else 2):  # 20 fps -> 10 fps（必殺技不減格）
+        ghaz = name == 'Ghazghkull'
+        for i in range(0, n, 1 if sp or ghaz else 2):  # 20 fps -> 10 fps（必殺技、碎骨者不減格）
             im.seek(i)
             frames.append(finish(fit(crop(im.convert('RGBA')), h)))
-            durs.append(SP_FRAME_MS if sp else (im.info.get('duration') or 50) * 2)
+            durs.append(SP_FRAME_MS if sp else GHAZ_FRAME_MS if ghaz else (im.info.get('duration') or 50) * 2)
         frames[0].save(OUT / f'{name}.webp', save_all=True, append_images=frames[1:], duration=durs, loop=0,
                        quality=70, method=6, lossless=False)
         frames[0].save(OUT / f'{name}_still.webp', quality=75, method=6)
+        if ghaz:  # 播完停在最後一格淡出
+            frames[-1].save(OUT / f'{name}_end.webp', quality=75, method=6)
     else:
         finish(fit(crop(im.convert('RGBA' if im.mode in ('RGBA', 'P') else 'RGB')), h)).save(OUT / f'{name}.webp', quality=78, method=6)
     print(name, (OUT / f'{name}.webp').stat().st_size // 1024, 'KB')
@@ -114,7 +125,7 @@ for name in ('Emperor', 'GUO'):
         col = sum(1 for y in range(h) if a.getpixel((x, y)) > 8)
         tot += col; sx += col * x
     meta[name] = {'w': w, 'h': h, 'cx': round(sx / tot / w, 4)}
-for name in ('Emperor_win', 'GUO_loss', 'win', 'vs'):
+for name in ('Emperor_win', 'GUO_loss', 'win', 'vs', 'webway', 'Ghazghkull'):
     w, h = Image.open(OUT / f'{name}.webp').size
     meta[name] = {'w': w, 'h': h}
 (OUT / 'meta.json').write_text(json.dumps(meta), encoding='utf-8')
