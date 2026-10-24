@@ -729,9 +729,9 @@ async function fetchYahooOne({ name, symbol, digits, unit, delayMin, breaksUtc, 
     change: prev != null ? price - prev : null,
     changePct: prev ? ((price - prev) / prev) * 100 : null,
     time: meta.regularMarketTime * 1000,
-    // Yahoo's trading period for futures (=F) spans the whole day, so after the 05:00 Taipei close it
-    // still says open; judge them by the last trade instead (30 min allows for the ~10 min delay).
-    state: symbol.endsWith('=F')
+    // Yahoo's trading period for futures (=F, or a contract month like BZZ26.NYM) spans the whole day, so after
+    // the 05:00 Taipei close it still says open; judge them by the last trade instead (30 min allows for the ~10 min delay).
+    state: /=F$|\.NYM$/.test(symbol)
       ? (Date.now() - meta.regularMarketTime * 1000 < 30 * 60 * 1000 ? 'open' : 'closed')
       : marketState(meta, breaksUtc),
     sessionStart: (meta.currentTradingPeriod?.regular?.start ?? 0) * 1000,
