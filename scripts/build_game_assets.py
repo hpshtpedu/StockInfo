@@ -27,15 +27,20 @@ GLOW = {'Emperor': (255, 215, 0), 'Emperor_win': (255, 215, 0), 'Emperor_loss': 
 GLOW_PAD, GLOW_SIGMA, GLOW_GAIN = 24, 10, 1.7  # 手機上神祇約 73px 高：σ 10、加強 1.7 倍，跟原本 CSS 的 drop-shadow(0 0 6px) 差不多
 
 
-def glow(frame, color):
+# 休假吃飯圖：薄薄一層金光（原本 CSS 的 drop-shadow 1px＋3px），四邊各留 8px（圖高 160 的 5%）
+DAYOFF_PAD = 8
+
+
+def glow(frame, color, pad=GLOW_PAD, layers=((GLOW_SIGMA, GLOW_GAIN),)):
     w, h = frame.size
-    out = Image.new('RGBA', (w + 2 * GLOW_PAD, h + 2 * GLOW_PAD), (0, 0, 0, 0))
+    out = Image.new('RGBA', (w + 2 * pad, h + 2 * pad), (0, 0, 0, 0))
     a = Image.new('L', out.size, 0)
-    a.paste(frame.getchannel('A'), (GLOW_PAD, GLOW_PAD))
-    halo = Image.new('RGBA', out.size, color + (0,))
-    halo.putalpha(a.filter(ImageFilter.GaussianBlur(GLOW_SIGMA)).point(lambda v: min(255, int(v * GLOW_GAIN))))
-    out.alpha_composite(halo)
-    out.alpha_composite(frame, (GLOW_PAD, GLOW_PAD))
+    a.paste(frame.getchannel('A'), (pad, pad))
+    for sigma, gain in layers:
+        halo = Image.new('RGBA', out.size, color + (0,))
+        halo.putalpha(a.filter(ImageFilter.GaussianBlur(sigma)).point(lambda v, g=gain: min(255, int(v * g))))
+        out.alpha_composite(halo)
+    out.alpha_composite(frame, (pad, pad))
     return out
 
 
@@ -70,7 +75,9 @@ def build(name, h, OUT):
     box = trim_box(im) if im.mode in ('RGBA', 'P', 'LA') or 'transparency' in im.info else None
     crop = (lambda x: x.crop(box)) if box else (lambda x: x)
     # 神祇：裁、縮好之後才加光暈（光暈的大小才跟顯示大小對得上）
-    finish = (lambda f: glow(f, GLOW[name])) if name in GLOW else (lambda f: f)
+    finish = ((lambda f: glow(f, GLOW[name])) if name in GLOW
+              else (lambda f: glow(f, (255, 215, 0), DAYOFF_PAD, ((1, 2.0), (3, 1.4)))) if name == 'day_off'
+              else (lambda f: f))
     if n > 1:
         frames, durs = [], []
         sp = name.endswith('_sp')
