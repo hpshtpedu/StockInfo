@@ -158,13 +158,11 @@
   .wg-webway { translate: -50% 0; }
   .wg-ghaz { z-index: 32; }
   .wg-float.raid { z-index: 33; } .wg-float.ork { color: #ff3b30; }
-  /* WAAAGH!!：紅字從碎骨者頭上砸出來，一直停到動圖播完才往上飛走 */
-  .wg-float.waagh { z-index: 33; color: #ff2a1a; animation: wg-waagh .5s ease-out forwards;
-    text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 12px #ff2a1a; }
-  .wg-float.waagh.fly { animation: wg-waagh-fly 1.2s ease-in forwards; }
-  @keyframes wg-waagh { 0% { opacity: 0; transform: translate(-50%, 0) scale(2.6); } 30% { opacity: 1; transform: translate(-50%, 0) scale(.95); }
-    60% { transform: translate(-50%, 0) scale(1.08); } 100% { opacity: 1; transform: translate(-50%, 0) scale(1); } }
-  @keyframes wg-waagh-fly { 0% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -60px); } }
+  /* WAAAGH!!：播動圖的期間每 0.9 秒從碎骨者頭上彈出一個紅字，往上跳走淡出（中間的空檔看得到碎骨者） */
+  .wg-float.waagh { z-index: 33; color: #ff2a1a; animation: wg-waagh .9s ease-out forwards;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px #ff2a1a; }
+  @keyframes wg-waagh { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.6); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); }
+    30% { transform: translate(-50%, -6px) scale(1); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -34px) scale(.95); } }
   .wg-dbg { display: flex; gap: 6px; align-items: center; padding: 4px 8px; font-size: 12px; color: var(--muted); }
   .wg-dbg input[type=range] { flex: 1; }
   .wg-dbg button { background: #20242c; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; font-size: 12px; }
@@ -675,7 +673,7 @@
     setTimeout(() => { img.remove(); if (url?.startsWith('blob:')) URL.revokeObjectURL(url); }, 350 + 1400);
   }
   // 亂入：碎骨者從網道殺出來。網道淡入 2.5 秒 → 碎骨者（第一格）淡入 2.5 秒 → 播動圖（33 格 × 120ms＝3.96 秒），
-  // 頭上冒紅色 WAAAGH!!，兩尊神輪流閃白、跳傷害、卡片震 → 停在最後一格淡出 2.5 秒 → 網道淡出 1 秒。
+  // 頭上一直彈出紅色 WAAAGH!!，兩尊神輪流閃白、跳傷害、卡片震 → 停在最後一格淡出 2.5 秒 → 網道淡出 1 秒。
   // 期間兩尊神暫停出手（自己的動畫照播）。動圖亂入時才下載（淡入的 5 秒內就下載好），每次用新的 blob 網址從第一格播
   const RAID_FADE = 2500, GHAZ_MS = 33 * 120;
   const GHAZ_CX = 0.44;  // 碎骨者的頭在圖寬的位置（槍和爪子讓人物不在圖片正中間）：對齊網道中線
@@ -702,10 +700,10 @@
     arena.appendChild(ww);
     void ww.offsetWidth;
     ww.classList.add('on');
-    // 碎骨者：網道的 85% 高（網道的環還露得出來），頭對齊網道中線，腳底在網道下緣附近
+    // 碎骨者：撐滿上半部（圖上下各有 16/192 的光暈留白，人物腳底踩在亞空間條上緣），頭對齊網道中線，可以蓋過網道
     const gm = meta.Ghazghkull ?? { w: 286, h: 192 };
-    const gh = wh * 0.85, gw = (gh * gm.w) / gm.h;
-    const gtop = wtop + wh * 0.12;
+    const gh = a.height * 0.68 * 1.08, gw = (gh * gm.w) / gm.h;
+    const gtop = a.height * 0.68 - gh * (1 - 16 / 192);
     const gz = document.createElement('img');
     gz.className = 'wg-raid wg-ghaz';
     gz.src = `${A}Ghazghkull_still.webp`;
@@ -720,14 +718,17 @@
       gz.decode().catch(() => {}).then(() => { if (raid === id) play(url); });
     }));
     function play(url) {
-      const yell = document.createElement('div');
-      yell.className = 'wg-float waagh';
-      yell.textContent = 'WAAAGH!!';
-      const fs = Math.round(a.height * 0.3);
-      yell.style.fontSize = `${fs}px`;
-      yell.style.left = '50%';
-      yell.style.top = `${Math.max(0, gtop + gh * 0.15 - fs)}px`;
-      arena.appendChild(yell);
+      const fs = Math.round(a.height * 0.18);
+      for (let t = 0; t < GHAZ_MS - 500; t += 900) later(t, () => {
+        const yell = document.createElement('div');
+        yell.className = 'wg-float waagh';
+        yell.textContent = 'WAAAGH!!';
+        yell.style.fontSize = `${fs}px`;
+        yell.style.left = '50%';
+        yell.style.top = `${Math.max(0, gtop + gh * 0.3 - fs)}px`;  // 頭頂（圖高 30% 處）上面
+        arena.appendChild(yell);
+        setTimeout(() => yell.remove(), 950);
+      });
       // 播的期間兩尊神輪流挨打：閃白、冒骷髏、卡片震、跳紅色傷害（每 0.36 秒一下）
       const ar = arena.getBoundingClientRect();
       const mid = (g) => { const r = g.getBoundingClientRect(); return ((r.left + r.right) / 2 - ar.left) / ar.width * 100; };
@@ -749,10 +750,9 @@
       later(GHAZ_MS, () => {
         gz.src = `${A}Ghazghkull_end.webp`;
         if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), 1000);
-        yell.classList.add('fly');
         gz.classList.remove('on');
       });
-      later(GHAZ_MS + RAID_FADE, () => { gz.remove(); yell.remove(); ww.style.transitionDuration = '1s'; ww.classList.remove('on'); });
+      later(GHAZ_MS + RAID_FADE, () => { gz.remove(); ww.style.transitionDuration = '1s'; ww.classList.remove('on'); });
       later(GHAZ_MS + RAID_FADE + 1000, endRaid);
     }
   }
