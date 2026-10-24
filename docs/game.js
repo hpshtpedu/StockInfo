@@ -87,7 +87,7 @@
   .wg-float.up { color: #ffd100; } .wg-float.down { color: #3fdc8a; }  /* 帝皇方一律金黃（跟爆擊、大招同色），大不淨者方綠色 */
   .wg-float.crit { font-size: 40px; animation: wg-crit 1.6s ease-out forwards; }
   .wg-float.crit.up { color: #ffd100; } .wg-float.crit.down { color: #8dff3a; }
-  .wg-float.say { font-size: 19px; font-weight: 800; }
+  .wg-float.say { font-size: 19px; font-weight: 800; animation: wg-say 3s ease-out forwards; }  /* 中文台詞：停久一點才讀得完 */
   /* 大招傷害（魔獸世界浮動戰鬥文字：×2 的巨大數字，先巨大彈出再縮回，發光描邊） */
   .wg-float.ult { top: 26% !important; font-size: 46px; text-align: center; animation: wg-ult 2s ease-out forwards;
     text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 10px currentColor; }
@@ -109,6 +109,9 @@
     100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -40px) scale(1.15); } }
   @keyframes wg-up { 0% { opacity: 0; transform: translate(-50%, 4px) scale(.7); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
     22% { transform: translate(-50%, -4px) scale(1); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -38px) scale(.95); } }
+  @keyframes wg-say { 0% { opacity: 0; transform: translate(-50%, 4px) scale(.7); } 6% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
+    12% { transform: translate(-50%, -2px) scale(1); } 80% { opacity: 1; transform: translate(-50%, -8px) scale(1); }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -20px) scale(.95); } }
   @keyframes wg-crit { 0% { opacity: 0; transform: translate(-50%, 0) scale(2.4); } 10% { opacity: 1; transform: translate(-50%, -2px) scale(1.5); }
     25% { transform: translate(-50%, -6px) scale(1.2); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -42px) scale(1.1); } }
   .wg-ticker { height: 24px; line-height: 24px; padding: 0 10px; font-size: 14px; font-weight: 600;  /* 跟卡片標題（例如「台指期」）同字級 */ color: #d6dbe3; background: #111419;
@@ -280,14 +283,17 @@
   // 大不淨者的小兵是單人、帝皇的是兩人一組，所以大不淨者小兵多排幾個
   const ARMY = {
     guo: [['m', 0.25, 1, 0], ['B', 1.3, 1, 0], ['m', 0.8, 0.95, 2], ['m', 2.0, 1, 1], ['B', 2.75, 0.84, 5],
+      ['3', 0.75, 1, 1], ['2', 1.75, 1, 1],
       ['m', 3.3, 0.94, 3], ['2', 3.95, 0.95, 1], ['3', 4.8, 0.95, 2], ['B', 5.95, 0.92, 1], ['m', 5.25, 0.92, 4],
       ['m', 6.95, 0.9, 1], ['2', 7.5, 0.9, 3], ['B', 8.9, 0.78, 4], ['m', 8.15, 0.9, 2], ['3', 9.75, 0.88, 1], ['m', 10.3, 0.88, 3]],
-    emp: [['m', 0.42, 1, 0], ['B', 1.25, 1, 0], ['m', 2.1, 0.95, 2], ['2', 2.85, 0.95, 1], ['B', 3.95, 0.84, 4],
+    emp: [['m', 0.42, 1, 0], ['B', 1.25, 1, 0], ['m', 2.55, 0.95, 2], ['2', 3.0, 0.95, 1], ['B', 3.95, 0.84, 4],
+      ['2', 0.95, 1, 1], ['3', 2.0, 1, 1],
       ['B', 4.8, 0.94, 0], ['m', 5.95, 0.9, 2], ['3', 6.65, 0.95, 1], ['B', 8.35, 0.8, 3], ['m', 7.45, 0.9, 3], ['2', 9.4, 0.85, 2],
       ['3', 10.15, 0.86, 1]],
   };
+  // 戰線附近各放一組 2、3（排在大部隊前面），手機上窄窄的一半也一定看得到新兵種。
   // 種類 → 圖檔、高度（大部隊的幾倍）。2：大不淨者的納垢獸／帝皇的坦克；3：大不淨者的騎士／帝皇的苦修戰士
-  const UNIT = { m: ['mini_troops', 0.6], B: ['troops', 1], 2: ['troops2', 0.75], 3: ['troops3', 0.78] };
+  const UNIT = { m: ['mini_troops', 0.6], B: ['troops', 1], 2: ['troops2', 0.9], 3: ['troops3', 0.94] };
   const ASPECT = { GUO_troops: 1.969, Emperor_troops: 1.312, GUO_mini_troops: 0.698, Emperor_mini_troops: 1.365,
     GUO_troops2: 0.961, GUO_troops3: 1.144, Emperor_troops2: 1.516, Emperor_troops3: 0.731 };
 
@@ -367,6 +373,8 @@
 
   // 跳字：x＝出現的水平位置（%），預設在兩尊神中間的空白區
   function float(text, cls, crit, x, extra = '') {
+    // 大招台詞停 3 秒，下一句來了舊的先拿掉（固定在同一個位置，不會疊字）
+    if (extra.includes('say hi')) arena.querySelectorAll('.wg-float.say.hi').forEach((o) => o.remove());
     const f = document.createElement('div');
     f.className = `wg-float ${cls}${crit ? ' crit' : ''}${extra}`;
     f.textContent = text;
@@ -392,7 +400,7 @@
       const cx = hi - lo < 2 * half ? (lo + hi) / 2 : Math.min(hi - half, Math.max(lo + half, want));
       f.style.left = `${(cx / a.width) * 100}%`;
     }
-    setTimeout(() => f.remove(), extra.includes('ult') ? 2100 : 1700);
+    setTimeout(() => f.remove(), extra.includes('say') ? 3100 : extra.includes('ult') ? 2100 : 1700);
     if (crit) { el.classList.remove('wg-shake'); void el.offsetWidth; el.classList.add('wg-shake'); }
   }
 
@@ -803,7 +811,7 @@
         u.style.height = `${h}px`;
         u.style.left = `calc(${t.style.left} ${isGuo ? '-' : '+'} ${Math.round(isGuo ? d * H + w / 2 : d * H - w / 2)}px)`;
         u.style.bottom = `${up}px`;
-        u.style.zIndex = kind === 'm' ? 20 : 10 - up;  // 小兵在大部隊前面；大部隊之間，近的（低的）蓋住遠的
+        u.style.zIndex = kind === 'm' ? 20 : (kind === 'B' ? 10 : 15) - up;  // 小兵最前、一般兵種其次、大部隊最後；同類近的（低的）蓋住遠的
         u.style.animationDelay = `${-0.11 * Number(u.dataset.i)}s`;
       }
     }
