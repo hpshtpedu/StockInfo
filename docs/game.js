@@ -274,7 +274,7 @@
     return null;
   }
 
-  // 兩軍的隊形：照種類字串從戰線往後一路排（B 大部隊、2／3 一般兵種、m 小兵），間距平均（小兵 0.4、其他 0.55 倍
+  // 兩軍的隊形：照種類字串從戰線往後一路排（B 大部隊、2／3 一般兵種、m／n 兩種小兵），間距平均（小兵 0.4、其他 0.55 倍
   // 條高，再加一點固定的亂數），所以從戰線到卡片邊緣一樣密、彼此疊在一起；排到約 12 倍條高，超出卡片的不畫。
   // 每個單位：[種類, 離戰線多遠（中心點，以亞空間條高度為單位）, 大小, 離底部幾 px（越高＝越遠，疊在越後面）]。
   // 前幾個一定有 2、3，手機上窄窄的一半也看得到新兵種
@@ -283,17 +283,18 @@
     let d = 0.25;
     return [...kinds].map((k, i) => {
       const u = [k, +d.toFixed(2), +(0.88 + 0.12 * r(i, 1)).toFixed(2), Math.floor(r(i, 2) * 6)];
-      d += (k === 'm' ? 0.4 : 0.55) + 0.2 * r(i, 3);
+      d += (k === 'm' || k === 'n' ? 0.4 : 0.55) + 0.2 * r(i, 3);
       return u;
     });
   }
   const ARMY = {
-    guo: formation('m3mBm2mBm3mmB2mBm3mBm2mmB3m', 1),
-    emp: formation('m2mB3mBm2mBm3mB2mmBm3mB2m', 2),
+    guo: formation('m3nBm2nBm3nmB2mBn3mBn2mnB3m', 1),
+    emp: formation('m2nB3mBn2mBn3mB2nmBn3mB2n', 2),
   };
   // 種類 → 圖檔、高度（大部隊的幾倍）。2：大不淨者的納垢獸／帝皇的坦克；3：大不淨者的騎士／帝皇的苦修戰士
-  const UNIT = { m: ['mini_troops', 0.6], B: ['troops', 1], 2: ['troops2', 0.9], 3: ['troops3', 0.94] };
+  const UNIT = { m: ['mini_troops', 0.6], n: ['mini_troops2', 0.6], B: ['troops', 1], 2: ['troops2', 0.9], 3: ['troops3', 0.94] };
   const ASPECT = { GUO_troops: 1.969, Emperor_troops: 1.312, GUO_mini_troops: 0.698, Emperor_mini_troops: 1.365,
+    GUO_mini_troops2: 0.823, Emperor_mini_troops2: 0.656,
     GUO_troops2: 0.961, GUO_troops3: 1.144, Emperor_troops2: 1.516, Emperor_troops3: 0.731 };
 
   // ---- 畫面 ----
@@ -308,7 +309,7 @@
       <img class="wg-god wg-emp" alt="">
       <img class="wg-troop wg-tguo" src="${A}GUO_troops.webp" alt="">
       <img class="wg-troop wg-temp" src="${A}Emperor_troops.webp" alt="">
-      ${['guo', 'emp'].map((side) => ARMY[side].map((u, i) => `<img class="wg-unit${u[0] === 'm' ? ' mini' : ''}" data-side="${side}" data-i="${i}" alt="">`).join('')).join('')}
+      ${['guo', 'emp'].map((side) => ARMY[side].map((u, i) => `<img class="wg-unit${'mn'.includes(u[0]) ? ' mini' : ''}" data-side="${side}" data-i="${i}" alt="">`).join('')).join('')}
       <img class="wg-cloud" src="${A}fight-cloud.webp" alt="">
       <img class="wg-closed" src="${A}casino_closed.webp" alt="休市">
       <img class="wg-dayoff" alt="">
@@ -805,12 +806,12 @@
         const show = !done && a.width && cx + w / 2 > 0 && cx - w / 2 < a.width;
         u.style.display = show ? '' : 'none';
         if (!show) continue;
-        setSrc(u, `${A}${name}${kind === 'm' ? still : ''}.webp`);
+        setSrc(u, `${A}${name}${'mn'.includes(kind) ? still : ''}.webp`);
         u.style.transition = t.style.transition;
         u.style.height = `${h}px`;
         u.style.left = `calc(${t.style.left} ${isGuo ? '-' : '+'} ${Math.round(isGuo ? d * H + w / 2 : d * H - w / 2)}px)`;
         u.style.bottom = `${up}px`;
-        u.style.zIndex = kind === 'm' ? 20 : (kind === 'B' ? 10 : 15) - up;  // 小兵最前、一般兵種其次、大部隊最後；同類近的（低的）蓋住遠的
+        u.style.zIndex = 'mn'.includes(kind) ? 20 : (kind === 'B' ? 10 : 15) - up;  // 小兵最前、一般兵種其次、大部隊最後；同類近的（低的）蓋住遠的
         u.style.animationDelay = `${-0.11 * Number(u.dataset.i)}s`;
       }
     }
