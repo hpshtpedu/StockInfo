@@ -9,10 +9,23 @@ const YAHOO = {
   kospi: { name: '韓股', symbol: '^KS11', digits: 2, delayMin: 20 },
   // Yahoo's trading period ignores the TSE lunch break (11:30-12:30 JST = 02:30-03:30 UTC).
   nikkei: { name: '日經', symbol: '^N225', digits: 2, delayMin: 15, breaksUtc: [[150, 210]] },
-  brent: { name: '布蘭特原油', symbol: 'BZ=F', digits: 2, delayMin: 10 },
+  // Front-month contract, the one news and other sites quote. BZ=F rolls to the next month about a week
+  // before expiry (10/23: BZ=F 111.70 = Jan, news 116 = Dec), which in backwardation is several dollars off.
+  brent: { name: '布蘭特原油', get symbol() { return brentFront(); }, fallback: 'BZ=F', digits: 2, delayMin: 10 },
   usdtwd: { name: 'USD/TWD', symbol: 'TWD=X', digits: 3 },
   us10y: { name: '美債 10Y', symbol: '^TNX', digits: 3, unit: 'yield' },
 };
+
+// Brent month M expires on the last business day of M-2 (Dec contract → last business day of October),
+// so until then the front month is two months ahead, afterwards three. UK holidays are ignored; if the
+// symbol is wrong Yahoo has no data and fetchYahoo falls back to BZ=F.
+function brentFront(now = new Date()) {
+  const y = now.getUTCFullYear(), m = now.getUTCMonth();
+  let last = new Date(Date.UTC(y, m + 1, 0));
+  while (last.getUTCDay() === 0 || last.getUTCDay() === 6) last = new Date(last - 86400000);
+  const d = new Date(Date.UTC(y, m + (now.getUTCDate() > last.getUTCDate() ? 3 : 2), 1));
+  return `BZ${'FGHJKMNQUVXZ'[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(2)}.NYM`;
+}
 
 // Yahoo Taiwan: real-time TW indices and 台指期近一 (WTX&), fetched in one request.
 const YAHOO_TW = {
@@ -682,7 +695,16 @@ async function fetchHolidaysCached(origin, ctx) {
   return out;
 }
 
-async function fetchYahoo({ name, symbol, digits, unit, delayMin, breaksUtc, k30 }) {
+async function fetchYahoo(cfg) {
+  try {
+    return await fetchYahooOne(cfg);
+  } catch (e) {
+    if (!cfg.fallback) throw e;
+    return fetchYahooOne({ ...cfg, symbol: cfg.fallback });
+  }
+}
+
+async function fetchYahooOne({ name, symbol, digits, unit, delayMin, breaksUtc, k30 }) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=1d`;
   const res = await fetch(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(`Yahoo ${symbol} HTTP ${res.status}`);
