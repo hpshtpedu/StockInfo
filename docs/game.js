@@ -66,7 +66,7 @@
   /* 神祇的光暈（帝皇金、大不淨者綠）已經畫在圖裡，不用 CSS filter（動圖每格重算很吃 CPU） */
   .wg-march .wg-unit { animation: wg-step .5s steps(2) infinite; }
   @keyframes wg-step { 0% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -3px; rotate: -2deg; } }
-  .wg-battle .wg-unit { animation: wg-jit .35s infinite; }
+  .wg-battle .wg-unit { animation: wg-jit 1.1s ease-in-out infinite; }  /* 交火時部隊慢慢前後頂（太快像抽風） */
   .wg-battle .wg-cloud { animation: wg-cjit .5s infinite; }
   @keyframes wg-jit { 0%,100% { translate: 0 0; } 50% { translate: 1.5px 0; } }
   @keyframes wg-cjit { 0%,100% { translate: 0 0; } 33% { translate: -2px 0; } 66% { translate: 2px 0; } }  /* 用 translate（不重排版面，省 CPU） */
