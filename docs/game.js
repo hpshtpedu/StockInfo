@@ -87,7 +87,7 @@
   .wg-float.up { color: #ffd100; } .wg-float.down { color: #3fdc8a; }  /* 帝皇方一律金黃（跟爆擊、大招同色），大不淨者方綠色 */
   .wg-float.crit { font-size: 40px; animation: wg-crit 1.6s ease-out forwards; }
   .wg-float.crit.up { color: #ffd100; } .wg-float.crit.down { color: #8dff3a; }
-  .wg-float.say { font-size: 19px; font-weight: 800; animation: wg-say 3s ease-out forwards; }  /* 中文台詞：停久一點才讀得完 */
+  .wg-float.say { font-size: 19px; font-weight: 800; animation: wg-up 2s ease-out forwards; }  /* 中文台詞：往上飄、淡出慢一點（2 秒）才讀得完 */
   /* 大招傷害（魔獸世界浮動戰鬥文字：×2 的巨大數字，先巨大彈出再縮回，發光描邊） */
   .wg-float.ult { top: 26% !important; font-size: 46px; text-align: center; animation: wg-ult 2s ease-out forwards;
     text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 10px currentColor; }
@@ -109,9 +109,6 @@
     100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -40px) scale(1.15); } }
   @keyframes wg-up { 0% { opacity: 0; transform: translate(-50%, 4px) scale(.7); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
     22% { transform: translate(-50%, -4px) scale(1); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -38px) scale(.95); } }
-  @keyframes wg-say { 0% { opacity: 0; transform: translate(-50%, 4px) scale(.7); } 6% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
-    12% { transform: translate(-50%, -2px) scale(1); } 80% { opacity: 1; transform: translate(-50%, -8px) scale(1); }
-    100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -20px) scale(.95); } }
   @keyframes wg-crit { 0% { opacity: 0; transform: translate(-50%, 0) scale(2.4); } 10% { opacity: 1; transform: translate(-50%, -2px) scale(1.5); }
     25% { transform: translate(-50%, -6px) scale(1.2); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -42px) scale(1.1); } }
   .wg-ticker { height: 24px; line-height: 24px; padding: 0 10px; font-size: 14px; font-weight: 600;  /* 跟卡片標題（例如「台指期」）同字級 */ color: #d6dbe3; background: #111419;
@@ -375,7 +372,7 @@
 
   // 跳字：x＝出現的水平位置（%），預設在兩尊神中間的空白區
   function float(text, cls, crit, x, extra = '') {
-    // 大招台詞停 3 秒，下一句來了舊的先拿掉（固定在同一個位置，不會疊字）
+    // 大招台詞飄 2 秒，下一句來了舊的先拿掉（固定在同一個位置，不會疊字）
     if (extra.includes('say hi')) arena.querySelectorAll('.wg-float.say.hi').forEach((o) => o.remove());
     const f = document.createElement('div');
     f.className = `wg-float ${cls}${crit ? ' crit' : ''}${extra}`;
@@ -402,7 +399,7 @@
       const cx = hi - lo < 2 * half ? (lo + hi) / 2 : Math.min(hi - half, Math.max(lo + half, want));
       f.style.left = `${(cx / a.width) * 100}%`;
     }
-    setTimeout(() => f.remove(), extra.includes('say') ? 3100 : extra.includes('ult') ? 2100 : 1700);
+    setTimeout(() => f.remove(), extra.includes('say') ? 2100 : extra.includes('ult') ? 2100 : 1700);
     if (crit) { el.classList.remove('wg-shake'); void el.offsetWidth; el.classList.add('wg-shake'); }
   }
 
