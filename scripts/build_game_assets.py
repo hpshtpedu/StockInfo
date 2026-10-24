@@ -8,7 +8,7 @@ Run: python scripts/build_game_assets.py
 """
 import json
 import pathlib
-from PIL import Image
+from PIL import Image, ImageFilter
 
 SRC = pathlib.Path(__file__).resolve().parent.parent / 'mini_game'
 OUT = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'game'
@@ -20,6 +20,25 @@ SIZES = {'Emperor': 240, 'GUO': 240, 'fight-cloud': 200, 'Emperor_win': 240, 'Em
          'casino_closed': None, 'sleep': None, 'Emperor_attack1_2': 128, 'GUO_attack1_2': 128,
          'Emperor_attack2_2': 200, 'GUO_attack2_2': 160, 'day_off': 160, 'heart': None,
          'Emperor_attack_sp': None, 'GUO_attack_sp': None, 'GUO_mini_troops': 96, 'Emperor_mini_troops': 96}
+# 神祇的光暈直接畫進圖裡（以前是網頁上 CSS drop-shadow，動圖每換一格瀏覽器就要重算一次，吃 CPU）。
+# 四邊各留 GLOW_PAD px（圖高 240 的 10%）給光暈；網頁那邊把神祇放大 1.2 倍、往下移 10% 抵銷，人物大小位置不變
+GLOW = {'Emperor': (255, 215, 0), 'Emperor_win': (255, 215, 0), 'Emperor_loss': (255, 215, 0),
+        'GUO': (0, 255, 0), 'GUO_win': (0, 255, 0), 'GUO_loss': (0, 255, 0)}
+GLOW_PAD, GLOW_SIGMA, GLOW_GAIN = 24, 10, 1.7  # 手機上神祇約 73px 高：σ 10、加強 1.7 倍，跟原本 CSS 的 drop-shadow(0 0 6px) 差不多
+
+
+def glow(frame, color):
+    w, h = frame.size
+    out = Image.new('RGBA', (w + 2 * GLOW_PAD, h + 2 * GLOW_PAD), (0, 0, 0, 0))
+    a = Image.new('L', out.size, 0)
+    a.paste(frame.getchannel('A'), (GLOW_PAD, GLOW_PAD))
+    halo = Image.new('RGBA', out.size, color + (0,))
+    halo.putalpha(a.filter(ImageFilter.GaussianBlur(GLOW_SIGMA)).point(lambda v: min(255, int(v * GLOW_GAIN))))
+    out.alpha_composite(halo)
+    out.alpha_composite(frame, (GLOW_PAD, GLOW_PAD))
+    return out
+
+
 # 必殺技動圖：每一格都留、每格 70ms（網頁照這個節奏對傷害時間點）
 SP_FRAME_MS = 70
 
@@ -50,18 +69,20 @@ def build(name, h, OUT):
     n = getattr(im, 'n_frames', 1)
     box = trim_box(im) if im.mode in ('RGBA', 'P', 'LA') or 'transparency' in im.info else None
     crop = (lambda x: x.crop(box)) if box else (lambda x: x)
+    # 神祇：裁、縮好之後才加光暈（光暈的大小才跟顯示大小對得上）
+    finish = (lambda f: glow(f, GLOW[name])) if name in GLOW else (lambda f: f)
     if n > 1:
         frames, durs = [], []
         sp = name.endswith('_sp')
         for i in range(0, n, 1 if sp else 2):  # 20 fps -> 10 fps（必殺技不減格）
             im.seek(i)
-            frames.append(fit(crop(im.convert('RGBA')), h))
+            frames.append(finish(fit(crop(im.convert('RGBA')), h)))
             durs.append(SP_FRAME_MS if sp else (im.info.get('duration') or 50) * 2)
         frames[0].save(OUT / f'{name}.webp', save_all=True, append_images=frames[1:], duration=durs, loop=0,
                        quality=70, method=6, lossless=False)
         frames[0].save(OUT / f'{name}_still.webp', quality=75, method=6)
     else:
-        fit(crop(im.convert('RGBA' if im.mode in ('RGBA', 'P') else 'RGB')), h).save(OUT / f'{name}.webp', quality=78, method=6)
+        finish(fit(crop(im.convert('RGBA' if im.mode in ('RGBA', 'P') else 'RGB')), h)).save(OUT / f'{name}.webp', quality=78, method=6)
     print(name, (OUT / f'{name}.webp').stat().st_size // 1024, 'KB')
 
 

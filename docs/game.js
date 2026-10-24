@@ -21,7 +21,8 @@
   .wg-bar .zz.on { opacity: 1; }
   @media (min-width: 600px) { .wg-arena { height: 176px; } }
   .wg img { position: absolute; display: block; pointer-events: none; user-select: none; -webkit-user-select: none; }
-  .wg-god { bottom: calc(32% + 8px); height: calc(68% - 14px); transition: filter .6s; }  /* 跟亞空間條留 8px 空隙（素材已裁掉透明邊） */
+  /* 跟亞空間條留 8px 空隙（素材已裁掉透明邊）。光暈畫在圖裡、四邊各多 10%：圖放大 1.2 倍、往下移 10%，人物大小位置跟以前一樣 */
+  .wg-god { bottom: calc(32% + 8px - (68% - 14px) * .1); height: calc((68% - 14px) * 1.2); }
   .wg-guo { left: 0; } .wg-emp { right: 0; }
   /* 兩邊神祇的領地（1/4 圓，最底層）：大不淨者的腐爛花園貼左下、帝皇的巢都貼右下；調暗一點，不搶神祇和印章 */
   .wg-place { opacity: .7; z-index: 0; }
@@ -29,8 +30,8 @@
   .wg-place { bottom: calc(32% - 14px); height: calc(68% * 1.5 + 14px); }  /* 放大 1.5 倍往中間延伸，神站在地面上；上緣超出卡片的部分被切掉 */
   /* 帝皇敗北立繪比較大，縮成 8 成。王座底部是平的，貼底會看起來比對面低：取頭對齊（抬 20%）和底對齊（不抬）的中間，抬 10% */
   /* 帝皇勝利、大不淨者敗北立繪比較胖，縮成 82%，看起來跟盤中差不多大（底部照樣貼齊） */
-  .wg-emp[src*="Emperor_win"], .wg-guo[src*="GUO_loss"] { height: calc((68% - 14px) * .82); }
-  .wg-emp[src*="Emperor_loss"] { height: calc((68% - 14px) * .8); bottom: calc(32% + 8px + (68% - 14px) * .1); }
+  .wg-emp[src*="Emperor_win"], .wg-guo[src*="GUO_loss"] { height: calc((68% - 14px) * .82 * 1.2); bottom: calc(32% + 8px - (68% - 14px) * .082); }
+  .wg-emp[src*="Emperor_loss"] { height: calc((68% - 14px) * .8 * 1.2); bottom: calc(32% + 8px + (68% - 14px) * .1 - (68% - 14px) * .08); }
   /* 收盤結果印章（win／loss）：上方兩尊神中間的空白正中央，寬度依實際空間調整（不蓋到神），結算時才出現 */
   .wg-result { left: 50%; top: calc((68% - 8px) / 2); width: 40%; height: auto; transform: translate(-50%, -50%) scale(.6); opacity: 0; z-index: 3;
     transition: opacity .6s, transform .6s cubic-bezier(.2, 1.6, .4, 1); }
@@ -62,7 +63,7 @@
   .wg.wg-off .wg-ticker { display: none; }  /* 休市：跑馬燈那列整條拿掉，卡片跟著變矮 */  /* 要寫 .wg 開頭：不然會被 .wg img { display: block } 蓋過，天天都出現 */
   .wg-cloud { bottom: -8%; height: 48%;  /* 往下沉一點（下緣被卡片切掉），雲跟部隊腳下同高 */ transform: translateX(-50%); transition: left 2s ease-in-out, opacity 1s; z-index: 3; }  /* 煙塵在兩軍前面 */
   /* 神祇一直發光（帝皇金、大不淨者綠）；部隊只在大漲／大跌（±0.5% 以上）時發光 */
-  .wg-emp { filter: drop-shadow(0 0 6px #ffd700); } .wg-guo { filter: drop-shadow(0 0 6px #00ff00); }
+  /* 神祇的光暈（帝皇金、大不淨者綠）已經畫在圖裡，不用 CSS filter（動圖每格重算很吃 CPU） */
   .wg-march .wg-unit { animation: wg-step .5s steps(2) infinite; }
   @keyframes wg-step { 0% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -3px; rotate: -2deg; } }
   .wg-battle .wg-unit { animation: wg-jit .35s infinite; }
@@ -316,7 +317,7 @@
 
   let data = { twii: null, tsmc: null, tradingDay: true };
   // 素材尺寸和人物中線（scripts/build_game_assets.py 產生）
-  let meta = { Emperor: { w: 287, h: 240, cx: 0.54 }, GUO: { w: 371, h: 240, cx: 0.53 }, Emperor_win: { w: 343, h: 240 }, GUO_loss: { w: 251, h: 240 }, win: { w: 336, h: 120 } };
+  let meta = { Emperor: { w: 335, h: 288, cx: 0.53 }, GUO: { w: 419, h: 288, cx: 0.51 }, Emperor_win: { w: 391, h: 288 }, GUO_loss: { w: 299, h: 288 }, win: { w: 336, h: 120 } };
   // 招式圖先預載：第一次出招不會等下載
   for (const n of ['Emperor_attack', 'GUO_attack', 'Emperor_attack2', 'GUO_attack2', 'Emperor_attack1_2', 'GUO_attack1_2',
     'Emperor_attack2_2', 'GUO_attack2_2', 'damage', 'heart']) new Image().src = `${A}${n}.webp`;
@@ -690,10 +691,13 @@
     // 帝皇（一般／靜止圖）：人物中線到右緣的距離＝大不淨者人物中線到左緣的距離；勝敗立繪照舊貼右
     {
       const gh = guo.getBoundingClientRect().height || 0;
+      // 圖四邊各有 24/288 的光暈留白：往外推出卡片邊緣，人物還是貼著左右邊（光暈超出的部分被切掉）
+      const pad = Math.round(gh * 24 / 288);
+      guo.style.left = `${-pad}px`;
       if (!done && gh && meta.Emperor && meta.GUO) {
         const gw = gh * meta.GUO.w / meta.GUO.h, ew = gh * meta.Emperor.w / meta.Emperor.h;
-        emp.style.right = `${Math.max(0, gw * meta.GUO.cx - ew * (1 - meta.Emperor.cx))}px`;
-      } else emp.style.right = '0';
+        emp.style.right = `${Math.max(-pad, gw * meta.GUO.cx - ew * (1 - meta.Emperor.cx) - pad)}px`;  // 兩尊神的人物中線離左右邊一樣遠
+      } else emp.style.right = `${-pad}px`;
     }
 
     // 戰線：昨收在中間，漲往左推（帝皇在右邊進攻），tanh 讓 ±2% 接近邊界
