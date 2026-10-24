@@ -729,11 +729,13 @@
       const gh = guo.getBoundingClientRect().height || 0;
       // 圖四邊各有 24/288 的光暈留白：往外推出卡片邊緣，人物還是貼著左右邊（光暈超出的部分被切掉）
       const pad = Math.round(gh * 24 / 288);
-      guo.style.left = `${-pad}px`;
+      // DEFEAT 結算：兩尊神往中間收一點（光暈露出來，再多 4px），不貼著卡片左右邊
+      const edge = done && !bullWin ? 4 : -pad;
+      guo.style.left = `${edge}px`;
       if (!done && gh && meta.Emperor && meta.GUO) {
         const gw = gh * meta.GUO.w / meta.GUO.h, ew = gh * meta.Emperor.w / meta.Emperor.h;
         emp.style.right = `${Math.max(-pad, gw * meta.GUO.cx - ew * (1 - meta.Emperor.cx) - pad)}px`;  // 兩尊神的人物中線離左右邊一樣遠
-      } else emp.style.right = `${-pad}px`;
+      } else emp.style.right = `${edge}px`;
     }
 
     // 戰線：昨收在中間，漲往左推（帝皇在右邊進攻）；漲跌幅除以波動度 σ 再套 tanh，約 3σ 才接近邊界
