@@ -87,7 +87,7 @@
   .wg-float.up { color: #ffd100; } .wg-float.down { color: #3fdc8a; }  /* 帝皇方一律金黃（跟爆擊、大招同色），大不淨者方綠色 */
   .wg-float.crit { font-size: 40px; animation: wg-crit 1.6s ease-out forwards; }
   .wg-float.crit.up { color: #ffd100; } .wg-float.crit.down { color: #8dff3a; }
-  .wg-float.say { font-size: 19px; font-weight: 800; animation: wg-up 2s ease-out forwards; }  /* 中文台詞：往上飄、淡出慢一點（2 秒）才讀得完 */
+  .wg-float.say { font-size: 26px; font-weight: 800; line-height: 1.15; text-align: center; animation: wg-up 2s ease-out forwards; }  /* 中文台詞：往上飄、淡出慢一點（2 秒）才讀得完 */
   /* 大招傷害（魔獸世界浮動戰鬥文字：×2 的巨大數字，先巨大彈出再縮回，發光描邊） */
   .wg-float.ult { top: 26% !important; font-size: 46px; text-align: center; animation: wg-ult 2s ease-out forwards;
     text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 10px currentColor; }
@@ -102,7 +102,7 @@
   /* 被必殺技打到：整個人變成白色剪影一閃（三次，對上三個傷害）；前後不寫 filter，保留原本的光暈 */
   .wg-god.wg-flashw { animation: wg-flashw .2s linear 1; }  /* 寫兩個 class：被普通攻擊打過會留著 .wg-hurt，它的 animation 不能蓋掉閃白 */
   @keyframes wg-flashw { 8%, 65% { filter: brightness(0) invert(1) drop-shadow(0 0 4px #fff); } }
-  .wg-float.say.big { font-size: 38px; }  /* 必殺技口號：一般台詞的 2 倍 */
+  .wg-float.say.big { font-size: 46px; }  /* 必殺技口號：比一般台詞大很多 */
   .wg-float.ult.up { color: #ffd100; } .wg-float.ult.down { color: #8dff3a; }
   @keyframes wg-ult { 0% { opacity: 0; transform: translate(-50%, 0) scale(3); } 8% { opacity: 1; transform: translate(-50%, -2px) scale(1.6); }
     20% { transform: translate(-50%, -4px) scale(1.25); } 65% { opacity: 1; transform: translate(-50%, -10px) scale(1.2); }
@@ -389,6 +389,14 @@
       const lo = guo.getBoundingClientRect().right - a.left + 4;
       const hi = emp.getBoundingClientRect().left - a.left - 4;
       const k = extra.includes('ult') ? 1.65 : crit ? 1.5 : 1.1;
+      // 中文台詞放不下就拆兩行：優先拆在中間附近的「！」「，」後面，沒有就從正中間拆
+      if (extra.includes('say') && text.length >= 4 && f.offsetWidth * k + 16 > hi - lo) {
+        const mid = text.length / 2;
+        const cuts = [...text].map((ch, i) => i + 1).filter((i) => i < text.length && '！，、'.includes(text[i - 1]));
+        const cut = cuts.length ? cuts.reduce((b, i) => (Math.abs(i - mid) < Math.abs(b - mid) ? i : b)) : Math.ceil(mid);
+        f.textContent = '';
+        f.append(text.slice(0, cut), document.createElement('br'), text.slice(cut));
+      }
       let half = (f.offsetWidth * k) / 2 + 8;
       if (hi - lo < 2 * half) {  // 比中間的空間寬：字縮小到放得下
         const size = parseFloat(getComputedStyle(f).fontSize) * (hi - lo) / (2 * half);
