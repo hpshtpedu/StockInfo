@@ -69,7 +69,7 @@
   .wg-battle .wg-unit { animation: wg-jit .35s infinite; }
   .wg-battle .wg-cloud { animation: wg-cjit .5s infinite; }
   @keyframes wg-jit { 0%,100% { translate: 0 0; } 50% { translate: 1.5px 0; } }
-  @keyframes wg-cjit { 0%,100% { margin-left: 0; } 33% { margin-left: -2px; } 66% { margin-left: 2px; } }
+  @keyframes wg-cjit { 0%,100% { translate: 0 0; } 33% { translate: -2px 0; } 66% { translate: 2px 0; } }  /* 用 translate（不重排版面，省 CPU） */
   .wg-tension .wg-cloud { animation: wg-cjit .15s infinite; }
   .wg-tension .wg-arena { animation: wg-shake .4s infinite; }
   .wg-paused * { animation-play-state: paused !important; }

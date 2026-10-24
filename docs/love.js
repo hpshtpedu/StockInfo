@@ -36,8 +36,8 @@
   .lv-boy.walking, .lv-girl.walking { animation: lv-step .5s steps(2) infinite; }
   /* 男生站著等的時候：原地呼吸（2.2 秒一次，身體伸展 3%、浮起 2px），看得出在動但不誇張 */
   .lv-boy.idle { transform-origin: 50% 100%; animation: lv-breathe 2.2s ease-in-out infinite; }
-  @keyframes lv-breathe { 0%, 100% { margin-bottom: 0; scale: 1 1; } 50% { margin-bottom: 2px; scale: 1.01 1.03; } }
-  @keyframes lv-step { 0% { margin-bottom: 0; rotate: 0deg; } 50% { margin-bottom: 3px; rotate: -2deg; } }
+  @keyframes lv-breathe { 0%, 100% { translate: 0 0; scale: 1 1; } 50% { translate: 0 -2px; scale: 1.01 1.03; } }
+  @keyframes lv-step { 0% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -3px; rotate: -2deg; } }  /* translate／rotate 不重排版面 */
   /* 男生親親中：女生加持，發帝皇那種金光（亞空間背景是粉紅的，粉紅光看不出來） */
   .lv-girl.buff { filter: drop-shadow(0 0 3px #ffd700) drop-shadow(0 0 6px #ffd700); }
   .lv-wall { position: absolute; bottom: 2px; height: 76%; aspect-ratio: 97 / 96; transform: translateX(-50%); z-index: 2;
