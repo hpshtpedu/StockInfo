@@ -45,10 +45,12 @@
     -webkit-mask-image: linear-gradient(to right, transparent 43%, #000 57%); mask-image: linear-gradient(to right, transparent 43%, #000 57%); }
   .wg-troop { bottom: 0; height: 32%; transition: left 2s ease-in-out, opacity 1s, transform .6s; }
   .wg-tguo { transform: translateX(-100%); } .wg-temp { transform: translateX(0); }
-  /* 小兵（大部隊的 6 成高）：排在自家大部隊上和後方，z 軸在大部隊前面（比較矮，只擋到坦克／機甲的下半）；
-     大小、高低略有不同，像有縱深的隊伍。大不淨者的小兵原圖朝左，水平翻轉成朝右（面向敵人） */
-  .wg-mini { bottom: 0; height: calc(32% * .6); z-index: 1; translate: -50% 0; transition: left 2s ease-in-out, opacity 1s; }
-  .wg-mguo { transform: scaleX(-1); }
+  /* 兩軍：原本的大部隊圖（.wg-troop）只當隱形的定位點（前緣＝戰線），畫面上的是 .wg-unit——大部隊和小兵
+     （6 成高）穿插排滿自家那半邊的亞空間。小兵 z 軸在大部隊前面（比較矮，只擋到坦克／機甲的下半）；越後面越小、
+     越高，像有縱深。不加光暈（單位多，省效能），動畫只用 translate／rotate（不觸發重新排版） */
+  .wg-troop { visibility: hidden; }
+  .wg-unit { bottom: 0; z-index: 1; transition: left 2s ease-in-out, opacity 1s; }
+  .wg-unit.mini { z-index: 2; }
   /* 台股休市（週末、國定假日、颱風假）：亞空間條正中間掛「CASINO CLOSED」招牌 */
   .wg .wg-closed { left: 50%; bottom: calc((32% - 14px) / 2);  /* 亞空間條上緣 14px 是淡出，扣掉後的可見部分置中 */ height: calc(32% * .72); max-width: 82%; object-fit: contain; transform: translate(-50%, 50%); z-index: 3; display: none; }
   .wg .wg-closed.on { display: block; }
@@ -58,16 +60,14 @@
   .wg.wg-off .wg-dayoff { display: block; filter: drop-shadow(0 0 1px #ffd700) drop-shadow(0 0 3px #ffd700); }  /* 薄薄一層金光，跟背景分開 */
   .wg.wg-off .wg-god, .wg.wg-off .wg-result { visibility: hidden; }
   .wg.wg-off .wg-ticker { display: none; }  /* 休市：跑馬燈那列整條拿掉，卡片跟著變矮 */  /* 要寫 .wg 開頭：不然會被 .wg img { display: block } 蓋過，天天都出現 */
-  .wg-cloud { bottom: -8%; height: 48%;  /* 往下沉一點（下緣被卡片切掉），雲跟部隊腳下同高 */ transform: translateX(-50%); transition: left 2s ease-in-out, opacity 1s; z-index: 2; }
+  .wg-cloud { bottom: -8%; height: 48%;  /* 往下沉一點（下緣被卡片切掉），雲跟部隊腳下同高 */ transform: translateX(-50%); transition: left 2s ease-in-out, opacity 1s; z-index: 3; }  /* 煙塵在兩軍前面 */
   /* 神祇一直發光（帝皇金、大不淨者綠）；部隊只在大漲／大跌（±0.5% 以上）時發光 */
   .wg-emp { filter: drop-shadow(0 0 6px #ffd700); } .wg-guo { filter: drop-shadow(0 0 6px #00ff00); }
-  .wg-glow-bull .wg-temp, .wg-glow-bull .wg-memp { filter: drop-shadow(0 0 6px #ffd700); }
-  .wg-glow-bear .wg-tguo, .wg-glow-bear .wg-mguo { filter: drop-shadow(0 0 6px #00ff00); }
-  .wg-march .wg-troop, .wg-march .wg-mini { animation: wg-step .5s steps(2) infinite; }
-  @keyframes wg-step { 0% { margin-bottom: 0; rotate: 0deg; } 50% { margin-bottom: 3px; rotate: -2deg; } }
-  .wg-battle .wg-troop, .wg-battle .wg-mini { animation: wg-jit .35s infinite; }
+  .wg-march .wg-unit { animation: wg-step .5s steps(2) infinite; }
+  @keyframes wg-step { 0% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -3px; rotate: -2deg; } }
+  .wg-battle .wg-unit { animation: wg-jit .35s infinite; }
   .wg-battle .wg-cloud { animation: wg-cjit .5s infinite; }
-  @keyframes wg-jit { 0%,100% { margin-left: 0; } 50% { margin-left: 1.5px; } }
+  @keyframes wg-jit { 0%,100% { translate: 0 0; } 50% { translate: 1.5px 0; } }
   @keyframes wg-cjit { 0%,100% { margin-left: 0; } 33% { margin-left: -2px; } 66% { margin-left: 2px; } }
   .wg-tension .wg-cloud { animation: wg-cjit .15s infinite; }
   .wg-tension .wg-arena { animation: wg-shake .4s infinite; }
@@ -273,13 +273,17 @@
     return null;
   }
 
-  // 小兵的隊形：離自家大部隊前緣多遠（大部隊寬的倍數）、大小、離底部幾 px（越後面越小、越高，像縱深）。
-  // 兩三個一群、群跟群之間留空（不排成等距的一長串）；第一群疊在大部隊上，其餘跟在後面，超出卡片的被切掉。
-  // 大不淨者的小兵是單人、帝皇的是兩人一組，所以大不淨者多排幾個，兩邊人數差不多
-  const MINIS = {
-    guo: [[0.2, 1, 0], [0.48, 0.93, 3], [1.08, 0.98, 1], [1.32, 0.9, 4], [1.95, 0.95, 2], [2.2, 0.9, 4]],
-    emp: [[0.22, 1, 0], [0.95, 0.93, 3], [1.75, 0.97, 1], [2.3, 0.9, 4]],
+  // 兩軍的隊形：[種類（B 大部隊、m 小兵）, 離戰線多遠（中心點，以亞空間條高度為單位）, 大小, 離底部幾 px]。
+  // 排到 10 倍條高，手機、電腦都排得滿自家那半邊；超出卡片的不畫。最前面是小兵斥候，大部隊不一定在最前。
+  // 大不淨者的小兵是單人、帝皇的是兩人一組，所以大不淨者小兵多排幾個
+  const ARMY = {
+    guo: [['m', 0.25, 1, 0], ['B', 1.25, 1, 0], ['m', 0.75, 0.95, 2], ['m', 1.95, 1, 1], ['m', 2.6, 0.92, 3],
+      ['B', 3.45, 0.88, 2], ['m', 3.05, 0.96, 0], ['m', 4.45, 0.9, 3], ['m', 4.8, 0.94, 1], ['B', 5.85, 0.8, 3],
+      ['m', 5.25, 0.92, 2], ['m', 6.65, 0.88, 4], ['m', 7.35, 0.92, 2], ['B', 8.35, 0.76, 4], ['m', 7.95, 0.9, 1], ['m', 9.3, 0.86, 3]],
+    emp: [['m', 0.42, 1, 0], ['B', 1.2, 1, 0], ['m', 2.2, 0.95, 2], ['B', 3.15, 0.9, 1], ['m', 3.95, 0.92, 3],
+      ['m', 4.85, 0.96, 1], ['B', 5.75, 0.82, 3], ['m', 6.65, 0.9, 2], ['B', 7.85, 0.77, 4], ['m', 8.65, 0.88, 2], ['m', 9.5, 0.86, 3]],
   };
+  const ASPECT = { GUO_troops: 1.969, Emperor_troops: 1.312, GUO_mini_troops: 0.698, Emperor_mini_troops: 1.365 };
 
   // ---- 畫面 ----
   const debug = new URLSearchParams(location.search).get('game') === 'debug';
@@ -293,8 +297,7 @@
       <img class="wg-god wg-emp" alt="">
       <img class="wg-troop wg-tguo" src="${A}GUO_troops.webp" alt="">
       <img class="wg-troop wg-temp" src="${A}Emperor_troops.webp" alt="">
-      ${MINIS.guo.map((m, i) => `<img class="wg-mini wg-mguo" data-i="${i}" alt="">`).join('')}
-      ${MINIS.emp.map((m, i) => `<img class="wg-mini wg-memp" data-i="${i}" alt="">`).join('')}
+      ${['guo', 'emp'].map((side) => ARMY[side].map((u, i) => `<img class="wg-unit${u[0] === 'm' ? ' mini' : ''}" data-side="${side}" data-i="${i}" alt="">`).join('')).join('')}
       <img class="wg-cloud" src="${A}fight-cloud.webp" alt="">
       <img class="wg-closed" src="${A}casino_closed.webp" alt="休市">
       <img class="wg-dayoff" alt="">
@@ -758,21 +761,29 @@
       te.style.transform = 'translateX(0)';
       if (!done) resolvedShown = false;
     }
-    // 小兵：跟著自家大部隊走（同一個位置、同一個過渡），結算時跟大部隊一起淡出；盤外換靜止圖
+    // 兩軍：每個單位跟著自家定位點（隱形的大部隊圖，前緣＝戰線）走，同一個過渡；超出卡片的不畫；
+    // 結算時一起淡出；盤外小兵換靜止圖
     {
-      const tgW = tg.getBoundingClientRect().width, teW = te.getBoundingClientRect().width;
+      const a = arena.getBoundingClientRect();
+      const H = a.height * 0.32;
       const still = paused ? '_still' : '';
-      for (const m of el.querySelectorAll('.wg-mini')) {
-        const isGuo = m.classList.contains('wg-mguo');
-        const [k, sc, up] = MINIS[isGuo ? 'guo' : 'emp'][Number(m.dataset.i)];
+      for (const u of el.querySelectorAll('.wg-unit')) {
+        const side = u.dataset.side, isGuo = side === 'guo';
+        const [kind, d, sc, up] = ARMY[side][Number(u.dataset.i)];
+        const name = `${isGuo ? 'GUO' : 'Emperor'}_${kind === 'm' ? 'mini_troops' : 'troops'}`;
+        const h = H * (kind === 'm' ? 0.6 : 1) * sc, w = h * ASPECT[name];
         const t = isGuo ? tg : te;
-        setSrc(m, `${A}${isGuo ? 'GUO' : 'Emperor'}_mini_troops${still}.webp`);
-        m.style.transition = t.style.transition;
-        m.style.left = `calc(${t.style.left} ${isGuo ? '-' : '+'} ${Math.round(k * (isGuo ? tgW : teW))}px)`;
-        m.style.height = `calc(32% * ${0.6 * sc})`;
-        m.style.bottom = `${up}px`;
-        m.style.animationDelay = `${-0.13 * Number(m.dataset.i)}s`;
-        m.style.opacity = done ? 0 : 1;
+        const anchor = (parseFloat(t.style.left) / 100) * a.width;
+        const cx = isGuo ? anchor - d * H : anchor + d * H;
+        const show = !done && a.width && cx + w / 2 > 0 && cx - w / 2 < a.width;
+        u.style.display = show ? '' : 'none';
+        if (!show) continue;
+        setSrc(u, `${A}${name}${kind === 'm' ? still : ''}.webp`);
+        u.style.transition = t.style.transition;
+        u.style.height = `${h}px`;
+        u.style.left = `calc(${t.style.left} ${isGuo ? '-' : '+'} ${Math.round(isGuo ? d * H + w / 2 : d * H - w / 2)}px)`;
+        u.style.bottom = `${up}px`;
+        u.style.animationDelay = `${-0.11 * Number(u.dataset.i)}s`;
       }
     }
 
