@@ -810,7 +810,7 @@
         u.style.transition = t.style.transition;
         u.style.height = `${h}px`;
         u.style.left = `calc(${t.style.left} ${isGuo ? '-' : '+'} ${Math.round(isGuo ? d * H + w / 2 : d * H - w / 2)}px)`;
-        u.style.bottom = `${up}px`;
+        u.style.bottom = `${name === 'Emperor_troops3' ? 0 : up}px`;  // 這張圖自帶地板，墊高會像浮在空中
         u.style.zIndex = 'mn'.includes(kind) ? 20 : (kind === 'B' ? 10 : 15) - up;  // 小兵最前、一般兵種其次、大部隊最後；同類近的（低的）蓋住遠的
         u.style.animationDelay = `${-0.11 * Number(u.dataset.i)}s`;
       }
