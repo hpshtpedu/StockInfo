@@ -274,18 +274,22 @@
     return null;
   }
 
-  // 兩軍的隊形：[種類（B 大部隊、m 小兵）, 離戰線多遠（中心點，以亞空間條高度為單位）, 大小, 離底部幾 px]。
+  // 兩軍的隊形：[種類（B 大部隊、2／3 一般兵種、m 小兵）, 離戰線多遠（中心點，以亞空間條高度為單位）, 大小, 離底部幾 px]。
   // 排到 10 倍條高，手機、電腦都排得滿自家那半邊；超出卡片的不畫。最前面是小兵斥候，大部隊不一定在最前；
   // 大部隊有時兩組靠在一起（一前一後疊著）、有時隔很開，不排排站。離底部越高＝越遠：越小、疊在越後面
   // 大不淨者的小兵是單人、帝皇的是兩人一組，所以大不淨者小兵多排幾個
   const ARMY = {
     guo: [['m', 0.25, 1, 0], ['B', 1.3, 1, 0], ['m', 0.8, 0.95, 2], ['m', 2.0, 1, 1], ['B', 2.75, 0.84, 5],
-      ['m', 3.3, 0.94, 3], ['m', 3.65, 0.9, 0], ['m', 4.6, 0.96, 2], ['B', 5.95, 0.92, 1], ['m', 5.25, 0.92, 4],
-      ['m', 6.95, 0.9, 1], ['m', 7.4, 0.94, 3], ['B', 8.9, 0.78, 4], ['m', 8.15, 0.9, 2], ['m', 9.6, 0.86, 0], ['m', 10.0, 0.88, 3]],
-    emp: [['m', 0.42, 1, 0], ['B', 1.25, 1, 0], ['m', 2.1, 0.95, 2], ['m', 2.75, 0.92, 4], ['B', 3.95, 0.84, 4],
-      ['B', 4.8, 0.94, 0], ['m', 5.95, 0.9, 2], ['m', 6.6, 0.95, 1], ['B', 8.35, 0.8, 3], ['m', 7.45, 0.9, 3], ['m', 9.45, 0.86, 1]],
+      ['m', 3.3, 0.94, 3], ['2', 3.95, 0.95, 1], ['3', 4.8, 0.95, 2], ['B', 5.95, 0.92, 1], ['m', 5.25, 0.92, 4],
+      ['m', 6.95, 0.9, 1], ['2', 7.5, 0.9, 3], ['B', 8.9, 0.78, 4], ['m', 8.15, 0.9, 2], ['3', 9.75, 0.88, 1], ['m', 10.3, 0.88, 3]],
+    emp: [['m', 0.42, 1, 0], ['B', 1.25, 1, 0], ['m', 2.1, 0.95, 2], ['2', 2.85, 0.95, 1], ['B', 3.95, 0.84, 4],
+      ['B', 4.8, 0.94, 0], ['m', 5.95, 0.9, 2], ['3', 6.65, 0.95, 1], ['B', 8.35, 0.8, 3], ['m', 7.45, 0.9, 3], ['2', 9.4, 0.85, 2],
+      ['3', 10.15, 0.86, 1]],
   };
-  const ASPECT = { GUO_troops: 1.969, Emperor_troops: 1.312, GUO_mini_troops: 0.698, Emperor_mini_troops: 1.365 };
+  // 種類 → 圖檔、高度（大部隊的幾倍）。2：大不淨者的納垢獸／帝皇的坦克；3：大不淨者的騎士／帝皇的苦修戰士
+  const UNIT = { m: ['mini_troops', 0.6], B: ['troops', 1], 2: ['troops2', 0.75], 3: ['troops3', 0.78] };
+  const ASPECT = { GUO_troops: 1.969, Emperor_troops: 1.312, GUO_mini_troops: 0.698, Emperor_mini_troops: 1.365,
+    GUO_troops2: 0.961, GUO_troops3: 1.144, Emperor_troops2: 1.516, Emperor_troops3: 0.731 };
 
   // ---- 畫面 ----
   const debug = new URLSearchParams(location.search).get('game') === 'debug';
@@ -786,8 +790,8 @@
       for (const u of el.querySelectorAll('.wg-unit')) {
         const side = u.dataset.side, isGuo = side === 'guo';
         const [kind, d, sc, up] = ARMY[side][Number(u.dataset.i)];
-        const name = `${isGuo ? 'GUO' : 'Emperor'}_${kind === 'm' ? 'mini_troops' : 'troops'}`;
-        const h = H * (kind === 'm' ? 0.6 : 1) * sc, w = h * ASPECT[name];
+        const name = `${isGuo ? 'GUO' : 'Emperor'}_${UNIT[kind][0]}`;
+        const h = H * UNIT[kind][1] * sc, w = h * ASPECT[name];
         const t = isGuo ? tg : te;
         const anchor = (parseFloat(t.style.left) / 100) * a.width;
         const cx = isGuo ? anchor - d * H : anchor + d * H;
