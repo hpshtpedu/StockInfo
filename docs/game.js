@@ -675,7 +675,7 @@
     setTimeout(() => { img.remove(); if (url?.startsWith('blob:')) URL.revokeObjectURL(url); }, 350 + 1400);
   }
   // 亂入：碎骨者從網道殺出來。網道淡入 2.5 秒 → 碎骨者（第一格）淡入 2.5 秒 → 播動圖（33 格 × 120ms＝3.96 秒），
-  // 頭上冒紅色 WAAAGH!!，兩尊神輪流閃白、跳傷害、卡片震 → 停在最後一格淡出 2.5 秒 → 網道淡出 2.5 秒。
+  // 頭上冒紅色 WAAAGH!!，兩尊神輪流閃白、跳傷害、卡片震 → 停在最後一格淡出 2.5 秒 → 網道淡出 1 秒。
   // 期間兩尊神暫停出手（自己的動畫照播）。動圖亂入時才下載（淡入的 5 秒內就下載好），每次用新的 blob 網址從第一格播
   const RAID_FADE = 2500, GHAZ_MS = 33 * 120;
   const GHAZ_CX = 0.44;  // 碎骨者的頭在圖寬的位置（槍和爪子讓人物不在圖片正中間）：對齊網道中線
@@ -694,17 +694,18 @@
     const ww = document.createElement('img');
     ww.className = 'wg-raid wg-webway';
     ww.src = `${A}webway.webp`;
-    const wh = a.height * 0.95;
+    // 只佔上半部（神祇那一層），不疊到下面的亞空間條
+    const wh = a.height * 0.68 - 4, wtop = 2;
     ww.style.height = `${wh}px`;
     ww.style.left = '50%';
-    ww.style.top = `${(a.height - wh) / 2}px`;
+    ww.style.top = `${wtop}px`;
     arena.appendChild(ww);
     void ww.offsetWidth;
     ww.classList.add('on');
-    // 碎骨者：跟網道差不多高（圖上面有一截煙），頭對齊網道中線，腳底在網道下緣附近
+    // 碎骨者：網道的 85% 高（網道的環還露得出來），頭對齊網道中線，腳底在網道下緣附近
     const gm = meta.Ghazghkull ?? { w: 286, h: 192 };
-    const gh = wh, gw = (gh * gm.w) / gm.h;
-    const gtop = (a.height - wh) / 2 + wh * 0.06;
+    const gh = wh * 0.85, gw = (gh * gm.w) / gm.h;
+    const gtop = wtop + wh * 0.12;
     const gz = document.createElement('img');
     gz.className = 'wg-raid wg-ghaz';
     gz.src = `${A}Ghazghkull_still.webp`;
@@ -751,8 +752,8 @@
         yell.classList.add('fly');
         gz.classList.remove('on');
       });
-      later(GHAZ_MS + RAID_FADE, () => { gz.remove(); yell.remove(); ww.classList.remove('on'); });
-      later(GHAZ_MS + 2 * RAID_FADE, endRaid);
+      later(GHAZ_MS + RAID_FADE, () => { gz.remove(); yell.remove(); ww.style.transitionDuration = '1s'; ww.classList.remove('on'); });
+      later(GHAZ_MS + RAID_FADE + 1000, endRaid);
     }
   }
   function attack(bull, crit, onHit) {
