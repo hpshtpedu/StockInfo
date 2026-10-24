@@ -221,6 +221,7 @@
   .txt { color: var(--text); }
   .cmp { font-size: clamp(12px, 3.5vw, 13.5px); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .cmp .txt, .chg .txt { font-weight: 400; }
+  .cmp .txt { color: var(--muted); }  /* 盤後卡片第二行的標籤（較前日、餘額）跟八大的「M/D起」一樣：灰字細體、數字半粗 */
   /* 全寬卡片（三大法人）的明細行有整行寬度，字可以大一點；八大的連買/賣下面沒別的內容，也放大 */
   /* 三大法人：明細行跟最下面一列（日期、法人成交比重）之間留空，不擠 */
   .head .badges { display: flex; gap: 4px; min-width: 0; }
@@ -820,7 +821,7 @@
       <div class="card roomy">
         <div class="head"><div class="name">上市融資增減</div>${marginStreakBadge(m) || BADGE_SPACER}</div>
         <div class="price ${dir}">${c > 0 ? '+' : ''}${fmt(c, 1)}<small> 億</small></div>
-        <div class="cmp"><span class="txt">餘額</span> <span class="txt">${fmt(m.balance, 0)}億</span></div>
+        <div class="cmp"><span class="txt">餘額</span> <span>${fmt(m.balance, 0)}億</span></div>
         <div class="foot"><div class="meta">${mm}/${dd} 盤後</div></div>
       </div>`;
   }
