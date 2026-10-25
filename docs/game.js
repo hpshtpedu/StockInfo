@@ -672,10 +672,10 @@
     hits(350, [420, 650, 880]);
     setTimeout(() => { img.remove(); if (url?.startsWith('blob:')) URL.revokeObjectURL(url); }, 350 + 1400);
   }
-  // 亂入：碎骨者從網道殺出來。網道淡入 2.5 秒 → 碎骨者（第一格）淡入 2.5 秒 → 播動圖（33 格 × 120ms＝3.96 秒），
-  // 頭上一直彈出紅色 WAAAGH!!，兩尊神輪流閃白、跳傷害、卡片震 → 停在最後一格淡出 2.5 秒 → 網道淡出 1 秒。
+  // 亂入：碎骨者從網道殺出來。網道淡入 2 秒 → 碎骨者（第一格）淡入 2.5 秒 → 播動圖（33 格 × 120ms＝3.96 秒），
+  // 頭上一直彈出紅色 WAAAGH!!，兩尊神輪流閃白、跳傷害、卡片震 → 停在最後一格淡出 2.5 秒 → 網道淡出 1.5 秒。
   // 期間兩尊神暫停出手（自己的動畫照播）。動圖亂入時才下載（淡入的 5 秒內就下載好），每次用新的 blob 網址從第一格播
-  const RAID_FADE = 2500, GHAZ_MS = 33 * 120;
+  const RAID_FADE = 2500, WEB_IN = 2000, WEB_OUT = 1500, GHAZ_MS = 33 * 120;  // 碎骨者淡入淡出、網道淡入、網道淡出（ms）
   const GHAZ_CX = 0.44;  // 碎骨者的頭在圖寬的位置（槍和爪子讓人物不在圖片正中間）：對齊網道中線
   let raid = 0;  // 進行中的亂入編號（0＝沒有）；收盤時清掉，已經排好的計時器看到編號不對就不做
   for (const n of ['webway', 'Ghazghkull_still', 'Ghazghkull_end']) new Image().src = `${A}${n}.webp`;
@@ -699,6 +699,7 @@
     ww.style.top = `${wtop}px`;
     arena.appendChild(ww);
     void ww.offsetWidth;
+    ww.style.transitionDuration = `${WEB_IN}ms`;
     ww.classList.add('on');
     // 碎骨者：撐滿上半部（圖上下各有 16/192 的光暈留白，人物腳底踩在亞空間條上緣），頭對齊網道中線，可以蓋過網道
     const gm = meta.Ghazghkull ?? { w: 286, h: 192 };
@@ -710,8 +711,8 @@
     gz.style.height = `${gh}px`;
     gz.style.left = `${a.width / 2 - gw * GHAZ_CX}px`;
     gz.style.top = `${gtop}px`;
-    later(RAID_FADE, () => { arena.appendChild(gz); void gz.offsetWidth; gz.classList.add('on'); });
-    later(2 * RAID_FADE, () => blob.then((b) => {
+    later(WEB_IN, () => { arena.appendChild(gz); void gz.offsetWidth; gz.classList.add('on'); });
+    later(WEB_IN + RAID_FADE, () => blob.then((b) => {
       if (raid !== id) return;
       const url = b ? URL.createObjectURL(b) : `${A}Ghazghkull.webp?${Date.now()}`;
       gz.src = url;
@@ -752,8 +753,8 @@
         if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), 1000);
         gz.classList.remove('on');
       });
-      later(GHAZ_MS + RAID_FADE, () => { gz.remove(); ww.style.transitionDuration = '1s'; ww.classList.remove('on'); });
-      later(GHAZ_MS + RAID_FADE + 1000, endRaid);
+      later(GHAZ_MS + RAID_FADE, () => { gz.remove(); ww.style.transitionDuration = `${WEB_OUT}ms`; ww.classList.remove('on'); });
+      later(GHAZ_MS + RAID_FADE + WEB_OUT, endRaid);
     }
   }
   function attack(bull, crit, onHit) {
