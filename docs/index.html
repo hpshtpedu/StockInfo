@@ -930,7 +930,7 @@
 
   // 小遊戲：第一次要用時才載入，之後每次重畫把同一個遊戲元素搬回原位。主帳號是戰鎚（docs/game.js），
   // love 帳號是自己的遊戲（docs/love.js、素材在 docs/love/）：只載入登入帳號的那一套，另一套的檔案完全不抓
-  const GAMES = { owner: ['game.js?v=91', 'WarGame'], love: ['love.js?v=17', 'LoveGame'] };
+  const GAMES = { owner: ['game.js?v=92', 'WarGame'], love: ['love.js?v=17', 'LoveGame'] };
   const gameLoading = {};
   function attachGame(d) {
     const [src, name] = GAMES[window.PrivateVault?.profile?.()] ?? GAMES.owner;

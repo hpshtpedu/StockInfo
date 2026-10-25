@@ -679,16 +679,33 @@
   const GHAZ_CX = 0.44;  // 碎骨者的頭在圖寬的位置（槍和爪子讓人物不在圖片正中間）：對齊網道中線
   let raid = 0;  // 進行中的亂入編號（0＝沒有）；收盤時清掉，已經排好的計時器看到編號不對就不做
   for (const n of ['webway', 'Ghazghkull_still', 'Ghazghkull_end']) new Image().src = `${A}${n}.webp`;
+  // 兩尊神動圖 ↔ 靜止圖交叉淡化 0.5 秒（網頁上的動圖沒辦法真的暫停，直接換圖會跳一下）：
+  // 同位置疊一張要換成的圖淡入，淡完才真的換圖（draw）、拿掉疊的那張
+  function fadeGods(still) {
+    still ||= el.classList.contains('wg-paused');
+    for (const [g, n] of [[guo, 'GUO'], [emp, 'Emperor']]) {
+      const c = g.cloneNode();
+      c.className = g.className.replace(/ wg-(flashw|hurt\S*)/g, '');
+      c.src = `${A}${n}${still ? '_still' : ''}.webp`;
+      c.style.opacity = '0';
+      c.style.transition = 'opacity .5s';
+      g.after(c);
+      void c.offsetWidth;
+      c.style.opacity = '1';
+      setTimeout(() => c.remove(), 520);
+    }
+    setTimeout(() => draw(false), 500);
+  }
   function endRaid() {
     raid = 0;
     arena.querySelectorAll('.wg-raid, .wg-float.waagh').forEach((x) => x.remove());
-    draw(false);  // 兩尊神換回動圖
+    fadeGods(false);  // 兩尊神淡回動圖
   }
   function warp() {
     const a = arena.getBoundingClientRect();
     if (raid || !a.width) return;
     const id = raid = Date.now();
-    draw(false);  // 兩尊神換靜止圖
+    fadeGods(true);  // 兩尊神淡成靜止圖
     const later = (ms, f) => setTimeout(() => { if (raid === id) f(); }, ms);
     const blob = fetch(`${A}Ghazghkull.webp`).then((r) => r.blob()).catch(() => null);
     const ww = document.createElement('img');
