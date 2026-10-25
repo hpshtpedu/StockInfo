@@ -479,7 +479,11 @@
   function hit() {
     if (raid) return;  // 亂入中：兩尊神暫停出手
     // 亂入（交火時每次攻擊 1/300，每 3 秒一次 → 大約 15 分鐘一次）
-    if (el.classList.contains('wg-battle') && Math.random() < 1 / 300) { warp(); return; }
+    // 下一個要亂入的角色先在背景下載好（4G 也不會等），還沒下載完就不亂入
+    if (el.classList.contains('wg-battle')) {
+      loadRaider(nextRaid);
+      if (raidReady[nextRaid] && Math.random() < 1 / 300) { warp(nextRaid); nextRaid = Math.floor(Math.random() * RAIDERS.length); return; }
+    }
     const pct = pctNow();
     const counter = counterattack(pct);
     if (counter) heal(counter === 'bull');
@@ -685,7 +689,7 @@
   }
   // 亂入：角色從門（網道、戰艦、傳送門）殺出來。門淡入 2 秒 → 角色（第一格）淡入 2 秒 → 播動圖，
   // 頭上一直彈出台詞，兩尊神輪流閃白、跳傷害、卡片震 → 停在最後一格淡出 2 秒 → 門淡出 1 秒。
-  // 期間兩尊神暫停出手、停住不動（換靜止圖）。圖亂入時才下載（動圖在淡入的 4 秒內就下載好），每次用新的 blob 網址從第一格播
+  // 期間兩尊神暫停出手、停住不動（換靜止圖）。圖事先在背景下載好（loadRaider），動圖每次用新的 blob 網址從第一格播
   const RAID_FADE = 2000, WEB_IN = 2000, WEB_OUT = 1000;  // 角色淡入淡出、門淡入、門淡出（ms）
   let raid = 0;  // 進行中的亂入編號（0＝沒有）；收盤時清掉，已經排好的計時器看到編號不對就不做
   // 兩尊神動圖 ↔ 靜止圖交叉淡化 0.5 秒（網頁上的動圖沒辦法真的暫停，直接換圖會跳一下）：
@@ -710,18 +714,32 @@
     arena.querySelectorAll('.wg-raid, .wg-float.waagh').forEach((x) => x.remove());
     fadeGods(false);  // 兩尊神淡回動圖
   }
-  function warp(k = Math.floor(Math.random() * RAIDERS.length)) {
+  // 亂入的四張圖（動圖、門、第一格、最後一格）整組抓成 blob 留在記憶體：開演時全部已經在手上，
+  // 不用等網路（GitHub Pages 快取 10 分鐘後還要回頭問一次 304，4G 上會卡）。失敗的話 1 分鐘後再試
+  let nextRaid = Math.floor(Math.random() * RAIDERS.length);
+  const raidLoad = {}, raidReady = {};
+  function loadRaider(k) {
+    const R = RAIDERS[k];
+    const names = [R.who, R.gate, `${R.who}_still`, `${R.who}_end`];
+    return (raidLoad[k] ??= Promise.all(names.map((n) => fetch(`${A}${n}.webp`).then((r) => { if (!r.ok) throw r; return r.blob(); })))
+      .then(([anim, gate, still, end]) => (raidReady[k] = {
+        anim, gate: URL.createObjectURL(gate), still: URL.createObjectURL(still), end: URL.createObjectURL(end),
+      }))
+      .catch(() => { setTimeout(() => delete raidLoad[k], 60000); return null; }));
+  }
+  function warp(k) {
+    if (raid) return;
+    if (!raidReady[k]) { loadRaider(k).then((B) => B && warp(k)); return; }  // 除錯按鈕：下載完再開演
     const a = arena.getBoundingClientRect();
-    if (raid || !a.width) return;
+    if (!a.width) return;
+    const B = raidReady[k];
     const id = raid = Date.now();
     fadeGods(true);  // 兩尊神淡成靜止圖
     const R = RAIDERS[k];
     const later = (ms, f) => setTimeout(() => { if (raid === id) f(); }, ms);
-    const blob = fetch(`${A}${R.who}.webp`).then((r) => r.blob()).catch(() => null);
-    new Image().src = `${A}${R.who}_end.webp`;
     const ww = document.createElement('img');
     ww.className = 'wg-raid wg-webway';
-    ww.src = `${A}${R.gate}.webp`;
+    ww.src = B.gate;
     // 只佔上半部（神祇那一層），不疊到下面的亞空間條
     const wh = (a.height * 0.68 - 4) * (R.gs ?? 1), wtop = 2 + (a.height * 0.68 - 4 - wh) / 2;  // 縮小的門在上半部置中
     ww.style.height = `${wh}px`;
@@ -737,17 +755,16 @@
     const gtop = a.height * 0.68 - gh * (1 - 16 / gm.h);
     const gz = document.createElement('img');
     gz.className = 'wg-raid wg-ghaz';
-    gz.src = `${A}${R.who}_still.webp`;
+    gz.src = B.still;
     gz.style.height = `${gh}px`;
     gz.style.left = `${a.width / 2 - gw * gm.hx}px`;
     gz.style.top = `${gtop}px`;
     later(WEB_IN, () => { arena.appendChild(gz); void gz.offsetWidth; gz.classList.add('on'); });
-    later(WEB_IN + RAID_FADE, () => blob.then((b) => {
-      if (raid !== id) return;
-      const url = b ? URL.createObjectURL(b) : `${A}${R.who}.webp?${Date.now()}`;
+    later(WEB_IN + RAID_FADE, () => {
+      const url = URL.createObjectURL(B.anim);
       gz.src = url;
       gz.decode().catch(() => {}).then(() => { if (raid === id) play(url); });
-    }));
+    });
     function play(url) {
       const fs = Math.round(a.height * 0.18);
       for (let t = 0; t < R.ms - 500; t += 900) later(t, () => {
@@ -780,8 +797,8 @@
         float(`${300 + Math.round(Math.random() * 600)}!`, 'ork', true, mid(god) + (Math.random() - 0.5) * 8, ' raid');
       });
       later(R.ms, () => {
-        gz.src = `${A}${R.who}_end.webp`;
-        if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), 1000);
+        gz.src = B.end;
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         gz.classList.remove('on');
       });
       later(R.ms + RAID_FADE, () => { gz.remove(); ww.style.transitionDuration = `${WEB_OUT}ms`; ww.classList.remove('on'); });
