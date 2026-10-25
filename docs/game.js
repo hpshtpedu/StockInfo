@@ -152,8 +152,8 @@
   @keyframes wg-hurt { 0%,100% { translate: 0; } 20% { translate: -4px 0; } 40% { translate: 4px 0; } 60% { translate: -3px 0; } 80% { translate: 3px 0; } }
   .wg-skull { z-index: 4; animation: wg-skull 1s ease-out forwards; }
   @keyframes wg-skull { 0% { opacity: 0; transform: translateY(4px) scale(.7); } 15% { opacity: 1; transform: translateY(0) scale(1.05); } 100% { opacity: 0; transform: translateY(-22px) scale(1); } }
-  /* 亂入：網道、碎骨者（藍色光暈畫在圖裡）在畫面中間，蓋在部隊、煙塵上面；淡入淡出各 2.5 秒 */
-  .wg-raid { z-index: 31; opacity: 0; transition: opacity 2.5s ease-in-out; }
+  /* 亂入：網道、碎骨者（藍色光暈畫在圖裡）在畫面中間，蓋在部隊、煙塵上面；碎骨者淡入淡出各 2 秒（網道的時間寫在程式裡） */
+  .wg-raid { z-index: 31; opacity: 0; transition: opacity 2s ease-in-out; }
   .wg-raid.on { opacity: 1; }
   .wg-webway { translate: -50% 0; }
   .wg-ghaz { z-index: 32; }
@@ -672,10 +672,10 @@
     hits(350, [420, 650, 880]);
     setTimeout(() => { img.remove(); if (url?.startsWith('blob:')) URL.revokeObjectURL(url); }, 350 + 1400);
   }
-  // 亂入：碎骨者從網道殺出來。網道淡入 2 秒 → 碎骨者（第一格）淡入 2.5 秒 → 播動圖（33 格 × 120ms＝3.96 秒），
-  // 頭上一直彈出紅色 WAAAGH!!，兩尊神輪流閃白、跳傷害、卡片震 → 停在最後一格淡出 2.5 秒 → 網道淡出 1.5 秒。
+  // 亂入：碎骨者從網道殺出來。網道淡入 2 秒 → 碎骨者（第一格）淡入 2 秒 → 播動圖（33 格 × 120ms＝3.96 秒），
+  // 頭上一直彈出紅色 WAAAGH!!，兩尊神輪流閃白、跳傷害、卡片震 → 停在最後一格淡出 2 秒 → 網道淡出 1 秒。
   // 期間兩尊神暫停出手（自己的動畫照播）。動圖亂入時才下載（淡入的 5 秒內就下載好），每次用新的 blob 網址從第一格播
-  const RAID_FADE = 2500, WEB_IN = 2000, WEB_OUT = 1500, GHAZ_MS = 33 * 120;  // 碎骨者淡入淡出、網道淡入、網道淡出（ms）
+  const RAID_FADE = 2000, WEB_IN = 2000, WEB_OUT = 1000, GHAZ_MS = 33 * 120;  // 碎骨者淡入淡出、網道淡入、網道淡出（ms）
   const GHAZ_CX = 0.44;  // 碎骨者的頭在圖寬的位置（槍和爪子讓人物不在圖片正中間）：對齊網道中線
   let raid = 0;  // 進行中的亂入編號（0＝沒有）；收盤時清掉，已經排好的計時器看到編號不對就不做
   for (const n of ['webway', 'Ghazghkull_still', 'Ghazghkull_end']) new Image().src = `${A}${n}.webp`;
