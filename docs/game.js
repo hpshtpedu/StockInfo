@@ -52,6 +52,9 @@
   .wg-troop { visibility: hidden; }
   .wg-unit { bottom: 0; z-index: 1; transition: left 2s ease-in-out, opacity 1s; }
   .wg-unit.mini { z-index: 2; }
+  /* 陣亡：閃白一下，往自家後方倒下、沉下去淡出（--fall：大不淨者往左倒、帝皇往右倒） */
+  .wg-dead { transform-origin: 50% 100%; animation: wg-die 1.4s ease-in forwards; }
+  @keyframes wg-die { 0% { filter: brightness(3); } 15% { filter: none; rotate: 0deg; translate: 0 0; opacity: 1; } 100% { rotate: var(--fall); translate: 0 35%; opacity: 0; } }
   /* 台股休市（週末、國定假日、颱風假）：亞空間條正中間掛「CASINO CLOSED」招牌 */
   .wg .wg-closed { left: 50%; bottom: calc((32% - 14px) / 2);  /* 亞空間條上緣 14px 是淡出，扣掉後的可見部分置中 */ height: calc(32% * .72); max-width: 82%; object-fit: contain; transform: translate(-50%, 50%); z-index: 3; display: none; }
   .wg .wg-closed.on { display: block; }
@@ -307,6 +310,11 @@
   const ASPECT = { GUO_troops: 1.969, Emperor_troops: 1.312, GUO_mini_troops: 0.698, Emperor_mini_troops: 1.365,
     GUO_mini_troops2: 0.823, Emperor_mini_troops2: 0.656,
     GUO_troops2: 0.961, GUO_troops3: 1.144, Emperor_troops2: 1.516, Emperor_troops3: 0.731 };
+  // 陣亡補位：order＝每邊目前的排隊順序（ARMY 的編號，前面＝靠近戰線），GAP＝每個單位跟後面那個隔多遠。
+  // 有人陣亡就把他移到隊伍最後面，後面的人往前補，位置照新順序重新累加
+  const order = { guo: ARMY.guo.map((u, i) => i), emp: ARMY.emp.map((u, i) => i) };
+  const GAP = Object.fromEntries(Object.entries(ARMY).map(([s, us]) => [s, us.map((u, i) => (us[i + 1]?.[1] ?? u[1] + 0.5) - u[1])]));
+  const refill = { guo: 0, emp: 0 };  // 補位中（到這個時間為止）：往前走慢一點
 
   // 亂入角色：門、角色、台詞（<i> 包住的字用 hi 色，跟光暈同色）、片長（格數 × 120ms）；gs、ws：門、角色的大小倍數（預設 1）。
   // 光暈畫在圖裡；頭在圖上的位置（hx、hy）在 meta.json（scripts/build_game_assets.py 的 RAIDER_HEAD）
@@ -339,7 +347,7 @@
     </div>
     <div class="wg-ticker"><span></span></div>
     ${debug ? '<div class="wg-dbg">時間<input type="range" min="470" max="815" step="1" value="600"><span class="t">10:00</span>漲跌%<input type="number" step="0.1" value="0"></div>'
-      + '<div class="wg-dbg">必殺技<button type="button" data-sp="1">滅絕令</button><button type="button" data-sp="0">憎惡鏈枷</button></div>'
+      + '<div class="wg-dbg">必殺技<button type="button" data-sp="1">滅絕令</button><button type="button" data-sp="0">憎惡鏈枷</button><button type="button" data-kill>陣亡</button></div>'
       + `<div class="wg-dbg">亂入${RAIDERS.map((r, i) => `<button type="button" data-raid="${i}">亂${i + 1}</button>`).join('')}</div>` : ''}`;
   const $ = (s) => el.querySelector(s);
   const arena = $('.wg-arena');
@@ -805,6 +813,42 @@
       later(R.ms + RAID_FADE + WEB_OUT, endRaid);
     }
   }
+  // 陣亡：交火時每 15～30 秒，隨機一邊、最靠戰線的三個看得到的兵裡挑一個倒下（一張複製圖播倒下動畫、冒骷髏），
+  // 本尊藏起來移到隊伍最後面，後面的人 3 秒內往前補位，3 秒後本尊從隊尾淡入
+  function kill(manual) {
+    if (!manual) setTimeout(kill, 15000 + Math.random() * 15000);
+    if (!el.classList.contains('wg-battle') || el.classList.contains('wg-paused')) return;
+    const side = Math.random() < 0.5 ? 'guo' : 'emp';
+    const units = el.querySelectorAll(`.wg-unit[data-side="${side}"]`);
+    const front = order[side].slice(0, 3).map((i) => units[i]).filter((u) => u.style.display !== 'none' && !u.style.visibility);
+    const u = front[Math.floor(Math.random() * front.length)];
+    if (!u) return;
+    const c = u.cloneNode();
+    c.className = 'wg-dead';
+    c.style.transition = 'none';
+    c.style.setProperty('--fall', side === 'guo' ? '-75deg' : '75deg');
+    u.after(c);
+    setTimeout(() => c.remove(), 1450);
+    const a = arena.getBoundingClientRect(), r = u.getBoundingClientRect();
+    const sk = document.createElement('img');
+    sk.className = 'wg-skull';
+    sk.src = `${A}damage.webp`;
+    const sh = r.height * 0.5;
+    sk.style.height = `${sh}px`;
+    sk.style.left = `${(r.left + r.right) / 2 - a.left - sh / 2}px`;
+    sk.style.top = `${r.top - a.top - sh * 0.3}px`;
+    sk.style.zIndex = 25;  // 蓋在部隊前面（煙塵 30 還是最上層）
+    arena.appendChild(sk);
+    setTimeout(() => sk.remove(), 1100);
+    u.style.visibility = 'hidden';
+    u.style.opacity = '0';
+    const i = Number(u.dataset.i);
+    order[side] = [...order[side].filter((x) => x !== i), i];
+    refill[side] = Date.now() + 3000;
+    draw(false);
+    setTimeout(() => { u.style.visibility = ''; void u.offsetWidth; u.style.opacity = ''; }, 3200);
+  }
+  setTimeout(kill, 15000 + Math.random() * 15000);
   function attack(bull, crit, onHit) {
     const alt = Math.random() < 0.5;
     shot(bull, () => onHit?.(0), false, alt);
@@ -962,9 +1006,12 @@
       const a = arena.getBoundingClientRect();
       const H = a.height * 0.32;
       const still = paused ? '_still' : '';
+      const pos = {};
+      for (const s of ['guo', 'emp']) { let d = 0.25; pos[s] = []; for (const i of order[s]) { pos[s][i] = d; d += GAP[s][i]; } }
       for (const u of el.querySelectorAll('.wg-unit')) {
         const side = u.dataset.side, isGuo = side === 'guo';
-        const [kind, d, sc, up] = ARMY[side][Number(u.dataset.i)];
+        const [kind, , sc, up] = ARMY[side][Number(u.dataset.i)];
+        const d = pos[side][Number(u.dataset.i)];
         const name = `${isGuo ? 'GUO' : 'Emperor'}_${UNIT[kind][0]}`;
         const h = H * UNIT[kind][1] * sc, w = h * ASPECT[name];
         const t = isGuo ? tg : te;
@@ -974,7 +1021,7 @@
         u.style.display = show ? '' : 'none';
         if (!show) continue;
         setSrc(u, `${A}${name}${'mn'.includes(kind) ? still : ''}.webp`);
-        u.style.transition = t.style.transition;
+        u.style.transition = refill[side] > Date.now() ? 'left 3s ease-in-out, opacity 1s' : t.style.transition;
         u.style.height = `${h}px`;
         u.style.left = `calc(${t.style.left} ${isGuo ? '-' : '+'} ${Math.round(isGuo ? d * H + w / 2 : d * H - w / 2)}px)`;
         u.style.bottom = `${name === 'Emperor_troops3' ? 0 : up}px`;  // 這張圖自帶地板，墊高會像浮在空中
@@ -1046,6 +1093,7 @@
     const eL = ((emp.getBoundingClientRect().left - ar.left) / ar.width) * 100;
     fireSpecial(bull, 150 + Math.round(Math.random() * 150), bull ? gR + 5 : eL - 5);
   }));
+  if (debug) el.querySelector('.wg-dbg button[data-kill]').addEventListener('click', () => kill(true));
   if (debug) el.querySelectorAll('.wg-dbg button[data-raid]').forEach((b) => b.addEventListener('click', () => warp(Number(b.dataset.raid))));
   if (debug) el.querySelectorAll('.wg-dbg input').forEach((i) => i.addEventListener('input', () => {
     $('.wg-dbg .t').textContent = now().hhmm; draw(true);
