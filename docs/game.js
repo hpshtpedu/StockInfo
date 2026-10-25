@@ -161,6 +161,7 @@
   /* WAAAGH!!：播動圖的期間每 0.9 秒從碎骨者頭上彈出一個紅字，往上跳走淡出（中間的空檔看得到碎骨者） */
   .wg-float.waagh { z-index: 33; color: #ff2a1a; animation: wg-waagh .9s ease-out forwards;
     text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px #ff2a1a; }
+  .wg-float.waagh i { font-style: normal; color: #ff9a1a; }  /* 中間的 A 橘色 */
   @keyframes wg-waagh { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.6); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); }
     30% { transform: translate(-50%, -6px) scale(1); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -34px) scale(.95); } }
   .wg-dbg { display: flex; gap: 6px; align-items: center; padding: 4px 8px; font-size: 12px; color: var(--muted); }
@@ -742,7 +743,7 @@
       for (let t = 0; t < GHAZ_MS - 500; t += 900) later(t, () => {
         const yell = document.createElement('div');
         yell.className = 'wg-float waagh';
-        yell.textContent = 'WAAAGH!!';
+        yell.innerHTML = 'W<i>AAA</i>GH!!';
         yell.style.fontSize = `${fs}px`;
         yell.style.left = '50%';
         yell.style.top = `${Math.max(0, gtop + gh * 0.3 - fs)}px`;  // 頭頂（圖高 30% 處）上面
