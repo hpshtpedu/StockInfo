@@ -827,6 +827,7 @@
     const c = u.cloneNode();
     c.className = 'wg-dead';
     c.style.transition = 'none';
+    c.style.animationDelay = '0s';  // 本尊有負的 animation-delay（踏步錯開），不清掉的話後面編號的兵倒下動畫一開始就播完了
     c.style.setProperty('--fall', side === 'guo' ? '-75deg' : '75deg');
     u.after(c);
     setTimeout(() => c.remove(), 1450);
