@@ -813,15 +813,16 @@
       later(R.ms + RAID_FADE + WEB_OUT, endRaid);
     }
   }
-  // 陣亡：交火時每 15～30 秒，隨機一邊、最靠戰線的三個看得到的兵裡挑一個倒下（一張複製圖播倒下動畫、冒骷髏），
-  // 本尊藏起來移到隊伍最後面，後面的人 3 秒內往前補位，3 秒後本尊從隊尾淡入
+  // 陣亡：交火時每 10～20 秒，最靠戰線的兵倒下一個（一張複製圖播倒下動畫、冒骷髏）。哪邊死跟出手一樣看情勢分數：
+  // 跌的時候帝皇那邊比較常死、漲的時候大不淨者那邊比較常死。本尊藏起來移到隊伍最後面，後面的人 3 秒內往前補位，
+  // 3 秒後本尊從隊尾淡入
   function kill(manual) {
-    if (!manual) setTimeout(kill, 15000 + Math.random() * 15000);
+    if (!manual) setTimeout(kill, 10000 + Math.random() * 10000);
     if (!el.classList.contains('wg-battle') || el.classList.contains('wg-paused')) return;
-    const side = Math.random() < 0.5 ? 'guo' : 'emp';
+    const sc = score(pctNow());
+    const side = Math.random() < 0.5 + 0.42 * (Number.isFinite(sc) ? sc : 0) ? 'guo' : 'emp';
     const units = el.querySelectorAll(`.wg-unit[data-side="${side}"]`);
-    const front = order[side].slice(0, 3).map((i) => units[i]).filter((u) => u.style.display !== 'none' && !u.style.visibility);
-    const u = front[Math.floor(Math.random() * front.length)];
+    const u = order[side].map((i) => units[i]).find((x) => x.style.display !== 'none' && !x.style.visibility);
     if (!u) return;
     const c = u.cloneNode();
     c.className = 'wg-dead';
@@ -848,7 +849,7 @@
     draw(false);
     setTimeout(() => { u.style.visibility = ''; void u.offsetWidth; u.style.opacity = ''; }, 3200);
   }
-  setTimeout(kill, 15000 + Math.random() * 15000);
+  setTimeout(kill, 10000 + Math.random() * 10000);
   function attack(bull, crit, onHit) {
     const alt = Math.random() < 0.5;
     shot(bull, () => onHit?.(0), false, alt);
@@ -1007,7 +1008,17 @@
       const H = a.height * 0.32;
       const still = paused ? '_still' : '';
       const pos = {};
-      for (const s of ['guo', 'emp']) { let d = 0.25; pos[s] = []; for (const i of order[s]) { pos[s][i] = d; d += GAP[s][i]; } }
+      // 寬的（大部隊、坦克）補到前排時中心往後退：任何單位的前緣最多越過戰線 0.16 條高（跟原本最前面的小兵一樣）
+      for (const s of ['guo', 'emp']) {
+        pos[s] = [];
+        let d = 0.25;
+        order[s].forEach((i) => {
+          const [kind, , sc] = ARMY[s][i];
+          d = Math.max(d, (UNIT[kind][1] * sc * ASPECT[`${s === 'guo' ? 'GUO' : 'Emperor'}_${UNIT[kind][0]}`]) / 2 - 0.16);
+          pos[s][i] = d;
+          d += GAP[s][i];
+        });
+      }
       for (const u of el.querySelectorAll('.wg-unit')) {
         const side = u.dataset.side, isGuo = side === 'guo';
         const [kind, , sc, up] = ARMY[side][Number(u.dataset.i)];
