@@ -809,8 +809,15 @@
     const bars = candles.map((c, i) => c && { i, o: c[0], h: c[1], l: c[2], c: c[3] }).filter(Boolean);
     if (!bars.length) return '';
     const lineVals = (line ?? []).filter((v) => v != null);
-    const lo = Math.min(prev ?? Infinity, ...lineVals, ...bars.map((b) => b.l));
-    const hi = Math.max(prev ?? -Infinity, ...lineVals, ...bars.map((b) => b.h));
+    let lo = Math.min(prev ?? Infinity, ...lineVals, ...bars.map((b) => b.l));
+    let hi = Math.max(prev ?? -Infinity, ...lineVals, ...bars.map((b) => b.h));
+    // 有昨收（當天的 K）：整張圖至少涵蓋昨收的 2%（不夠就上下各撐開一半），平淡的日子 K 棒只佔中間一小段，
+    // 大漲大跌才撐滿整張圖；週 K 不傳昨收，照舊撐滿
+    if (prev != null && hi - lo < prev * 0.02) {
+      const mid = (hi + lo) / 2;
+      lo = mid - prev * 0.01;
+      hi = mid + prev * 0.01;
+    }
     // 上下各留 8% 內距：跳空時昨收虛線剛好是最高／最低，貼在 SVG 邊緣會被裁掉看不見
     const y = (v) => (hi === lo ? 50 : 8 + ((hi - v) / (hi - lo)) * 84);
     const w = 7;
