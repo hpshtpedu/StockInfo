@@ -308,13 +308,13 @@
     GUO_mini_troops2: 0.823, Emperor_mini_troops2: 0.656,
     GUO_troops2: 0.961, GUO_troops3: 1.144, Emperor_troops2: 1.516, Emperor_troops3: 0.731 };
 
-  // 亂入角色：門、角色、台詞（<i> 包住的字用 hi 色，跟光暈同色）、片長（格數 × 120ms）。
+  // 亂入角色：門、角色、台詞（<i> 包住的字用 hi 色，跟光暈同色）、片長（格數 × 120ms）；gs、ws：門、角色的大小倍數（預設 1）。
   // 光暈畫在圖裡；頭在圖上的位置（hx、hy）在 meta.json（scripts/build_game_assets.py 的 RAIDER_HEAD）
   const RAIDERS = [
-    { gate: 'webway', who: 'Ghazghkull', yell: 'W<i>AAA</i>GH!!', hi: '#1edc78', ms: 33 * 120 },          // 碎骨者：綠
-    { gate: 'VengefulSpirit', who: 'abaddon', yell: 'WWW<i>RRRR</i>YYYY!', hi: '#ff9a1a', ms: 44 * 120 },  // 阿巴頓：紅光、R 橘色
+    { gate: 'webway', who: 'Ghazghkull', yell: 'W<i>AAA</i>GH!!', hi: '#1a9e48', ms: 33 * 120 },          // 碎骨者：深綠（大不淨者是亮綠）
+    { gate: 'VengefulSpirit', who: 'abaddon', yell: 'WWW<i>RRRR</i>YYYY!', hi: '#ff9a1a', ms: 44 * 120, gs: 0.8 },  // 阿巴頓：紅光、R 橘色
     { gate: 'portal', who: 'LordofChange', yell: 'KHR<i>AAAA</i>SH!', hi: '#5ab4ff', ms: 31 * 120 },       // 萬變魔君：藍
-    { gate: 'HiveShip', who: 'tyranids', yell: 'G<i>AAA</i>GH!', hi: '#be50ff', ms: 42 * 120 },           // 泰倫武士：紫
+    { gate: 'HiveShip', who: 'tyranids', yell: 'G<i>AAA</i>GH!', hi: '#be50ff', ms: 42 * 120, gs: 0.8, ws: 0.9 },           // 泰倫武士：紫
   ];
 
   // ---- 畫面 ----
@@ -723,7 +723,7 @@
     ww.className = 'wg-raid wg-webway';
     ww.src = `${A}${R.gate}.webp`;
     // 只佔上半部（神祇那一層），不疊到下面的亞空間條
-    const wh = a.height * 0.68 - 4, wtop = 2;
+    const wh = (a.height * 0.68 - 4) * (R.gs ?? 1), wtop = 2 + (a.height * 0.68 - 4 - wh) / 2;  // 縮小的門在上半部置中
     ww.style.height = `${wh}px`;
     ww.style.left = '50%';
     ww.style.top = `${wtop}px`;
@@ -733,7 +733,7 @@
     ww.classList.add('on');
     // 角色：撐滿上半部（圖上下各有 16px 的光暈留白，人物腳底踩在亞空間條上緣），頭對齊門的中線，可以蓋過門
     const gm = meta[R.who] ?? { w: 290, h: 192, hx: 0.45, hy: 0.3 };
-    const gh = a.height * 0.68 * 1.08, gw = (gh * gm.w) / gm.h;
+    const gh = a.height * 0.68 * 1.08 * (R.ws ?? 1), gw = (gh * gm.w) / gm.h;
     const gtop = a.height * 0.68 - gh * (1 - 16 / gm.h);
     const gz = document.createElement('img');
     gz.className = 'wg-raid wg-ghaz';
