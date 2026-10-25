@@ -152,16 +152,16 @@
   @keyframes wg-hurt { 0%,100% { translate: 0; } 20% { translate: -4px 0; } 40% { translate: 4px 0; } 60% { translate: -3px 0; } 80% { translate: 3px 0; } }
   .wg-skull { z-index: 4; animation: wg-skull 1s ease-out forwards; }
   @keyframes wg-skull { 0% { opacity: 0; transform: translateY(4px) scale(.7); } 15% { opacity: 1; transform: translateY(0) scale(1.05); } 100% { opacity: 0; transform: translateY(-22px) scale(1); } }
-  /* 亂入：網道、碎骨者（藍色光暈畫在圖裡）在畫面中間，蓋在部隊、煙塵上面；碎骨者淡入淡出各 2 秒（網道的時間寫在程式裡） */
+  /* 亂入：門（網道、戰艦、傳送門）和角色（光暈畫在圖裡）在畫面中間，蓋在部隊、煙塵上面；角色淡入淡出各 2 秒（門的時間寫在程式裡） */
   .wg-raid { z-index: 31; opacity: 0; transition: opacity 2s ease-in-out; }
   .wg-raid.on { opacity: 1; }
   .wg-webway { translate: -50% 0; }
   .wg-ghaz { z-index: 32; }
   .wg-float.raid { z-index: 33; } .wg-float.ork { color: #ff3b30; }
-  /* WAAAGH!!：播動圖的期間每 0.9 秒從碎骨者頭上彈出一個紅字，往上跳走淡出（中間的空檔看得到碎骨者） */
+  /* 台詞（WAAAGH!! 等）：播動圖的期間每 0.9 秒從角色頭上彈出一個紅字，往上跳走淡出（中間的空檔看得到角色） */
   .wg-float.waagh { z-index: 33; color: #ff2a1a; animation: wg-waagh .9s ease-out forwards;
     text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px #ff2a1a; }
-  .wg-float.waagh i { font-style: normal; color: #ff9a1a; }  /* 中間的 A 橘色 */
+  .wg-float.waagh i { font-style: normal; color: var(--hi); }  /* 台詞中間那段字用角色的光暈色（RAIDERS 的 hi） */
   @keyframes wg-waagh { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.6); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); }
     30% { transform: translate(-50%, -6px) scale(1); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -34px) scale(.95); } }
   .wg-dbg { display: flex; gap: 6px; align-items: center; padding: 4px 8px; font-size: 12px; color: var(--muted); }
@@ -308,6 +308,15 @@
     GUO_mini_troops2: 0.823, Emperor_mini_troops2: 0.656,
     GUO_troops2: 0.961, GUO_troops3: 1.144, Emperor_troops2: 1.516, Emperor_troops3: 0.731 };
 
+  // 亂入角色：門、角色、台詞（<i> 包住的字用 hi 色，跟光暈同色）、片長（格數 × 120ms）。
+  // 光暈畫在圖裡；頭在圖上的位置（hx、hy）在 meta.json（scripts/build_game_assets.py 的 RAIDER_HEAD）
+  const RAIDERS = [
+    { gate: 'webway', who: 'Ghazghkull', yell: 'W<i>AAA</i>GH!!', hi: '#1edc78', ms: 33 * 120 },          // 碎骨者：綠
+    { gate: 'VengefulSpirit', who: 'abaddon', yell: 'WWW<i>RRRR</i>YYYY!', hi: '#ff9a1a', ms: 44 * 120 },  // 阿巴頓：紅光、R 橘色
+    { gate: 'portal', who: 'LordofChange', yell: 'KHR<i>AAAA</i>SH!', hi: '#5ab4ff', ms: 31 * 120 },       // 萬變魔君：藍
+    { gate: 'HiveShip', who: 'tyranids', yell: 'G<i>AAA</i>GH!', hi: '#be50ff', ms: 42 * 120 },           // 泰倫武士：紫
+  ];
+
   // ---- 畫面 ----
   const debug = new URLSearchParams(location.search).get('game') === 'debug';
   const el = document.createElement('div');
@@ -330,7 +339,8 @@
     </div>
     <div class="wg-ticker"><span></span></div>
     ${debug ? '<div class="wg-dbg">時間<input type="range" min="470" max="815" step="1" value="600"><span class="t">10:00</span>漲跌%<input type="number" step="0.1" value="0"></div>'
-      + '<div class="wg-dbg">必殺技<button type="button" data-sp="1">滅絕令</button><button type="button" data-sp="0">憎惡鏈枷</button><button type="button" data-raid>亂入</button></div>' : ''}`;
+      + '<div class="wg-dbg">必殺技<button type="button" data-sp="1">滅絕令</button><button type="button" data-sp="0">憎惡鏈枷</button></div>'
+      + `<div class="wg-dbg">亂入${RAIDERS.map((r, i) => `<button type="button" data-raid="${i}">亂${i + 1}</button>`).join('')}</div>` : ''}`;
   const $ = (s) => el.querySelector(s);
   const arena = $('.wg-arena');
   const guo = $('.wg-guo'), emp = $('.wg-emp'), tg = $('.wg-tguo'), te = $('.wg-temp'), cloud = $('.wg-cloud');
@@ -406,7 +416,7 @@
         f.textContent = '';
         f.append(text.slice(0, cut), document.createElement('br'), text.slice(cut));
       }
-    } else if (a.width && !extra.includes('raid')) {  // 亂入的傷害直接跳在被打的神身上（中間是碎骨者）
+    } else if (a.width && !extra.includes('raid')) {  // 亂入的傷害直接跳在被打的神身上（中間是亂入角色）
       const lo = guo.getBoundingClientRect().right - a.left + 4;
       const hi = emp.getBoundingClientRect().left - a.left - 4;
       const k = extra.includes('ult') ? 1.65 : crit ? 1.5 : 1.1;
@@ -673,13 +683,11 @@
     hits(350, [420, 650, 880]);
     setTimeout(() => { img.remove(); if (url?.startsWith('blob:')) URL.revokeObjectURL(url); }, 350 + 1400);
   }
-  // 亂入：碎骨者從網道殺出來。網道淡入 2 秒 → 碎骨者（第一格）淡入 2 秒 → 播動圖（33 格 × 120ms＝3.96 秒），
-  // 頭上一直彈出紅色 WAAAGH!!，兩尊神輪流閃白、跳傷害、卡片震 → 停在最後一格淡出 2 秒 → 網道淡出 1 秒。
-  // 期間兩尊神暫停出手、停住不動（換靜止圖）。動圖亂入時才下載（淡入的 4 秒內就下載好），每次用新的 blob 網址從第一格播
-  const RAID_FADE = 2000, WEB_IN = 2000, WEB_OUT = 1000, GHAZ_MS = 33 * 120;  // 碎骨者淡入淡出、網道淡入、網道淡出（ms）
-  const GHAZ_CX = 0.44;  // 碎骨者的頭在圖寬的位置（槍和爪子讓人物不在圖片正中間）：對齊網道中線
+  // 亂入：角色從門（網道、戰艦、傳送門）殺出來。門淡入 2 秒 → 角色（第一格）淡入 2 秒 → 播動圖，
+  // 頭上一直彈出台詞，兩尊神輪流閃白、跳傷害、卡片震 → 停在最後一格淡出 2 秒 → 門淡出 1 秒。
+  // 期間兩尊神暫停出手、停住不動（換靜止圖）。圖亂入時才下載（動圖在淡入的 4 秒內就下載好），每次用新的 blob 網址從第一格播
+  const RAID_FADE = 2000, WEB_IN = 2000, WEB_OUT = 1000;  // 角色淡入淡出、門淡入、門淡出（ms）
   let raid = 0;  // 進行中的亂入編號（0＝沒有）；收盤時清掉，已經排好的計時器看到編號不對就不做
-  for (const n of ['webway', 'Ghazghkull_still', 'Ghazghkull_end']) new Image().src = `${A}${n}.webp`;
   // 兩尊神動圖 ↔ 靜止圖交叉淡化 0.5 秒（網頁上的動圖沒辦法真的暫停，直接換圖會跳一下）：
   // 同位置疊一張要換成的圖淡入，淡完才真的換圖（draw）、拿掉疊的那張
   function fadeGods(still) {
@@ -702,16 +710,18 @@
     arena.querySelectorAll('.wg-raid, .wg-float.waagh').forEach((x) => x.remove());
     fadeGods(false);  // 兩尊神淡回動圖
   }
-  function warp() {
+  function warp(k = Math.floor(Math.random() * RAIDERS.length)) {
     const a = arena.getBoundingClientRect();
     if (raid || !a.width) return;
     const id = raid = Date.now();
     fadeGods(true);  // 兩尊神淡成靜止圖
+    const R = RAIDERS[k];
     const later = (ms, f) => setTimeout(() => { if (raid === id) f(); }, ms);
-    const blob = fetch(`${A}Ghazghkull.webp`).then((r) => r.blob()).catch(() => null);
+    const blob = fetch(`${A}${R.who}.webp`).then((r) => r.blob()).catch(() => null);
+    new Image().src = `${A}${R.who}_end.webp`;
     const ww = document.createElement('img');
     ww.className = 'wg-raid wg-webway';
-    ww.src = `${A}webway.webp`;
+    ww.src = `${A}${R.gate}.webp`;
     // 只佔上半部（神祇那一層），不疊到下面的亞空間條
     const wh = a.height * 0.68 - 4, wtop = 2;
     ww.style.height = `${wh}px`;
@@ -721,39 +731,40 @@
     void ww.offsetWidth;
     ww.style.transitionDuration = `${WEB_IN}ms`;
     ww.classList.add('on');
-    // 碎骨者：撐滿上半部（圖上下各有 16/192 的光暈留白，人物腳底踩在亞空間條上緣），頭對齊網道中線，可以蓋過網道
-    const gm = meta.Ghazghkull ?? { w: 286, h: 192 };
+    // 角色：撐滿上半部（圖上下各有 16px 的光暈留白，人物腳底踩在亞空間條上緣），頭對齊門的中線，可以蓋過門
+    const gm = meta[R.who] ?? { w: 290, h: 192, hx: 0.45, hy: 0.3 };
     const gh = a.height * 0.68 * 1.08, gw = (gh * gm.w) / gm.h;
-    const gtop = a.height * 0.68 - gh * (1 - 16 / 192);
+    const gtop = a.height * 0.68 - gh * (1 - 16 / gm.h);
     const gz = document.createElement('img');
     gz.className = 'wg-raid wg-ghaz';
-    gz.src = `${A}Ghazghkull_still.webp`;
+    gz.src = `${A}${R.who}_still.webp`;
     gz.style.height = `${gh}px`;
-    gz.style.left = `${a.width / 2 - gw * GHAZ_CX}px`;
+    gz.style.left = `${a.width / 2 - gw * gm.hx}px`;
     gz.style.top = `${gtop}px`;
     later(WEB_IN, () => { arena.appendChild(gz); void gz.offsetWidth; gz.classList.add('on'); });
     later(WEB_IN + RAID_FADE, () => blob.then((b) => {
       if (raid !== id) return;
-      const url = b ? URL.createObjectURL(b) : `${A}Ghazghkull.webp?${Date.now()}`;
+      const url = b ? URL.createObjectURL(b) : `${A}${R.who}.webp?${Date.now()}`;
       gz.src = url;
       gz.decode().catch(() => {}).then(() => { if (raid === id) play(url); });
     }));
     function play(url) {
       const fs = Math.round(a.height * 0.18);
-      for (let t = 0; t < GHAZ_MS - 500; t += 900) later(t, () => {
+      for (let t = 0; t < R.ms - 500; t += 900) later(t, () => {
         const yell = document.createElement('div');
         yell.className = 'wg-float waagh';
-        yell.innerHTML = 'W<i>AAA</i>GH!!';
+        yell.innerHTML = R.yell;
+        yell.style.setProperty('--hi', R.hi);
         yell.style.fontSize = `${fs}px`;
         yell.style.left = '50%';
-        yell.style.top = `${Math.max(0, gtop + gh * 0.3 - fs)}px`;  // 頭頂（圖高 30% 處）上面
+        yell.style.top = `${Math.max(0, gtop + gh * gm.hy - fs)}px`;  // 頭頂上面
         arena.appendChild(yell);
         setTimeout(() => yell.remove(), 950);
       });
       // 播的期間兩尊神輪流挨打：閃白、冒骷髏、卡片震、跳紅色傷害（每 0.36 秒一下）
       const ar = arena.getBoundingClientRect();
       const mid = (g) => { const r = g.getBoundingClientRect(); return ((r.left + r.right) / 2 - ar.left) / ar.width * 100; };
-      for (let t = 150, i = 0; t < GHAZ_MS - 200; t += 360, i++) later(t, () => {
+      for (let t = 150, i = 0; t < R.ms - 200; t += 360, i++) later(t, () => {
         const god = i % 2 ? emp : guo;
         const to = god.getBoundingClientRect();
         god.classList.remove('wg-flashw', 'wg-hurt', 'wg-hurt-big', 'wg-hurt-claw'); void god.offsetWidth; god.classList.add('wg-flashw');
@@ -768,13 +779,13 @@
         setTimeout(() => sk.remove(), 1100);
         float(`${300 + Math.round(Math.random() * 600)}!`, 'ork', true, mid(god) + (Math.random() - 0.5) * 8, ' raid');
       });
-      later(GHAZ_MS, () => {
-        gz.src = `${A}Ghazghkull_end.webp`;
+      later(R.ms, () => {
+        gz.src = `${A}${R.who}_end.webp`;
         if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), 1000);
         gz.classList.remove('on');
       });
-      later(GHAZ_MS + RAID_FADE, () => { gz.remove(); ww.style.transitionDuration = `${WEB_OUT}ms`; ww.classList.remove('on'); });
-      later(GHAZ_MS + RAID_FADE + WEB_OUT, endRaid);
+      later(R.ms + RAID_FADE, () => { gz.remove(); ww.style.transitionDuration = `${WEB_OUT}ms`; ww.classList.remove('on'); });
+      later(R.ms + RAID_FADE + WEB_OUT, endRaid);
     }
   }
   function attack(bull, crit, onHit) {
@@ -1018,7 +1029,7 @@
     const eL = ((emp.getBoundingClientRect().left - ar.left) / ar.width) * 100;
     fireSpecial(bull, 150 + Math.round(Math.random() * 150), bull ? gR + 5 : eL - 5);
   }));
-  if (debug) el.querySelector('.wg-dbg button[data-raid]').addEventListener('click', () => warp());
+  if (debug) el.querySelectorAll('.wg-dbg button[data-raid]').forEach((b) => b.addEventListener('click', () => warp(Number(b.dataset.raid))));
   if (debug) el.querySelectorAll('.wg-dbg input').forEach((i) => i.addEventListener('input', () => {
     $('.wg-dbg .t').textContent = now().hhmm; draw(true);
   }));

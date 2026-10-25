@@ -21,7 +21,8 @@ SIZES = {'Emperor': 240, 'GUO': 240, 'fight-cloud': 200, 'Emperor_win': 240, 'Em
          'Emperor_attack2_2': 200, 'GUO_attack2_2': 160, 'day_off': 160, 'heart': None,
          'Emperor_attack_sp': None, 'GUO_attack_sp': None, 'GUO_mini_troops': 96, 'Emperor_mini_troops': 96,
          'GUO_troops2': 160, 'GUO_troops3': 160, 'Emperor_troops2': 160, 'Emperor_troops3': 160,
-         'GUO_mini_troops2': 96, 'Emperor_mini_troops2': 96, 'webway': None, 'Ghazghkull': 160}
+         'GUO_mini_troops2': 96, 'Emperor_mini_troops2': 96, 'webway': None, 'Ghazghkull': 160,
+         'VengefulSpirit': None, 'abaddon': 160, 'portal': None, 'LordofChange': 160, 'HiveShip': None, 'tyranids': 160}
 # 神祇的光暈直接畫進圖裡（以前是網頁上 CSS drop-shadow，動圖每換一格瀏覽器就要重算一次，吃 CPU）。
 # 四邊各留 GLOW_PAD px（圖高 240 的 10%）給光暈；網頁那邊把神祇放大 1.2 倍、往下移 10% 抵銷，人物大小位置不變
 GLOW = {'Emperor': (255, 215, 0), 'Emperor_win': (255, 215, 0), 'Emperor_loss': (255, 215, 0),
@@ -29,9 +30,14 @@ GLOW = {'Emperor': (255, 215, 0), 'Emperor_win': (255, 215, 0), 'Emperor_loss': 
 GLOW_PAD, GLOW_SIGMA, GLOW_GAIN = 24, 10, 1.7  # 手機上神祇約 73px 高：σ 10、加強 1.7 倍，跟原本 CSS 的 drop-shadow(0 0 6px) 差不多
 
 
-# 亂入的網道和碎骨者：外圈一層網道漩渦的藍色光暈（四邊留 16px）
-WARP = {'webway', 'Ghazghkull'}
-WARP_BLUE = (90, 180, 255)
+# 亂入：登場的門（網道、復仇之魂號、傳送門、蟲巢艦）和角色，外圈一層光暈（四邊留 16px）。
+# 碎骨者是綠色，但比大不淨者的純綠 (0, 255, 0) 偏藍一點才分得出來
+WARP = {'webway': (90, 180, 255), 'Ghazghkull': (30, 220, 120),
+        'VengefulSpirit': (255, 40, 40), 'abaddon': (255, 40, 40),
+        'portal': (90, 180, 255), 'LordofChange': (90, 180, 255),
+        'HiveShip': (190, 80, 255), 'tyranids': (190, 80, 255)}
+# 亂入角色的頭（原檔像素座標：頭的水平中線、台詞冒出來的高度）：網頁用來把頭對齊門的中線、台詞從頭上冒出
+RAIDER_HEAD = {'Ghazghkull': (195, 70), 'abaddon': (190, 60), 'LordofChange': (168, 105), 'tyranids': (178, 30)}
 
 
 # 休假吃飯圖：薄薄一層金光（原本 CSS 的 drop-shadow 1px＋3px），四邊各留 8px（圖高 160 的 5%）
@@ -53,8 +59,8 @@ def glow(frame, color, pad=GLOW_PAD, layers=((GLOW_SIGMA, GLOW_GAIN),)):
 
 # 必殺技動圖：每一格都留、每格 70ms（網頁照這個節奏對傷害時間點）
 SP_FRAME_MS = 70
-# 碎骨者動圖：原檔就是 33 格、每格 120ms（Pillow 讀不到這個檔的每格時間），每一格都留；網頁照 3.96 秒排傷害
-GHAZ_FRAME_MS = 120
+# 亂入角色動圖：原檔每格 120ms（Pillow 讀不到這些檔的每格時間），每一格都留；網頁照片長（meta.json 的 ms）排傷害
+RAIDER_FRAME_MS = 120
 
 
 def trim_box(im):
@@ -86,20 +92,20 @@ def build(name, h, OUT):
     # 神祇：裁、縮好之後才加光暈（光暈的大小才跟顯示大小對得上）
     finish = ((lambda f: glow(f, GLOW[name])) if name in GLOW
               else (lambda f: glow(f, (255, 215, 0), DAYOFF_PAD, ((1, 2.0), (3, 1.4)))) if name == 'day_off'
-              else (lambda f: glow(f, WARP_BLUE, 16, ((6, 1.8),))) if name in WARP
+              else (lambda f: glow(f, WARP[name], 16, ((6, 1.8),))) if name in WARP
               else (lambda f: f))
     if n > 1:
         frames, durs = [], []
         sp = name.endswith('_sp')
-        ghaz = name == 'Ghazghkull'
-        for i in range(0, n, 1 if sp or ghaz else 2):  # 20 fps -> 10 fps（必殺技、碎骨者不減格）
+        raider = name in RAIDER_HEAD
+        for i in range(0, n, 1 if sp or raider else 2):  # 20 fps -> 10 fps（必殺技、亂入角色不減格）
             im.seek(i)
             frames.append(finish(fit(crop(im.convert('RGBA')), h)))
-            durs.append(SP_FRAME_MS if sp else GHAZ_FRAME_MS if ghaz else (im.info.get('duration') or 50) * 2)
+            durs.append(SP_FRAME_MS if sp else RAIDER_FRAME_MS if raider else (im.info.get('duration') or 50) * 2)
         frames[0].save(OUT / f'{name}.webp', save_all=True, append_images=frames[1:], duration=durs, loop=0,
                        quality=70, method=6, lossless=False)
         frames[0].save(OUT / f'{name}_still.webp', quality=75, method=6)
-        if ghaz:  # 播完停在最後一格淡出
+        if raider:  # 播完停在最後一格淡出
             frames[-1].save(OUT / f'{name}_end.webp', quality=75, method=6)
     else:
         finish(fit(crop(im.convert('RGBA' if im.mode in ('RGBA', 'P') else 'RGB')), h)).save(OUT / f'{name}.webp', quality=78, method=6)
@@ -125,9 +131,17 @@ for name in ('Emperor', 'GUO'):
         col = sum(1 for y in range(h) if a.getpixel((x, y)) > 8)
         tot += col; sx += col * x
     meta[name] = {'w': w, 'h': h, 'cx': round(sx / tot / w, 4)}
-for name in ('Emperor_win', 'GUO_loss', 'win', 'vs', 'webway', 'Ghazghkull'):
+for name in ('Emperor_win', 'GUO_loss', 'win', 'vs', 'webway', 'VengefulSpirit', 'portal', 'HiveShip'):
     w, h = Image.open(OUT / f'{name}.webp').size
     meta[name] = {'w': w, 'h': h}
+# 亂入角色：寬高、頭在圖上的位置（hx、hy，0～1，含光暈留白）、片長（ms）
+for name, (x, y) in RAIDER_HEAD.items():
+    src = Image.open(SRC / f'{name}.webp')
+    box = trim_box(src)
+    k = min(1, SIZES[name] / (box[3] - box[1]))
+    w, h = Image.open(OUT / f'{name}.webp').size
+    meta[name] = {'w': w, 'h': h, 'hx': round(((x - box[0]) * k + 16) / w, 3), 'hy': round(((y - box[1]) * k + 16) / h, 3),
+                  'ms': src.n_frames * RAIDER_FRAME_MS}
 (OUT / 'meta.json').write_text(json.dumps(meta), encoding='utf-8')
 print(meta)
 print('total', sum(p.stat().st_size for p in OUT.glob('*.webp')) // 1024, 'KB')
