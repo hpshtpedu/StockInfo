@@ -674,7 +674,7 @@
   }
   // 亂入：碎骨者從網道殺出來。網道淡入 2 秒 → 碎骨者（第一格）淡入 2 秒 → 播動圖（33 格 × 120ms＝3.96 秒），
   // 頭上一直彈出紅色 WAAAGH!!，兩尊神輪流閃白、跳傷害、卡片震 → 停在最後一格淡出 2 秒 → 網道淡出 1 秒。
-  // 期間兩尊神暫停出手（自己的動畫照播）。動圖亂入時才下載（淡入的 4 秒內就下載好），每次用新的 blob 網址從第一格播
+  // 期間兩尊神暫停出手、停住不動（換靜止圖）。動圖亂入時才下載（淡入的 4 秒內就下載好），每次用新的 blob 網址從第一格播
   const RAID_FADE = 2000, WEB_IN = 2000, WEB_OUT = 1000, GHAZ_MS = 33 * 120;  // 碎骨者淡入淡出、網道淡入、網道淡出（ms）
   const GHAZ_CX = 0.44;  // 碎骨者的頭在圖寬的位置（槍和爪子讓人物不在圖片正中間）：對齊網道中線
   let raid = 0;  // 進行中的亂入編號（0＝沒有）；收盤時清掉，已經排好的計時器看到編號不對就不做
@@ -682,11 +682,13 @@
   function endRaid() {
     raid = 0;
     arena.querySelectorAll('.wg-raid, .wg-float.waagh').forEach((x) => x.remove());
+    draw(false);  // 兩尊神換回動圖
   }
   function warp() {
     const a = arena.getBoundingClientRect();
     if (raid || !a.width) return;
     const id = raid = Date.now();
+    draw(false);  // 兩尊神換靜止圖
     const later = (ms, f) => setTimeout(() => { if (raid === id) f(); }, ms);
     const blob = fetch(`${A}Ghazghkull.webp`).then((r) => r.blob()).catch(() => null);
     const ww = document.createElement('img');
@@ -819,8 +821,9 @@
       setSrc(emp, `${A}Emperor_${bullWin ? 'win' : 'loss'}.webp`);
       setSrc(guo, `${A}GUO_${bullWin ? 'loss' : 'win'}.webp`);
     } else {
-      setSrc(emp, `${A}Emperor${paused ? '_still' : ''}.webp`);
-      setSrc(guo, `${A}GUO${paused ? '_still' : ''}.webp`);
+      // 亂入中兩尊神也換靜止圖（停住不動），亂入結束再接著播
+      setSrc(emp, `${A}Emperor${paused || raid ? '_still' : ''}.webp`);
+      setSrc(guo, `${A}GUO${paused || raid ? '_still' : ''}.webp`);
     }
 
     // 帝皇（一般／靜止圖）：人物中線到右緣的距離＝大不淨者人物中線到左緣的距離；勝敗立繪照舊貼右
@@ -894,7 +897,10 @@
         for (const g of vsg) { g.style.width = 'auto'; g.style.height = stamp.style.height; }
       }
     }
-    if (done && raid) endRaid();  // 收盤：亂入直接收掉
+    if (done && raid) {  // 收盤：亂入直接收掉（不呼叫 endRaid，免得在 draw 裡面再 draw 一次）
+      raid = 0;
+      arena.querySelectorAll('.wg-raid, .wg-float.waagh').forEach((x) => x.remove());
+    }
     if (done) {
       tg.style.opacity = te.style.opacity = 0;
       (bullWin ? te : tg).style.transform = bullWin ? 'translateX(-12px)' : 'translateX(calc(-100% + 12px))';
