@@ -478,8 +478,8 @@
 
   function hit() {
     if (raid) return;  // 亂入中：兩尊神暫停出手
-    // 亂入（交火時每次 0.3%，大約 17 分鐘一次）
-    if (el.classList.contains('wg-battle') && Math.random() < 0.003) { warp(); return; }
+    // 亂入（交火時每次攻擊 1/300，每 3 秒一次 → 大約 15 分鐘一次）
+    if (el.classList.contains('wg-battle') && Math.random() < 1 / 300) { warp(); return; }
     const pct = pctNow();
     const counter = counterattack(pct);
     if (counter) heal(counter === 'bull');
