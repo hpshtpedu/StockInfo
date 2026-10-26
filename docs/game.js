@@ -313,7 +313,7 @@
   // 5：納垢褻瀆者／摩托警衛；6：納垢無畏機甲／克里格重型武器小隊；f：飛行兵種（瘟疫兵蜂／風暴速攻艇，不貼地）。
   // 第三個數字是帝皇那邊不一樣的高度
   const UNIT = { m: ['mini_troops', 0.6], n: ['mini_troops2', 0.6], B: ['troops', 1], 2: ['troops2', 0.9], 3: ['troops3', 0.94],
-    4: ['troops4', 0.95], o: ['mini_troops3', 0.36], 5: ['troops5', 0.95, 0.6], 6: ['troops6', 0.95, 0.6], f: ['troops_fly', 0.5, 0.8] };
+    4: ['troops4', 0.95], o: ['mini_troops3', 0.36], 5: ['troops5', 0.95, 0.78], 6: ['troops6', 0.95, 0.6], f: ['troops_fly', 0.5, 0.8] };
   const uh = (side, kind) => UNIT[kind][side === 'emp' && UNIT[kind][2] ? 2 : 1];
   const ASPECT = { GUO_troops: 1.969, Emperor_troops: 1.312, GUO_mini_troops: 0.698, Emperor_mini_troops: 1.365,
     GUO_mini_troops2: 0.823, Emperor_mini_troops2: 0.656,
