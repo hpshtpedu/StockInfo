@@ -1138,8 +1138,8 @@
         u.style.left = `calc(${t.style.left} ${isGuo ? '-' : '+'} ${Math.round(isGuo ? d * H + w / 2 : d * H - w / 2)}px)`;
         // 飛行兵種離地 0.4 條高（風暴速攻艇比較大，再降半個機身）；Emperor_troops3／4 自帶地板，墊高會像浮在空中
         u.style.bottom = `${kind === 'f' ? Math.round(H * 0.4 - (isGuo ? 0 : h / 2)) + up : name === 'Emperor_troops3' || name === 'Emperor_troops4' ? 0 : up}px`;
-        // 飛行兵種最前（在天上），小兵其次、一般兵種、大部隊最後；同類近的（低的）蓋住遠的
-        u.style.zIndex = kind === 'f' ? 22 : 'mno'.includes(kind) ? 20 : (kind === 'B' ? 10 : 15) - up;
+        // 小兵最前（一定比較小，蓋在誰上面都不違和），飛行兵種其次、一般兵種、大部隊最後；同類近的（低的）蓋住遠的
+        u.style.zIndex = kind === 'f' ? 18 : 'mno'.includes(kind) ? 20 : (kind === 'B' ? 10 : 15) - up;
         u.style.animationDelay = `${-0.11 * Number(u.dataset.i)}s`;
       }
     }
