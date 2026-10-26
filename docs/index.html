@@ -137,13 +137,13 @@
   .hold { display: flex; flex-direction: column; gap: 1px; background: #20242c; border: 1px solid var(--line); border-radius: 8px;
     padding: 3px 7px 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .hold .top, .hold .q { display: flex; align-items: baseline; gap: 6px; }
-  .hold .k { color: var(--text); font-weight: 700; font-size: clamp(15px, 4.8vw, 19px); line-height: 1.15; }
+  .hold .k { color: var(--text); font-weight: 700; font-size: calc(clamp(15px, 4.8vw, 19px) - 1px); line-height: 1.15; }
   /* 漲跌靠方塊右邊，但固定寬度、內容靠左，四檔的 ▲▼ 落在同一個水平位置 */
   /* 漲跌：細框小 badge（固定寬度、內容靠左，▲▼ 位置對齊），紅漲綠跌、平盤白 */
   /* 整個 badge（含外框）跟股號一樣高（股號字級 × 行高 1.15）：iPhone 的 ▼ 用備援字型、行高較大，
      不固定會把第一行撐高，下一行的價格被往下擠 */
-  .hold .c { margin-left: auto; min-width: 4.3em; text-align: left; font-size: calc(clamp(12.5px, 4vw, 16px) - 0.5px); font-weight: 600; line-height: 1;
-    height: calc(clamp(15px, 4.8vw, 19px) * 1.15); align-self: center; display: inline-flex; align-items: center;
+  .hold .c { margin-left: auto; min-width: 4.3em; text-align: left; font-size: calc(clamp(12.5px, 4vw, 16px) - 1px); font-weight: 600; line-height: 1;
+    height: calc((clamp(15px, 4.8vw, 19px) - 1px) * 1.15); align-self: center; display: inline-flex; align-items: center;
     padding: 0 6px; border-radius: 6px; border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
     background: color-mix(in srgb, currentColor 10%, transparent); }
   /* 價格同加權的大數字、漲跌幅同加權的漲跌。價格往下移，底部跟（漲跌幅）括號的底部切齊 */
@@ -170,7 +170,7 @@
   /* 盤中的 15 分 K：占外/投那一行的位置，高度相同 */
   .hold .fl.hk { display: block; }
   .hold .fl.hk .kchart { height: 19px; }
-  .hold .q .p { font-size: calc(clamp(14px, 4.6vw, 18px) - 0.5px); font-weight: 600; }
+  .hold .q .p { font-size: calc(clamp(14px, 4.6vw, 18px) - 1px); font-weight: 600; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
   .badge.vol-high { background: #d9c44a; color: var(--bg); }
