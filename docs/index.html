@@ -142,7 +142,7 @@
   /* 漲跌：細框小 badge（固定寬度、內容靠左，▲▼ 位置對齊），紅漲綠跌、平盤白 */
   /* 整個 badge（含外框）跟股號一樣高（股號字級 × 行高 1.15）：iPhone 的 ▼ 用備援字型、行高較大，
      不固定會把第一行撐高，下一行的價格被往下擠 */
-  .hold .c { margin-left: auto; min-width: 4.3em; text-align: left; font-size: clamp(12.5px, 4vw, 16px); font-weight: 600; line-height: 1;
+  .hold .c { margin-left: auto; min-width: 4.3em; text-align: left; font-size: calc(clamp(12.5px, 4vw, 16px) - 0.5px); font-weight: 600; line-height: 1;
     height: calc(clamp(15px, 4.8vw, 19px) * 1.15); align-self: center; display: inline-flex; align-items: center;
     padding: 0 6px; border-radius: 6px; border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
     background: color-mix(in srgb, currentColor 10%, transparent); }
@@ -170,10 +170,7 @@
   /* 盤中的 15 分 K：占外/投那一行的位置，高度相同 */
   .hold .fl.hk { display: block; }
   .hold .fl.hk .kchart { height: 19px; }
-  .hold .q .p { font-size: clamp(14px, 4.6vw, 18px); font-weight: 600; }
-  /* 2330 股價四位數比較擠：漲跌 badge 和漲跌幅各小 0.5px */
-  .hold.t2330 .c { font-size: calc(clamp(12.5px, 4vw, 16px) - 0.5px); }
-  .hold.t2330 .q .p { font-size: calc(clamp(14px, 4.6vw, 18px) - 0.5px); }
+  .hold .q .p { font-size: calc(clamp(14px, 4.6vw, 18px) - 0.5px); font-weight: 600; }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
   .badge.vol-high { background: #d9c44a; color: var(--bg); }
@@ -1115,7 +1112,7 @@
       const digits = h.price >= 1000 ? 0 : 2;  // 股價
       const chgDigits = h.price < 1000 ? 2 : abs < 10 ? 2 : abs < 100 ? 1 : 0;
       const chgText = h.change === 0 ? '0.00' : fmt(abs, chgDigits);
-      return `<div class="hold${h.code === '2330' ? ' t2330' : ''}"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${chgText}</span></div>`
+      return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${chgText}</span></div>`
         + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div>`
         + lowerToggle(h, flowLine(h)) + '</div>';
     };
