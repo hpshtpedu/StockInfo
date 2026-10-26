@@ -412,17 +412,14 @@
     f.style.setProperty('--dx', `${Math.round((Math.random() - 0.5) * 16)}px`);
     arena.appendChild(f);
     // 不蓋到兩尊神：量出大不淨者的右緣、帝皇的左緣，字（含爆擊放大、左右飄移）限制在中間。
-    // 亂入的傷害（raid）、中文台詞（say，含必殺技口號）例外：放卡片正中間，可以跨到神祇身上；比卡片寬就拆兩行——
-    // 優先拆在中間附近的「！」「，」後面，沒有就從正中間拆
+    // 亂入的傷害（raid）、中文台詞（say，含必殺技口號）例外：放卡片正中間，可以跨到神祇身上；一律一行不換行，
+    // 比卡片寬就把字縮小到剛好放得下
     const a = arena.getBoundingClientRect();
     if (extra.includes('say')) {
       f.style.left = '50%';
-      if (a.width && text.length >= 4 && f.offsetWidth * 1.1 + 16 > a.width) {
-        const mid = text.length / 2;
-        const cuts = [...text].map((ch, i) => i + 1).filter((i) => i < text.length && '！，、'.includes(text[i - 1]));
-        const cut = cuts.length ? cuts.reduce((b, i) => (Math.abs(i - mid) < Math.abs(b - mid) ? i : b)) : Math.ceil(mid);
-        f.textContent = '';
-        f.append(text.slice(0, cut), document.createElement('br'), text.slice(cut));
+      const room = a.width - 16;
+      if (a.width && f.offsetWidth * 1.1 > room) {
+        f.style.fontSize = `${Math.max(9, (parseFloat(getComputedStyle(f).fontSize) * room) / (f.offsetWidth * 1.1))}px`;
       }
     } else if (a.width && !extra.includes('raid')) {  // 亂入的傷害直接跳在被打的神身上（中間是亂入角色）
       const lo = guo.getBoundingClientRect().right - a.left + 4;
