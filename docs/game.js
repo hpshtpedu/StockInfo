@@ -167,7 +167,10 @@
   .wg-float.waagh i { font-style: normal; color: var(--hi); }  /* 台詞中間那段字用角色的光暈色（RAIDERS 的 hi） */
   @keyframes wg-waagh { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.6); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); }
     30% { transform: translate(-50%, -6px) scale(1); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -34px) scale(.95); } }
-  .wg-dbg { display: flex; gap: 6px; align-items: center; padding: 4px 8px; font-size: 12px; color: var(--muted); }
+  /* 召喚的盟友（寂靜王、雨父）：站在召喚方神祇的位置，淡入淡出 0.6 秒；光暈畫在圖裡 */
+  .wg-ally { z-index: 3; opacity: 0; transition: opacity .6s; }
+  .wg-ally.on { opacity: 1; }
+  .wg-dbg { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 4px 8px; font-size: 12px; color: var(--muted); }
   .wg-dbg input[type=range] { flex: 1; }
   .wg-dbg button { background: #20242c; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; font-size: 12px; }
   .wg-dbg input[type=number] { width: 4.5em; background: #20242c; color: var(--text); border: 1px solid var(--line); border-radius: 4px; }`;
@@ -302,17 +305,21 @@
     });
   }
   const ARMY = {
-    guo: formation('mo3nBm2n4om3nmB2mo4Bn3mBon2mnB3m', 1),
-    emp: formation('m2nB3m4n2mBn3mB2n4mBn3mB2n', 2),
+    guo: formation('mo3nfBm25n4om3nm6B2mof4Bn35mBon2m6nB3m', 1),
+    emp: formation('m2n5B3mf4n2m6Bn3m5B2n4mfBn3m6B2n', 2),
   };
   // 種類 → 圖檔、高度（大部隊的幾倍）。2：大不淨者的納垢獸／帝皇的坦克；3：大不淨者的騎士／帝皇的苦修戰士；
-  // 4：大不淨者的惡魔引擎／帝皇的土星無畏；o：大不淨者的納垢靈（只有大不淨者有，小兵的六成高）
+  // 4：大不淨者的惡魔引擎／帝皇的土星無畏；o：大不淨者的納垢靈（只有大不淨者有，小兵的六成高）；
+  // 5：納垢褻瀆者／摩托警衛；6：納垢無畏機甲／克里格重型武器小隊；f：飛行兵種（瘟疫兵蜂／風暴速攻艇，不貼地）。
+  // 第三個數字是帝皇那邊不一樣的高度
   const UNIT = { m: ['mini_troops', 0.6], n: ['mini_troops2', 0.6], B: ['troops', 1], 2: ['troops2', 0.9], 3: ['troops3', 0.94],
-    4: ['troops4', 0.95], o: ['mini_troops3', 0.36] };
+    4: ['troops4', 0.95], o: ['mini_troops3', 0.36], 5: ['troops5', 0.95, 0.6], 6: ['troops6', 0.95, 0.6], f: ['troops_fly', 0.5, 0.8] };
+  const uh = (side, kind) => UNIT[kind][side === 'emp' && UNIT[kind][2] ? 2 : 1];
   const ASPECT = { GUO_troops: 1.969, Emperor_troops: 1.312, GUO_mini_troops: 0.698, Emperor_mini_troops: 1.365,
     GUO_mini_troops2: 0.823, Emperor_mini_troops2: 0.656,
     GUO_troops2: 0.961, GUO_troops3: 1.144, Emperor_troops2: 1.516, Emperor_troops3: 0.731,
-    GUO_troops4: 1.228, Emperor_troops4: 1.541, GUO_mini_troops3: 0.76 };
+    GUO_troops4: 1.228, Emperor_troops4: 1.541, GUO_mini_troops3: 0.76, GUO_troops5: 1.534, Emperor_troops5: 1.506,
+    GUO_troops6: 1.212, Emperor_troops6: 1.62, GUO_troops_fly: 1.143, Emperor_troops_fly: 1.819 };
   // 陣亡補位：order＝每邊目前的排隊順序（ARMY 的編號，前面＝靠近戰線），GAP＝每個單位跟後面那個隔多遠。
   // 有人陣亡就把他移到隊伍最後面，後面的人往前補，位置照新順序重新累加
   const order = { guo: ARMY.guo.map((u, i) => i), emp: ARMY.emp.map((u, i) => i) };
@@ -351,6 +358,8 @@
     <div class="wg-ticker"><span></span></div>
     ${debug ? '<div class="wg-dbg">時間<input type="range" min="470" max="815" step="1" value="600"><span class="t">10:00</span>漲跌%<input type="number" step="0.1" value="0"></div>'
       + '<div class="wg-dbg">必殺技<button type="button" data-sp="1">滅絕令</button><button type="button" data-sp="0">憎惡鏈枷</button><button type="button" data-kill>陣亡</button></div>'
+      + '<div class="wg-dbg">必殺技2<button type="button" data-sp2="1">火燒納垢花園</button><button type="button" data-sp2="0">納垢洪流</button></div>'
+      + '<div class="wg-dbg">召喚<button type="button" data-ally="1">寂靜王</button><button type="button" data-ally="0">雨父</button></div>'
       + `<div class="wg-dbg">亂入${RAIDERS.map((r, i) => `<button type="button" data-raid="${i}">亂${i + 1}</button>`).join('')}</div>` : ''}`;
   const $ = (s) => el.querySelector(s);
   const arena = $('.wg-arena');
@@ -485,12 +494,16 @@
   }
 
   function hit() {
-    if (raid) return;  // 亂入中：兩尊神暫停出手
+    if (raid || summon) return;  // 亂入、召喚中：兩尊神暫停出手
     // 亂入（交火時每次攻擊 1/300，每 3 秒一次 → 大約 15 分鐘一次）
     // 下一個要亂入的角色先在背景下載好（4G 也不會等），還沒下載完就不亂入
     if (el.classList.contains('wg-battle')) {
       loadRaider(nextRaid);
       if (raidReady[nextRaid] && Math.random() < 1 / 300) { warp(nextRaid); nextRaid = Math.floor(Math.random() * RAIDERS.length); return; }
+      // 召喚盟友（同樣 1/300，大約 15 分鐘一次）：哪邊召喚跟出手一樣看情勢分數；圖也是先在背景下載好才會召喚
+      loadAlly(true); loadAlly(false);
+      const sb = Math.random() < 0.5 + 0.42 * score(pctNow());
+      if (allyReady(sb) && Math.random() < 1 / 300) { summonAlly(sb); return; }
     }
     const pct = pctNow();
     const counter = counterattack(pct);
@@ -619,17 +632,19 @@
     onHit?.();
   }
   function ultimate(bull, onHit) { shot(bull, onHit, true); }
-  function fireSpecial(bull, dmg, x) {
+  // 必殺技兩套隨機挑一套：滅絕令／憎惡鏈枷，或第二套火燒納垢花園／納垢洪流
+  function fireSpecial(bull, dmg, x, alt = Math.random() < 0.5) {
     const side = bull ? 'up' : 'down';
-    special(bull, (i) => float(`${Math.round(dmg * 2 * (0.85 + Math.random() * 0.3))}!`, side, true, x + (i - 1) * 3, ` ult n${i}`));
+    (alt ? special2 : special)(bull, (i) => float(`${Math.round(dmg * 2 * (0.85 + Math.random() * 0.3))}!`, side, true, x + (i - 1) * 3, ` ult n${i}`));
   }
 
   // 必殺技動圖每次都要從第一格播：先把檔案抓成 blob，每次放用新的 object URL（同一個網址的動圖會共用播放進度）
-  const spBlob = {};
-  for (const n of ['Emperor_attack_sp', 'GUO_attack_sp']) {
-    fetch(`${A}${n}.webp`).then((r) => r.blob()).then((b) => { spBlob[n] = b; }).catch(() => {});
-    new Image().src = `${A}${n}_still.webp`;
-  }
+  // 抓失敗的話 1 分鐘後再試
+  const spBlob = {}, spLoad = {};
+  const loadBlob = (n) => (spLoad[n] ??= fetch(`${A}${n}.webp`).then((r) => { if (!r.ok) throw r; return r.blob(); })
+    .then((b) => { spBlob[n] = b; }).catch(() => { setTimeout(() => delete spLoad[n], 60000); }));
+  for (const n of ['Emperor_attack_sp', 'GUO_attack_sp', 'Emperor_attack_sp2', 'GUO_attack_sp2']) loadBlob(n);
+  for (const n of ['Emperor_attack_sp', 'GUO_attack_sp']) new Image().src = `${A}${n}_still.webp`;
   const freshSrc = (n) => (spBlob[n] ? URL.createObjectURL(spBlob[n]) : `${A}${n}.webp?${Date.now()}`);
   // 動圖每格 70ms（scripts/build_game_assets.py 的 SP_FRAME_MS）：
   //   滅絕令 16 格 1.12 秒，光柱第 8 格落地 → 0.56、0.76、0.96 秒命中
@@ -640,28 +655,12 @@
     const to = (bull ? guo : emp).getBoundingClientRect();
     if (!a.width || !from.width || !to.width) return;
     float(bull ? '滅絕令！' : '憎惡鏈枷！', bull ? 'up' : 'down', false, null, ' say hi big');
-    const target = bull ? guo : emp;
     const tm = meta[bull ? 'GUO' : 'Emperor'];
     const torso = to.left + to.width * (tm?.cx ?? 0.5) - a.left;
     const name = bull ? 'Emperor_attack_sp' : 'GUO_attack_sp';
     const img = document.createElement('img');
     img.className = `wg-sp${bull ? '' : ' fadein'}`;
     let url = null;
-    const hits = (t0, gaps) => gaps.forEach((g, i) => setTimeout(() => {
-      target.classList.remove('wg-flashw', 'wg-hurt', 'wg-hurt-big', 'wg-hurt-claw'); void target.offsetWidth; target.classList.add('wg-flashw');
-      el.classList.remove('wg-shake'); void el.offsetWidth; el.classList.add('wg-shake');
-      // 每一下也冒一個骷髏（跟普通攻擊一樣，被打方身上隨機位置）
-      const sk = document.createElement('img');
-      sk.className = 'wg-skull';
-      sk.src = `${A}damage.webp`;
-      const sh = to.height / 5;
-      sk.style.height = `${sh}px`;
-      sk.style.left = `${to.left - a.left + Math.random() * Math.max(0, to.width - sh)}px`;
-      sk.style.top = `${to.top - a.top + to.height * (0.05 + Math.random() * 0.35)}px`;
-      arena.appendChild(sk);
-      setTimeout(() => sk.remove(), 1100);
-      onHit?.(i);
-    }, t0 + g));
     if (bull) {
       // 光柱：寬高比 209:128，底部對齊大不淨者腳底，水平置中在他的人物重心
       const h = to.height * 1.15;
@@ -671,7 +670,7 @@
       img.style.transform = 'translateX(-50%)';
       img.src = url = freshSrc(name);
       arena.appendChild(img);
-      hits(0, [560, 760, 960]);
+      spHits(bull, 0, [560, 760, 960], onHit);
       setTimeout(() => { img.remove(); if (url?.startsWith('blob:')) URL.revokeObjectURL(url); }, 1250);
       return;
     }
@@ -692,8 +691,55 @@
       const shift = torso - (left + w * 0.72);
       if (shift > 0) { img.classList.add('slide'); void img.offsetWidth; img.style.left = `${left + shift}px`; }
     }, 350);
-    hits(350, [420, 650, 880]);
+    spHits(bull, 350, [420, 650, 880], onHit);
     setTimeout(() => { img.remove(); if (url?.startsWith('blob:')) URL.revokeObjectURL(url); }, 350 + 1400);
+  }
+  // 必殺技、召喚攻擊打中：被打的神白閃、卡片震、冒一個骷髏，每一下（t0＋gaps 毫秒）呼叫 onHit(第幾下)
+  function spHits(bull, t0, gaps, onHit) {
+    const target = bull ? guo : emp;
+    gaps.forEach((g, i) => setTimeout(() => {
+      const a = arena.getBoundingClientRect(), to = target.getBoundingClientRect();
+      target.classList.remove('wg-flashw', 'wg-hurt', 'wg-hurt-big', 'wg-hurt-claw'); void target.offsetWidth; target.classList.add('wg-flashw');
+      el.classList.remove('wg-shake'); void el.offsetWidth; el.classList.add('wg-shake');
+      // 每一下也冒一個骷髏（跟普通攻擊一樣，被打方身上隨機位置）
+      const sk = document.createElement('img');
+      sk.className = 'wg-skull';
+      sk.src = `${A}damage.webp`;
+      const sh = to.height / 5;
+      sk.style.height = `${sh}px`;
+      sk.style.left = `${to.left - a.left + Math.random() * Math.max(0, to.width - sh)}px`;
+      sk.style.top = `${to.top - a.top + to.height * (0.05 + Math.random() * 0.35)}px`;
+      arena.appendChild(sk);
+      setTimeout(() => sk.remove(), 1100);
+      onHit?.(i);
+    }, t0 + g));
+  }
+  // 打在對方身上的特效動圖（第二套必殺技、召喚攻擊）：底部對齊被打的神的腳底、水平置中在人物重心，高度＝神的 hk 倍。
+  // 動圖只播一次停在最後一格（scripts/build_game_assets.py 的 PLAY_ONCE），播完（ms）淡出 0.4 秒
+  function blast(bull, name, hk, ms, gaps, onHit) {
+    const a = arena.getBoundingClientRect(), to = (bull ? guo : emp).getBoundingClientRect();
+    if (!a.width || !to.width) return;
+    const tm = meta[bull ? 'GUO' : 'Emperor'];
+    const img = document.createElement('img');
+    img.className = 'wg-sp';
+    const h = to.height * hk;
+    img.style.height = `${h}px`;
+    img.style.left = `${to.left + to.width * (tm?.cx ?? 0.5) - a.left}px`;
+    img.style.top = `${to.bottom - a.top - h}px`;
+    img.style.transform = 'translateX(-50%)';
+    const url = img.src = freshSrc(name);
+    arena.appendChild(img);
+    spHits(bull, 0, gaps, onHit);
+    setTimeout(() => { img.style.transition = 'opacity .4s'; img.style.opacity = '0'; }, ms);
+    setTimeout(() => { img.remove(); if (url.startsWith('blob:')) URL.revokeObjectURL(url); }, ms + 450);
+  }
+  // 第二套必殺技（每格 70ms）：火燒納垢花園 26 格 1.82 秒，火柱第 11、14、17 格命中；
+  // 納垢洪流 19 格 1.33 秒，膿柱第 13、15、17 格命中
+  function special2(bull, onHit) {
+    if (!arena.getBoundingClientRect().width) return;
+    float(bull ? '火燒納垢花園！' : '納垢洪流！', bull ? 'up' : 'down', false, null, ' say hi big');
+    if (bull) blast(true, 'Emperor_attack_sp2', 1.1, 1820, [770, 980, 1190], onHit);
+    else blast(false, 'GUO_attack_sp2', 1.05, 1330, [910, 1050, 1190], onHit);
   }
   // 亂入：角色從門（網道、戰艦、傳送門）殺出來。門淡入 2 秒 → 角色（第一格）淡入 2 秒 → 播動圖，
   // 頭上一直彈出台詞，兩尊神輪流閃白、跳傷害、卡片震 → 停在最後一格淡出 2 秒 → 門淡出 1 秒。
@@ -702,9 +748,9 @@
   let raid = 0;  // 進行中的亂入編號（0＝沒有）；收盤時清掉，已經排好的計時器看到編號不對就不做
   // 兩尊神動圖 ↔ 靜止圖交叉淡化 0.5 秒（網頁上的動圖沒辦法真的暫停，直接換圖會跳一下）：
   // 同位置疊一張要換成的圖淡入，淡完才真的換圖（draw）、拿掉疊的那張
-  function fadeGods(still) {
+  function fadeGods(still, gods = [[guo, 'GUO'], [emp, 'Emperor']]) {
     still ||= el.classList.contains('wg-paused');
-    for (const [g, n] of [[guo, 'GUO'], [emp, 'Emperor']]) {
+    for (const [g, n] of gods) {
       const c = g.cloneNode();
       c.className = g.className.replace(/ wg-(flashw|hurt\S*)/g, '');
       c.src = `${A}${n}${still ? '_still' : ''}.webp`;
@@ -736,7 +782,7 @@
       .catch(() => { setTimeout(() => delete raidLoad[k], 60000); return null; }));
   }
   function warp(k) {
-    if (raid) return;
+    if (raid || summon) return;
     if (!raidReady[k]) { loadRaider(k).then((B) => B && warp(k)); return; }  // 除錯按鈕：下載完再開演
     const a = arena.getBoundingClientRect();
     if (!a.width) return;
@@ -812,6 +858,59 @@
       later(R.ms + RAID_FADE, () => { gz.remove(); ww.style.transitionDuration = `${WEB_OUT}ms`; ww.classList.remove('on'); });
       later(R.ms + RAID_FADE + WEB_OUT, endRaid);
     }
+  }
+  // 召喚盟友：帝皇召喚寂靜王（藍光）、大不淨者召喚雨父（綠光）。召喚方的神淡成靜止圖、喊口號 → 淡出 →
+  // 盟友在他的位置淡入 → 在對方身上放統御王座／納垢大暴雨（跟必殺技一樣白閃、跳大傷害）→ 盟友淡出 →
+  // 神（靜止圖）淡入、再接著播。另一尊神照常動，但兩尊神都不出手；同時只會有一個召喚，也不跟亂入重疊。
+  // 攻擊動圖每格 100ms：統御王座 45 格 4.5 秒，第 23～37 格連環爆炸；納垢大暴雨 40 格 4 秒，第 25～37 格大雨落地
+  const ALLY = {
+    emp: { who: 'Summon_SilentKing', fx: 'Emperor_Summon_attack', call: '召喚寂靜王！', hk: 1.05, ms: 4500, gaps: [2300, 2600, 2900, 3200, 3500, 3700] },
+    guo: { who: 'Summon_Rotigus', fx: 'GUO_Summon_attack', call: '召喚雨父！', hk: 1.05, ms: 4000, gaps: [2500, 2800, 3100, 3400, 3700] },
+  };
+  const loadAlly = (bull) => { const S = ALLY[bull ? 'emp' : 'guo']; return Promise.all([loadBlob(S.who), loadBlob(S.fx)]); };
+  const allyReady = (bull) => { const S = ALLY[bull ? 'emp' : 'guo']; return !!(spBlob[S.who] && spBlob[S.fx]); };
+  let summon = 0, summoner = null;  // 進行中的召喚（0＝沒有；收盤時清掉，排好的計時器看到編號不對就不做）、召喚方的神
+  function endSummon() {
+    summon = 0;
+    summoner = null;
+    arena.querySelectorAll('.wg-ally').forEach((x) => x.remove());
+    for (const g of [guo, emp]) g.style.opacity = g.style.transition = '';
+  }
+  function summonAlly(bull) {
+    if (raid || summon) return;
+    if (!allyReady(bull)) { loadAlly(bull).then(() => allyReady(bull) && summonAlly(bull)); return; }  // 除錯按鈕：下載完再開演
+    const a = arena.getBoundingClientRect();
+    if (!a.width) return;
+    const S = ALLY[bull ? 'emp' : 'guo'];
+    const id = summon = Date.now();
+    const god = summoner = bull ? emp : guo;
+    const pair = [[god, bull ? 'Emperor' : 'GUO']];
+    const later = (ms, f) => setTimeout(() => { if (summon === id) f(); }, ms);
+    fadeGods(true, pair);
+    float(S.call, bull ? 'up' : 'down', false, null, ' say hi big');
+    later(1200, () => { god.style.transition = 'opacity .6s'; god.style.opacity = '0'; });
+    // 盟友：人物（扣掉四邊光暈留白）是神祇的 1.1 倍高，腳底跟神祇一樣高，水平置中在神祇的人物中線（不超出卡片）
+    const g = god.getBoundingClientRect();
+    const gm = meta[bull ? 'Emperor' : 'GUO'], m = meta[S.who] ?? { w: 200, h: 288 };
+    const h = (g.height * (240 / 288) * 1.1 * m.h) / (m.h - 48), w = (h * m.w) / m.h;
+    const cx = g.left - a.left + g.width * (gm?.cx ?? 0.5);
+    const pad = (h * 24) / m.h;
+    const ally = document.createElement('img');
+    ally.className = 'wg-ally';
+    const url = ally.src = URL.createObjectURL(spBlob[S.who]);
+    ally.style.height = `${h}px`;
+    ally.style.left = `${Math.min(a.width - w + pad, Math.max(-pad, cx - w / 2))}px`;
+    ally.style.top = `${g.bottom - a.top - (g.height * 24) / 288 - (h - pad)}px`;
+    later(1800, () => { arena.appendChild(ally); void ally.offsetWidth; ally.classList.add('on'); });
+    // 攻擊：數字在被打的神旁邊（大傷害，上中下錯開）
+    const side = bull ? 'up' : 'down';
+    const x = bull ? ((guo.getBoundingClientRect().right - a.left) / a.width) * 100 + 5 : ((emp.getBoundingClientRect().left - a.left) / a.width) * 100 - 5;
+    later(2500, () => blast(bull, S.fx, S.hk, S.ms, S.gaps,
+      (i) => float(`${500 + Math.round(Math.random() * 500)}!`, side, true, x + ((i % 3) - 1) * 3, ` ult n${i % 3}`)));
+    const t = 2500 + S.ms + 400;
+    later(t, () => ally.classList.remove('on'));
+    later(t + 600, () => { ally.remove(); URL.revokeObjectURL(url); god.style.opacity = ''; });
+    later(t + 1200, () => { endSummon(); fadeGods(false, pair); });
   }
   // 陣亡：交火時每 10～20 秒，最靠戰線的兵倒下一個（一張複製圖播倒下動畫、冒骷髏）。哪邊死跟出手一樣看情勢分數：
   // 跌的時候帝皇那邊比較常死、漲的時候大不淨者那邊比較常死。本尊藏起來移到隊伍最後面，後面的人 3 秒內往前補位，
@@ -913,9 +1012,9 @@
       setSrc(emp, `${A}Emperor_${bullWin ? 'win' : 'loss'}.webp`);
       setSrc(guo, `${A}GUO_${bullWin ? 'loss' : 'win'}.webp`);
     } else {
-      // 亂入中兩尊神也換靜止圖（停住不動），亂入結束再接著播
-      setSrc(emp, `${A}Emperor${paused || raid ? '_still' : ''}.webp`);
-      setSrc(guo, `${A}GUO${paused || raid ? '_still' : ''}.webp`);
+      // 亂入中兩尊神也換靜止圖（停住不動），亂入結束再接著播；召喚中召喚方的神也是
+      setSrc(emp, `${A}Emperor${paused || raid || summoner === emp ? '_still' : ''}.webp`);
+      setSrc(guo, `${A}GUO${paused || raid || summoner === guo ? '_still' : ''}.webp`);
     }
 
     // 帝皇（一般／靜止圖）：人物中線到右緣的距離＝大不淨者人物中線到左緣的距離；勝敗立繪照舊貼右
@@ -993,6 +1092,7 @@
       raid = 0;
       arena.querySelectorAll('.wg-raid, .wg-float.waagh').forEach((x) => x.remove());
     }
+    if (done && summon) endSummon();  // 收盤：召喚也直接收掉
     if (done) {
       tg.style.opacity = te.style.opacity = 0;
       (bullWin ? te : tg).style.transform = bullWin ? 'translateX(-12px)' : 'translateX(calc(-100% + 12px))';
@@ -1015,7 +1115,7 @@
         let d = 0.25;
         order[s].forEach((i) => {
           const [kind, , sc] = ARMY[s][i];
-          d = Math.max(d, (UNIT[kind][1] * sc * ASPECT[`${s === 'guo' ? 'GUO' : 'Emperor'}_${UNIT[kind][0]}`]) / 2 - 0.16);
+          d = Math.max(d, (uh(s, kind) * sc * ASPECT[`${s === 'guo' ? 'GUO' : 'Emperor'}_${UNIT[kind][0]}`]) / 2 - 0.16);
           pos[s][i] = d;
           d += GAP[s][i];
         });
@@ -1025,7 +1125,7 @@
         const [kind, , sc, up] = ARMY[side][Number(u.dataset.i)];
         const d = pos[side][Number(u.dataset.i)];
         const name = `${isGuo ? 'GUO' : 'Emperor'}_${UNIT[kind][0]}`;
-        const h = H * UNIT[kind][1] * sc, w = h * ASPECT[name];
+        const h = H * uh(side, kind) * sc, w = h * ASPECT[name];
         const t = isGuo ? tg : te;
         const anchor = (parseFloat(t.style.left) / 100) * a.width;
         const cx = isGuo ? anchor - d * H : anchor + d * H;
@@ -1036,8 +1136,10 @@
         u.style.transition = refill[side] > Date.now() ? 'left 3s ease-in-out, opacity 1s' : t.style.transition;
         u.style.height = `${h}px`;
         u.style.left = `calc(${t.style.left} ${isGuo ? '-' : '+'} ${Math.round(isGuo ? d * H + w / 2 : d * H - w / 2)}px)`;
-        u.style.bottom = `${name === 'Emperor_troops3' || name === 'Emperor_troops4' ? 0 : up}px`;  // 這兩張圖自帶地板，墊高會像浮在空中
-        u.style.zIndex = 'mno'.includes(kind) ? 20 : (kind === 'B' ? 10 : 15) - up;  // 小兵最前、一般兵種其次、大部隊最後；同類近的（低的）蓋住遠的
+        // 飛行兵種離地 0.4 條高；Emperor_troops3／4 自帶地板，墊高會像浮在空中
+        u.style.bottom = `${kind === 'f' ? Math.round(H * 0.4) + up : name === 'Emperor_troops3' || name === 'Emperor_troops4' ? 0 : up}px`;
+        // 飛行兵種最前（在天上），小兵其次、一般兵種、大部隊最後；同類近的（低的）蓋住遠的
+        u.style.zIndex = kind === 'f' ? 22 : 'mno'.includes(kind) ? 20 : (kind === 'B' ? 10 : 15) - up;
         u.style.animationDelay = `${-0.11 * Number(u.dataset.i)}s`;
       }
     }
@@ -1103,8 +1205,16 @@
     const ar = arena.getBoundingClientRect();
     const gR = ((guo.getBoundingClientRect().right - ar.left) / ar.width) * 100;
     const eL = ((emp.getBoundingClientRect().left - ar.left) / ar.width) * 100;
-    fireSpecial(bull, 150 + Math.round(Math.random() * 150), bull ? gR + 5 : eL - 5);
+    fireSpecial(bull, 150 + Math.round(Math.random() * 150), bull ? gR + 5 : eL - 5, false);
   }));
+  if (debug) el.querySelectorAll('.wg-dbg button[data-sp2]').forEach((b) => b.addEventListener('click', () => {
+    const bull = b.dataset.sp2 === '1';
+    const ar = arena.getBoundingClientRect();
+    const gR = ((guo.getBoundingClientRect().right - ar.left) / ar.width) * 100;
+    const eL = ((emp.getBoundingClientRect().left - ar.left) / ar.width) * 100;
+    fireSpecial(bull, 150 + Math.round(Math.random() * 150), bull ? gR + 5 : eL - 5, true);
+  }));
+  if (debug) el.querySelectorAll('.wg-dbg button[data-ally]').forEach((b) => b.addEventListener('click', () => summonAlly(b.dataset.ally === '1')));
   if (debug) el.querySelector('.wg-dbg button[data-kill]').addEventListener('click', () => kill(true));
   if (debug) el.querySelectorAll('.wg-dbg button[data-raid]').forEach((b) => b.addEventListener('click', () => warp(Number(b.dataset.raid))));
   if (debug) el.querySelectorAll('.wg-dbg input').forEach((i) => i.addEventListener('input', () => {

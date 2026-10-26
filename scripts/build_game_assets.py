@@ -4,10 +4,11 @@ Animated gods: 240 px tall, 10 fps (every other frame, each shown twice as long)
 Static art: 240 px tall. Background: as is. Transparent margins are trimmed (all frames). Also writes *_still.webp (first frame) for paused state.
 Also the love account's game art (docs/love/: walking/kissing couple, wall, heart, Immaterium background), kept
 in its own folder so that account never loads the Warhammer files and vice versa.
-Run: python scripts/build_game_assets.py
+Run: python scripts/build_game_assets.py [names...]
 """
 import json
 import pathlib
+import sys
 from PIL import Image, ImageFilter
 
 SRC = pathlib.Path(__file__).resolve().parent.parent / 'mini_game'
@@ -22,12 +23,15 @@ SIZES = {'Emperor': 240, 'GUO': 240, 'fight-cloud': 200, 'Emperor_win': 240, 'Em
          'Emperor_attack_sp': None, 'GUO_attack_sp': None, 'GUO_mini_troops': 96, 'Emperor_mini_troops': 96,
          'GUO_troops2': 160, 'GUO_troops3': 160, 'Emperor_troops2': 160, 'Emperor_troops3': 160,
          'GUO_mini_troops2': 96, 'Emperor_mini_troops2': 96, 'GUO_troops4': 160, 'Emperor_troops4': 160,
-         'GUO_mini_troops3': 96, 'webway': None, 'Ghazghkull': 160,
+         'GUO_mini_troops3': 96, 'Emperor_troops5': 160, 'Emperor_troops6': 160, 'GUO_troops5': 160,
+         'GUO_troops6': 160, 'GUO_troops_fly': 160, 'Emperor_troops_fly': 160, 'Emperor_attack_sp2': None, 'GUO_attack_sp2': None,
+         'Emperor_Summon_attack': None, 'GUO_Summon_attack': None, 'Summon_SilentKing': 240, 'Summon_Rotigus': 240, 'webway': None, 'Ghazghkull': 160,
          'VengefulSpirit': None, 'abaddon': 160, 'portal': None, 'LordofChange': 160, 'HiveShip': None, 'tyranids': 160}
 # 神祇的光暈直接畫進圖裡（以前是網頁上 CSS drop-shadow，動圖每換一格瀏覽器就要重算一次，吃 CPU）。
 # 四邊各留 GLOW_PAD px（圖高 240 的 10%）給光暈；網頁那邊把神祇放大 1.2 倍、往下移 10% 抵銷，人物大小位置不變
 GLOW = {'Emperor': (255, 215, 0), 'Emperor_win': (255, 215, 0), 'Emperor_loss': (255, 215, 0),
-        'GUO': (0, 255, 0), 'GUO_win': (0, 255, 0), 'GUO_loss': (0, 255, 0)}
+        'GUO': (0, 255, 0), 'GUO_win': (0, 255, 0), 'GUO_loss': (0, 255, 0),
+        'Summon_SilentKing': (90, 170, 255), 'Summon_Rotigus': (0, 255, 0)}  # 召喚的盟友：寂靜王藍光、雨父綠光，大小跟神祇一樣
 GLOW_PAD, GLOW_SIGMA, GLOW_GAIN = 24, 10, 1.7  # 手機上神祇約 73px 高：σ 10、加強 1.7 倍，跟原本 CSS 的 drop-shadow(0 0 6px) 差不多
 
 
@@ -58,8 +62,11 @@ def glow(frame, color, pad=GLOW_PAD, layers=((GLOW_SIGMA, GLOW_GAIN),)):
     return out
 
 
-# 必殺技動圖：每一格都留、每格 70ms（網頁照這個節奏對傷害時間點）
-SP_FRAME_MS = 70
+# 必殺技、召喚攻擊動圖：每一格都留、每格固定時間（網頁照這個節奏對傷害時間點）。
+# 第二套必殺技和召喚攻擊只播一次、停在最後一格（網頁淡出）
+SP_FRAME_MS = {'Emperor_attack_sp': 70, 'GUO_attack_sp': 70, 'Emperor_attack_sp2': 70, 'GUO_attack_sp2': 70,
+               'Emperor_Summon_attack': 100, 'GUO_Summon_attack': 100}
+PLAY_ONCE = {'Emperor_attack_sp2', 'GUO_attack_sp2', 'Emperor_Summon_attack', 'GUO_Summon_attack'}
 # 亂入角色動圖：原檔每格 120ms（Pillow 讀不到這些檔的每格時間），每一格都留；網頁照片長（meta.json 的 ms）排傷害
 RAIDER_FRAME_MS = 120
 
@@ -97,15 +104,16 @@ def build(name, h, OUT):
               else (lambda f: f))
     if n > 1:
         frames, durs = [], []
-        sp = name.endswith('_sp')
+        sp = name in SP_FRAME_MS
         raider = name in RAIDER_HEAD
         for i in range(0, n, 1 if sp or raider else 2):  # 20 fps -> 10 fps（必殺技、亂入角色不減格）
             im.seek(i)
             frames.append(finish(fit(crop(im.convert('RGBA')), h)))
-            durs.append(SP_FRAME_MS if sp else RAIDER_FRAME_MS if raider else (im.info.get('duration') or 50) * 2)
-        frames[0].save(OUT / f'{name}.webp', save_all=True, append_images=frames[1:], duration=durs, loop=0,
+            durs.append(SP_FRAME_MS[name] if sp else RAIDER_FRAME_MS if raider else (im.info.get('duration') or 50) * 2)
+        frames[0].save(OUT / f'{name}.webp', save_all=True, append_images=frames[1:], duration=durs, loop=1 if name in PLAY_ONCE else 0,
                        quality=70, method=6, lossless=False)
-        frames[0].save(OUT / f'{name}_still.webp', quality=75, method=6)
+        if name not in PLAY_ONCE:
+            frames[0].save(OUT / f'{name}_still.webp', quality=75, method=6)
         if raider:  # 播完停在最後一格淡出
             frames[-1].save(OUT / f'{name}_end.webp', quality=75, method=6)
     else:
@@ -113,10 +121,14 @@ def build(name, h, OUT):
     print(name, (OUT / f'{name}.webp').stat().st_size // 1024, 'KB')
 
 
+# 加了參數就只建那幾張（例如 python scripts/build_game_assets.py GUO_troops5 Emperor_troops5），meta.json 照樣重寫
+ONLY = set(sys.argv[1:])
 for name, h in SIZES.items():
-    build(name, h, OUT)
+    if not ONLY or name in ONLY:
+        build(name, h, OUT)
 for name, h in LOVE_SIZES.items():
-    build(name, h, LOVE)
+    if not ONLY or name in ONLY:
+        build(name, h, LOVE)
 # love 的人物寬高比（網頁用來把兩人面對面靠在一起）
 (LOVE / 'meta.json').write_text(json.dumps({n: dict(zip(('w', 'h'), Image.open(LOVE / f'{n}.webp').size))
                                             for n in ('m_walk', 'm_kiss', 'f_walk', 'f_kiss', 'wall')}), encoding='utf-8')
@@ -132,7 +144,7 @@ for name in ('Emperor', 'GUO'):
         col = sum(1 for y in range(h) if a.getpixel((x, y)) > 8)
         tot += col; sx += col * x
     meta[name] = {'w': w, 'h': h, 'cx': round(sx / tot / w, 4)}
-for name in ('Emperor_win', 'GUO_loss', 'win', 'vs', 'webway', 'VengefulSpirit', 'portal', 'HiveShip'):
+for name in ('Emperor_win', 'GUO_loss', 'win', 'vs', 'webway', 'VengefulSpirit', 'portal', 'HiveShip', 'Summon_SilentKing', 'Summon_Rotigus'):
     w, h = Image.open(OUT / f'{name}.webp').size
     meta[name] = {'w': w, 'h': h}
 # 亂入角色：寬高、頭在圖上的位置（hx、hy，0～1，含光暈留白）、片長（ms）
