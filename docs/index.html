@@ -95,8 +95,9 @@
   .ju { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: text;
     -webkit-tap-highlight-color: transparent; -webkit-appearance: none; appearance: none; }
   .ju:focus:not(:focus-visible) { outline: none; }
-  /* 自選股標題列：badge 都靠最右（尾盤拉雞／殺雞在左、增減在右），貼齊卡片右邊，跟左邊的「自選股」對稱 */
-  .hhead .badges { gap: 6px; }
+  /* 自選股標題列：badge 都靠最右（尾盤拉雞／殺雞在左、增減在右），跟左邊的「自選股」對稱：
+     「自」字形左邊自帶約 1.5px 留白，右邊內縮 2px（實測），兩邊離卡片邊框一樣遠 */
+  .hhead .badges { gap: 6px; padding-right: 2px; }
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
@@ -170,6 +171,9 @@
   .hold .fl.hk { display: block; }
   .hold .fl.hk .kchart { height: 19px; }
   .hold .q .p { font-size: clamp(14px, 4.6vw, 18px); font-weight: 600; }
+  /* 2330 股價四位數比較擠：漲跌 badge 和漲跌幅各小 0.5px */
+  .hold.t2330 .c { font-size: calc(clamp(12.5px, 4vw, 16px) - 0.5px); }
+  .hold.t2330 .q .p { font-size: calc(clamp(14px, 4.6vw, 18px) - 0.5px); }
   /* 量能：避開漲跌用的紅綠，冷暖色階 量縮藍 → 正常灰 → 放量黃 → 爆量橘 */
   .badge.vol-low { background: #5b8fd6; color: var(--bg); }
   .badge.vol-high { background: #d9c44a; color: var(--bg); }
@@ -250,8 +254,6 @@
     main { gap: 4px; }
     .card { padding-left: 5px; padding-right: 5px; }
     .hold { padding-left: 5px; padding-right: 5px; }
-    .hhead .badges { padding-right: 6px; }
-    .card.flat .head .badge { margin-right: 6px; }
     .badge { padding: 0 3px; }
   }
 </style>
@@ -1042,18 +1044,18 @@
       second = `<div class="fl ma"><span>月 ${v(ma(20))}</span><span>季 ${v(ma(60))}</span></div>`;
     } else if (h.code === '00685L') {
       // 理想每日正2 相對「大盤整段報酬 × 2」的複利差（pp），最近 60 個交易日（跟季線同樣長）；加權日報酬，盤中今天算 1 天（59＋今天）。
-      // 正的＝複利加速（紅）、負的＝波動損耗（綠），數值不帶正負
+      // 正的＝複利加速、負的＝波動損耗（字白色，數值紅綠、不帶正負）
       const x = netCompounding(60, twiiQuote);
       const r = x == null ? null : Math.round(x * 10) / 10;
       const cls = r > 0 ? 'up' : r < 0 ? 'down' : '';
-      second = `<div class="fl ma cmp2"><span class="wide ${cls}">${r == null ? '複利差 <b class="fp">資料不足</b>'
+      second = `<div class="fl ma cmp2"><span class="wide">${r == null ? '複利差 <b class="fp">資料不足</b>'
         : `${r >= 0 ? '複利加速' : '波動損耗'} <b class="${cls}">${Math.abs(r).toFixed(1)}pp</b>`}</span></div>`;
     } else if (h.code === '0056' || h.code === '00878') {
       const y = etfYield?.[h.code]?.yield;
       second = `<div class="fl ma"><span class="wide">殖利率 <b>${Number.isFinite(y) ? `${y.toFixed(2)}%` : '—'}</b></span></div>`;
     }
     const pages = [...firsts, gov, second].filter(Boolean);
-    if (pages.length < 2) return pages[0];
+    if (pages.length < 2) return pages[0] ?? '';
     const p = (lowerPage[h.code] ?? 0) % pages.length;
     return `<div class="tsw" data-code="${h.code}" data-n="${pages.length}" data-p="${p}">${pages.map((x, i) => `<div class="pg" data-i="${i}">${x}</div>`).join('')}</div>`;
   }
@@ -1099,9 +1101,9 @@
         const chart = h.candles ? miniCandles(h.candles, h.prev ?? (h.change != null ? h.price - h.change : null)) : '';
         return [`<div class="fl hk">${chart}</div>`];
       }
-      // 外資、投信各一頁；投信不做 00685L，「投信 0」沒意義，只有外資那頁
+      // 外資、投信各一頁；00685L 不放（投信不做、外資買賣槓桿 ETF 也沒什麼參考價值），只剩複利差那頁
       const pg = (label, t) => `<div class="fl">${flowSeg(label, t, h.code)}</div>`;
-      return h.code === '00685L' ? [pg('外資', fo)] : [pg('外資', fo), pg('投信', tr)];
+      return h.code === '00685L' ? [] : [pg('外資', fo), pg('投信', tr)];
     };
     const row = (h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
@@ -1113,7 +1115,7 @@
       const digits = h.price >= 1000 ? 0 : 2;  // 股價
       const chgDigits = h.price < 1000 ? 2 : abs < 10 ? 2 : abs < 100 ? 1 : 0;
       const chgText = h.change === 0 ? '0.00' : fmt(abs, chgDigits);
-      return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${chgText}</span></div>`
+      return `<div class="hold${h.code === '2330' ? ' t2330' : ''}"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${chgText}</span></div>`
         + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div>`
         + lowerToggle(h, flowLine(h)) + '</div>';
     };
