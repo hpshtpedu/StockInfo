@@ -1098,9 +1098,10 @@
         const chart = h.candles ? miniCandles(h.candles, h.prev ?? (h.change != null ? h.price - h.change : null)) : '';
         return [`<div class="fl hk">${chart}</div>`];
       }
-      // 外資、投信各一頁；00685L 不放（投信不做、外資買賣槓桿 ETF 也沒什麼參考價值），只剩複利差那頁
+      // 2330 外資、投信各一頁；0056、00878 只放外資（投信買賣自家 ETF 沒什麼參考價值）；
+      // 00685L 都不放（外資買賣槓桿 ETF 也沒什麼參考價值），只剩複利差那頁
       const pg = (label, t) => `<div class="fl">${flowSeg(label, t, h.code)}</div>`;
-      return h.code === '00685L' ? [] : [pg('外資', fo), pg('投信', tr)];
+      return h.code === '00685L' ? [] : h.code === '2330' ? [pg('外資', fo), pg('投信', tr)] : [pg('外資', fo)];
     };
     const row = (h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
