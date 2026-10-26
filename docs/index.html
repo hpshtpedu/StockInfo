@@ -95,9 +95,8 @@
   .ju { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: text;
     -webkit-tap-highlight-color: transparent; -webkit-appearance: none; appearance: none; }
   .ju:focus:not(:focus-visible) { outline: none; }
-  /* 我的自選股標題列：badge 都靠最右（尾盤拉雞／殺雞在左、增減在右），
-     右邊緣跟方塊裡的漲跌框切齊（方塊邊框 1px + 內距 7px，窄螢幕 5px） */
-  .hhead .badges { gap: 6px; padding-right: 8px; }
+  /* 自選股標題列：badge 都靠最右（尾盤拉雞／殺雞在左、增減在右），貼齊卡片右邊，跟左邊的「自選股」對稱 */
+  .hhead .badges { gap: 6px; }
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
@@ -159,10 +158,10 @@
   /* 下半部分頁：每頁包一層 .pg（data-i），只顯示目前那頁 */
   .tsw > .pg { display: none; }
   .tsw[data-p="0"] > .pg[data-i="0"], .tsw[data-p="1"] > .pg[data-i="1"], .tsw[data-p="2"] > .pg[data-i="2"],
-  .tsw[data-p="3"] > .pg[data-i="3"], .tsw[data-p="4"] > .pg[data-i="4"] { display: block; }  /* 2330 有 4 頁（外投、公股、月季、PR），多留一頁 */
+  .tsw[data-p="3"] > .pg[data-i="3"], .tsw[data-p="4"] > .pg[data-i="4"] { display: block; }  /* 2330 有 4 頁（外資、投信、公股、月季），多留一頁 */
   .hold .fl.ma { font-weight: 400; }
   .hold .fl.ma b { color: var(--warn); font-weight: 700; }
-  .hold .fl.ma .wide { grid-column: 1 / -1; }
+  .hold .fl .wide { grid-column: 1 / -1; }
   .hold .fl.ma b.up { color: var(--up); } .hold .fl.ma b.down { color: var(--down); }
   .hold .fl.cmp2 b.down { color: var(--down); }
   .hold .fl.cmp2 b.up { color: var(--up); }
@@ -178,7 +177,7 @@
   /* 最下面一行：左邊報價時間，右邊「15分K」標示 */
   .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 2px; min-width: 0; }
   .foot-left { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  /* 說明用的中性 badge（例如融資維持率的警戒線），放卡片右下角 */
+  /* 卡片右下角的 badge（例如融資維持率 ≤140% 的「斷頭」） */
   .foot .badge.warn { flex-shrink: 0; }
   .badge.note { color: var(--muted); }
   .foot .badge.note { flex-shrink: 0; }
@@ -203,8 +202,8 @@
   .card.flat { gap: 0; }
   .card.flat .head { justify-content: flex-start; gap: 12px; }
   .card.flat .bcnt { font-size: clamp(15px, 4.6vw, 18px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  /* 右邊緣跟下面我的自選股標題列的增減 badge 切齊（同樣內縮 8px，窄螢幕 6px） */
-  .card.flat .head .badge { margin-left: auto; margin-right: 8px; }
+  /* 右邊緣跟下面自選股標題列的增減 badge 切齊（都貼齊卡片右邊） */
+  .card.flat .head .badge { margin-left: auto; }
   /* 損益分段膠囊：一個圓角灰底，左段總損益、右段今日增減（字一樣大、紅綠字），中間細深色線 */
   .pnl { display: inline-flex; align-items: stretch; border-radius: 999px; overflow: hidden; flex-shrink: 0; }
   .pnl .badge { border-radius: 0; display: inline-flex; align-items: center; }
@@ -592,7 +591,7 @@
     if (q.change != null) {
       const cdir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
       const text = q.unit === 'ratio'
-        ? `${q.change > 0 ? '+' : ''}${fmt(q.change, 2)}個百分點`
+        ? `${q.change > 0 ? '+' : ''}${fmt(q.change, 2)}pp`
         : netOiChange(q.price - q.change, q.price);
       change = `<div class="cmp"><span class="txt">較前日</span> <span class="${cdir}">${text}</span></div>`;
     }
@@ -648,13 +647,13 @@
   function marginHtml(m) {
     const [, mm, dd] = m.date.split('-').map(Number);
     const d = m.prev != null ? m.ratio - m.prev : null;
-    const cmp = d == null ? '' : `<div class="cmp"><span class="txt">較前日</span> <span class="${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '+' : ''}${fmt(d, 2)}個百分點</span></div>`;
+    const cmp = d == null ? '' : `<div class="cmp"><span class="txt">較前日</span> <span class="${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '+' : ''}${fmt(d, 2)}pp</span></div>`;
     return `
       <div class="card roomy">
         <div class="head"><div class="name">上市融資維持率</div>${marginRatioBadge(m) || BADGE_SPACER}</div>
         <div class="price">${fmt(m.ratio, 2)}%</div>
         ${cmp}
-        <div class="foot"><div class="meta">${mm}/${dd} 盤後</div><span class="badge ${m.ratio < 140 ? 'warn' : 'note'}">警戒線140%</span></div>
+        <div class="foot"><div class="meta">${mm}/${dd} 盤後</div>${m.ratio <= 140 ? '<span class="badge warn">斷頭</span>' : ''}</div>
       </div>`;
   }
 
@@ -888,7 +887,7 @@
         <div class="head"><div class="name">台指VIX</div>${badge}</div>
         <div class="price">${fmt(last, 2)}</div>
         <div class="chg ${dir(change)}">${sign(change)}${fmt(change, 2)} (${sign(change)}${fmt((change / prev) * 100, 1)}%)</div>
-        <div class="foot"><div class="meta">${mm}/${dd} 盤後</div><span class="badge note">恐慌線&gt;40</span></div>
+        <div class="foot"><div class="meta">${mm}/${dd} 盤後</div></div>
       </div>`;
   }
 
@@ -1003,7 +1002,7 @@
   }
 
   // 方塊下半部點一下切換第 2 頁：2330＝月線、季線（每晚存的日收盤 + 即時價當最新一天）；
-  // 0056、00878＝近一年殖利率（etf_yield.json：最近 4 次已除息配息率加總，自訂歷史配息率指標）
+  // 0056、00878＝殖利率（etf_yield.json：最近 4 次已除息配息率加總，自訂歷史配息率指標）
   const lowerPage = {};
   let etfYield = null;
   // 八大買賣台積電（億）：當天有進八大買超／賣超前 30 名才有，排程的 JSON 和 Worker 取最新那天；沒有回 null
@@ -1013,9 +1012,9 @@
     return [govBanks?.tsmc, govLive?.tsmc].filter((t) => t?.date === last).at(-1) ?? null;
   }
 
-  function lowerToggle(h, first) {
+  function lowerToggle(h, firsts) {
     let second = '';
-    // 2330 第 2 頁（外／投後面）：八大公股行庫買賣台積電；沒進前 30 名寫「—」
+    // 2330 外資、投信後面那頁：八大公股行庫買賣台積電；沒進前 30 名寫「—」
     let gov = '';
     if (h.code === '2330') {
       const t = govTsmc();
@@ -1029,21 +1028,19 @@
       const v = (x) => `<b>${x == null ? '—' : fmt(Math.round(x), 0)}</b>`;
       second = `<div class="fl ma"><span>月 ${v(ma(20))}</span><span>季 ${v(ma(60))}</span></div>`;
     } else if (h.code === '00685L') {
-      // 理想每日正2 相對「大盤整段報酬 × 2」的複利差（pp）；加權日報酬，盤中今天算 1 天（19＋今天／59＋今天）
-      const v = (n) => {
-        const x = netCompounding(n, twiiQuote);
-        if (x == null) return '<b class="fp">資料不足</b>';
-        const r = Math.round(x * 10) / 10;
-        return `<b class="${r > 0 ? 'up' : r < 0 ? 'down' : ''}">${r > 0 ? '+' : ''}${(r === 0 ? 0 : r).toFixed(1)}pp</b>`;
-      };
-      // 月＝最近 20 個交易日、季＝最近 60 個交易日（跟月線、季線同樣長的視窗）
-      second = `<div class="fl ma cmp2"><span>月 ${v(20)}</span><span>季 ${v(60)}</span></div>`;
+      // 理想每日正2 相對「大盤整段報酬 × 2」的複利差（pp），最近 60 個交易日（跟季線同樣長）；加權日報酬，盤中今天算 1 天（59＋今天）。
+      // 正的＝複利加速（紅）、負的＝波動損耗（綠），數值不帶正負
+      const x = netCompounding(60, twiiQuote);
+      const r = x == null ? null : Math.round(x * 10) / 10;
+      const cls = r > 0 ? 'up' : r < 0 ? 'down' : '';
+      second = `<div class="fl ma cmp2"><span class="wide ${cls}">${r == null ? '複利差 <b class="fp">資料不足</b>'
+        : `${r >= 0 ? '複利加速' : '波動損耗'} <b class="${cls}">${Math.abs(r).toFixed(1)}pp</b>`}</span></div>`;
     } else if (h.code === '0056' || h.code === '00878') {
       const y = etfYield?.[h.code]?.yield;
-      second = `<div class="fl ma"><span class="wide">近一年殖利率 <b>${Number.isFinite(y) ? `${y.toFixed(2)}%` : '—'}</b></span></div>`;
+      second = `<div class="fl ma"><span class="wide">殖利率 <b>${Number.isFinite(y) ? `${y.toFixed(2)}%` : '—'}</b></span></div>`;
     }
-    const pages = [first, gov, second].filter(Boolean);
-    if (pages.length < 2) return first;
+    const pages = [...firsts, gov, second].filter(Boolean);
+    if (pages.length < 2) return pages[0];
     const p = (lowerPage[h.code] ?? 0) % pages.length;
     return `<div class="tsw" data-code="${h.code}" data-n="${pages.length}" data-p="${p}">${pages.map((x, i) => `<div class="pg" data-i="${i}">${x}</div>`).join('')}</div>`;
   }
@@ -1075,7 +1072,7 @@
         : `${fmt(yi * 100, a >= 0.01 ? 1 : 2)}百萬`;
       const val = v == null ? '<span class="fp">未公布</span>'
         : `<span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${v > 0 ? '+' : ''}${text}</span>`;
-      return `<span><span class="fk">${label}</span>${val}</span>`;
+      return `<span class="wide"><span class="fk">${label}</span>${val}</span>`;
     };
     // 盤中（交易日 09:00-15:00）整行隱藏但保留高度：卡片大小不變，也不會看到一排「未公布」的雜訊
     const twNow = new Date(Date.now() + 8 * 3600000);
@@ -1087,10 +1084,11 @@
     const flowLine = (h) => {
       if (kMode) {
         const chart = h.candles ? miniCandles(h.candles, h.prev ?? (h.change != null ? h.price - h.change : null)) : '';
-        return `<div class="fl hk">${chart}</div>`;
+        return [`<div class="fl hk">${chart}</div>`];
       }
-      // 投信不做 00685L，「投 0」沒意義：只顯示外資，右半格留空維持排版
-      return `<div class="fl">${flowSeg('外', fo, h.code)}${h.code === '00685L' ? '<span></span>' : flowSeg('投', tr, h.code)}</div>`;
+      // 外資、投信各一頁；投信不做 00685L，「投信 0」沒意義，只有外資那頁
+      const pg = (label, t) => `<div class="fl">${flowSeg(label, t, h.code)}</div>`;
+      return h.code === '00685L' ? [pg('外資', fo)] : [pg('外資', fo), pg('投信', tr)];
     };
     const row = (h) => {
       const dir = h.change > 0 ? 'up' : h.change < 0 ? 'down' : '';
@@ -1111,7 +1109,7 @@
     const body = Array.from({ length: rows }, (_, i) => groups.map((g) => (g[i] ? row(g[i]) : '<div></div>')).join('')).join('');
     return `
       <div class="card wide holdings">
-        <div class="head hhead"><div class="name">我的自選股</div><div class="badges">${badge}${pnlCapsule(list)}</div></div>
+        <div class="head hhead"><div class="name">自選股</div><div class="badges">${badge}${pnlCapsule(list)}</div></div>
         <div class="holds">${body}</div>
         <div class="foot"><div class="meta">${timeState(list[0].time, list[0].fault ? 'fault' : twii?.state)}</div>${kMode ? '<span class="klabel">15分K</span>' : ''}</div>
       </div>`;
@@ -1616,7 +1614,7 @@
     jin10Key = jin10Keys[jin10Page] ?? null;
     scheduleRead();
   });
-  // 2330／0056／00878 下半部：切換第 1 頁（K 線或外/投）↔ 第 2 頁（月季線／近一年殖利率）
+  // 自選股方塊下半部：點一下換下一頁（K 線或外資、投信 → 公股 → 月季線／殖利率／複利差）
   $list.addEventListener('click', (e) => {
     const tw2 = e.target.closest('.tw2.sw');
     if (tw2) {

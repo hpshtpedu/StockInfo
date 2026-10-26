@@ -5,7 +5,7 @@ const DELAY_GRACE_MIN = 20;
 
 // delayMin: typical Yahoo feed delay, measured; shown when the market is not open.
 const YAHOO = {
-  sox: { name: '費半 SOX', symbol: '^SOX', digits: 2 },
+  sox: { name: '費半', symbol: '^SOX', digits: 2 },
   kospi: { name: '韓股', symbol: '^KS11', digits: 2, delayMin: 20 },
   // Yahoo's trading period ignores the TSE lunch break (11:30-12:30 JST = 02:30-03:30 UTC).
   nikkei: { name: '日經', symbol: '^N225', digits: 2, delayMin: 15, breaksUtc: [[150, 210]] },
@@ -29,7 +29,7 @@ function brentFront(now = new Date()) {
 
 // Yahoo Taiwan: real-time TW indices and 台指期近一 (WTX&), fetched in one request.
 const YAHOO_TW = {
-  twii: { name: '加權指數', symbol: '^TWII', digits: 2 },
+  twii: { name: '大盤', symbol: '^TWII', digits: 2 },
   txf: { name: '台指期', symbol: 'WTX&', digits: 0 },
   // Holdings card (tw2330 also feeds the TSM ADR premium).
   tw2330: { name: '台積電', symbol: '2330.TW', digits: 0 },
