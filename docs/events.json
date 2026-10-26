@@ -1,12 +1,6 @@
 [
  {
   "src": "tw_holidays",
-  "date": "2026-10-25",
-  "time": "",
-  "label": "光復節"
- },
- {
-  "src": "tw_holidays",
   "date": "2026-10-26",
   "time": "",
   "label": "光復節補假"
@@ -274,5 +268,11 @@
   "date": "2027-02-18",
   "time": "03:00",
   "label": "FOMC會議紀要"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2027-02-23",
+  "time": "",
+  "label": "日股休市(天皇誕辰)"
  }
 ]
