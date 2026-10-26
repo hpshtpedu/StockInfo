@@ -297,19 +297,22 @@
     let d = 0.25;
     return [...kinds].map((k, i) => {
       const u = [k, +d.toFixed(2), +(0.88 + 0.12 * r(i, 1)).toFixed(2), Math.floor(r(i, 2) * 6)];
-      d += (k === 'm' || k === 'n' ? 0.4 : 0.55) + 0.2 * r(i, 3);
+      d += (k === 'o' ? 0.3 : k === 'm' || k === 'n' ? 0.4 : 0.55) + 0.2 * r(i, 3);
       return u;
     });
   }
   const ARMY = {
-    guo: formation('m3nBm2nBm3nmB2mBn3mBn2mnB3m', 1),
-    emp: formation('m2nB3mBn2mBn3mB2nmBn3mB2n', 2),
+    guo: formation('mo3nBm2n4om3nmB2mo4Bn3mBon2mnB3m', 1),
+    emp: formation('m2nB3m4n2mBn3mB2n4mBn3mB2n', 2),
   };
-  // 種類 → 圖檔、高度（大部隊的幾倍）。2：大不淨者的納垢獸／帝皇的坦克；3：大不淨者的騎士／帝皇的苦修戰士
-  const UNIT = { m: ['mini_troops', 0.6], n: ['mini_troops2', 0.6], B: ['troops', 1], 2: ['troops2', 0.9], 3: ['troops3', 0.94] };
+  // 種類 → 圖檔、高度（大部隊的幾倍）。2：大不淨者的納垢獸／帝皇的坦克；3：大不淨者的騎士／帝皇的苦修戰士；
+  // 4：大不淨者的惡魔引擎／帝皇的土星無畏；o：大不淨者的納垢靈（只有大不淨者有，小兵的六成高）
+  const UNIT = { m: ['mini_troops', 0.6], n: ['mini_troops2', 0.6], B: ['troops', 1], 2: ['troops2', 0.9], 3: ['troops3', 0.94],
+    4: ['troops4', 0.95], o: ['mini_troops3', 0.36] };
   const ASPECT = { GUO_troops: 1.969, Emperor_troops: 1.312, GUO_mini_troops: 0.698, Emperor_mini_troops: 1.365,
     GUO_mini_troops2: 0.823, Emperor_mini_troops2: 0.656,
-    GUO_troops2: 0.961, GUO_troops3: 1.144, Emperor_troops2: 1.516, Emperor_troops3: 0.731 };
+    GUO_troops2: 0.961, GUO_troops3: 1.144, Emperor_troops2: 1.516, Emperor_troops3: 0.731,
+    GUO_troops4: 1.228, Emperor_troops4: 1.541, GUO_mini_troops3: 0.76 };
   // 陣亡補位：order＝每邊目前的排隊順序（ARMY 的編號，前面＝靠近戰線），GAP＝每個單位跟後面那個隔多遠。
   // 有人陣亡就把他移到隊伍最後面，後面的人往前補，位置照新順序重新累加
   const order = { guo: ARMY.guo.map((u, i) => i), emp: ARMY.emp.map((u, i) => i) };
@@ -337,7 +340,7 @@
       <img class="wg-god wg-emp" alt="">
       <img class="wg-troop wg-tguo" src="${A}GUO_troops.webp" alt="">
       <img class="wg-troop wg-temp" src="${A}Emperor_troops.webp" alt="">
-      ${['guo', 'emp'].map((side) => ARMY[side].map((u, i) => `<img class="wg-unit${'mn'.includes(u[0]) ? ' mini' : ''}" data-side="${side}" data-i="${i}" alt="">`).join('')).join('')}
+      ${['guo', 'emp'].map((side) => ARMY[side].map((u, i) => `<img class="wg-unit${'mno'.includes(u[0]) ? ' mini' : ''}" data-side="${side}" data-i="${i}" alt="">`).join('')).join('')}
       <img class="wg-cloud" src="${A}fight-cloud.webp" alt="">
       <img class="wg-closed" src="${A}casino_closed.webp" alt="休市">
       <img class="wg-dayoff" alt="">
@@ -1029,12 +1032,12 @@
         const show = !done && a.width && cx + w / 2 > 0 && cx - w / 2 < a.width;
         u.style.display = show ? '' : 'none';
         if (!show) continue;
-        setSrc(u, `${A}${name}${'mn'.includes(kind) ? still : ''}.webp`);
+        setSrc(u, `${A}${name}${'mno'.includes(kind) ? still : ''}.webp`);
         u.style.transition = refill[side] > Date.now() ? 'left 3s ease-in-out, opacity 1s' : t.style.transition;
         u.style.height = `${h}px`;
         u.style.left = `calc(${t.style.left} ${isGuo ? '-' : '+'} ${Math.round(isGuo ? d * H + w / 2 : d * H - w / 2)}px)`;
-        u.style.bottom = `${name === 'Emperor_troops3' ? 0 : up}px`;  // 這張圖自帶地板，墊高會像浮在空中
-        u.style.zIndex = 'mn'.includes(kind) ? 20 : (kind === 'B' ? 10 : 15) - up;  // 小兵最前、一般兵種其次、大部隊最後；同類近的（低的）蓋住遠的
+        u.style.bottom = `${name === 'Emperor_troops3' || name === 'Emperor_troops4' ? 0 : up}px`;  // 這兩張圖自帶地板，墊高會像浮在空中
+        u.style.zIndex = 'mno'.includes(kind) ? 20 : (kind === 'B' ? 10 : 15) - up;  // 小兵最前、一般兵種其次、大部隊最後；同類近的（低的）蓋住遠的
         u.style.animationDelay = `${-0.11 * Number(u.dataset.i)}s`;
       }
     }
