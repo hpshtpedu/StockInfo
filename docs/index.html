@@ -581,7 +581,7 @@
     return '';
   }
 
-  function dailyHtml(q, inst, flows, twii) {
+  function dailyHtml(q, inst, flows, twii, vix) {
     const dir = q.price > 0 ? 'up' : q.price < 0 ? 'down' : '';
     const sign = q.price > 0 ? '+' : '';
     const value = q.unit === 'ratio' ? `${sign}${fmt(q.price, q.digits)}%` : `${sign}${fmt(q.price, q.digits)}<small> 口</small>`;
@@ -596,9 +596,18 @@
       change = `<div class="cmp"><span class="txt">較前日</span> <span class="${cdir}">${text}</span></div>`;
     }
     // 散戶多空比是反向指標（2020-2026 回測）：< 0 散戶轉淨空＝燃料充足（綠），之後 10 / 20 日加權平均
-    // +1.3% / +2.4%（全部 +1.0% / +1.9%）。≥ +30% 的 FOMO 後續跟平常差不多，不標
-    const badge = q.unit !== 'ratio' ? futuresSpotBadge(q, inst, flows, twii)
-      : q.price < 0 ? '<span class="badge fuel">燃料充足</span>' : '';
+    // +1.3% / +2.4%（全部 +1.0% / +1.9%）。
+    // > +30% 且同一天台指 VIX < 25（散戶大量做多、市場卻不恐慌）→ 橘色「FOMO」：之後 5 日加權平均 -1.4%、
+    // 勝率 35%（15 段；全部 +0.5%、60%），10～20 日後多半漲回來，只是短線逆風，所以用描述色不用賣出色。
+    // 單看 > 30% 跟平常差不多；VIX ≥ 25（恐慌中散戶抄底）之後一週反而偏漲，都不標
+    let badge = '';
+    if (q.unit !== 'ratio') badge = futuresSpotBadge(q, inst, flows, twii);
+    else if (q.price < 0) badge = '<span class="badge fuel">燃料充足</span>';
+    else if (q.price > 30) {
+      const [m, d] = String(q.dataDate).split('/').map(Number);
+      const v = vixSeries(vix).find(([date]) => Number(date.slice(5, 7)) === m && Number(date.slice(8, 10)) === d)?.[1];
+      if (v != null && v < 25) badge = '<span class="badge warn">FOMO</span>';
+    }
     return `
       <div class="card roomy">
         <div class="head"><div class="name">${q.name}</div>${badge}</div>
@@ -858,10 +867,14 @@
     return i > 0 ? (byDate.get(date) / byDate.get(dates[i - 1]) - 1) * 100 : null;
   }
 
-  function vixHtml(vix, twii) {
+  // 每晚的歷史 + Worker 的最新收盤，[[YYYY-MM-DD, 收盤], …] 由舊到新
+  function vixSeries(vix) {
     const byDate = new Map((vixHistory?.closes ?? []).map((c) => [c.date, c.close]));
     for (const c of vix?.closes ?? []) byDate.set(c.date, c.close);
-    const series = [...byDate.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
+    return [...byDate.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
+  }
+  function vixHtml(vix, twii) {
+    const series = vixSeries(vix);
     if (series.length < 2) return '';
     const [lastDate, last] = series.at(-1);
     const prev = series.at(-2)[1];
@@ -1444,7 +1457,7 @@
         // 抓不到又沒有舊資料可用：只寫「故障」，錯誤細節放在 title（長按 / 滑過可看）
         return `<div class="card"><div class="name">${q.name}</div><div class="meta" title="${esc(q.error)}"><span class="lag">故障</span></div></div>`;
       }
-      if (q.kind === 'daily') return dailyHtml(q, data.institutional, data.flows, byId.twii);
+      if (q.kind === 'daily') return dailyHtml(q, data.institutional, data.flows, byId.twii, data.vix);
       if (q.kind === 'breadth') return '';  // 已經放在台指期後面（我的自選股上面）
       const dir = q.change > 0 ? 'up' : q.change < 0 ? 'down' : '';
       const sign = q.change > 0 ? '+' : '';
