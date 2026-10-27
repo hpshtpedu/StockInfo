@@ -166,7 +166,7 @@
   .hold .fl.ma b.up { color: var(--up); } .hold .fl.ma b.down { color: var(--down); }
   .hold .fl.cmp2 b.down { color: var(--down); }
   .hold .fl.cmp2 b.up { color: var(--up); }
-  .hold .fl.cmp2 b.fp { color: var(--muted); font-weight: 400; }
+  .hold .fl.ma b.fp { color: var(--muted); font-weight: 400; }
   /* 盤中的 15 分 K：占外/投那一行的位置，高度相同 */
   .hold .fl.hk { display: block; }
   .hold .fl.hk .kchart { height: 19px; }
@@ -1042,17 +1042,20 @@
   // 八大買賣台積電（億）：當天有進八大買超／賣超前 30 名才有，排程的 JSON 和 Worker 取最新那天；沒有回 null
   let govLive = null;
   function govTsmc() {
-    const last = [...(govBanks?.days ?? []), ...(govLive?.days ?? [])].map((d) => d.date).sort().at(-1);
+    const last = govLast();
     return [govBanks?.tsmc, govLive?.tsmc].filter((t) => t?.date === last).at(-1) ?? null;
   }
+  const govLast = () => [...(govBanks?.days ?? []), ...(govLive?.days ?? [])].map((d) => d.date).sort().at(-1);
 
-  function lowerToggle(h, firsts) {
+  function lowerToggle(h, firsts, kMode) {
     let second = '';
-    // 2330 外資、投信後面那頁：八大公股行庫買賣台積電；沒進前 30 名寫「—」
+    // 2330 外資、投信後面那頁：八大公股行庫買賣台積電；沒進前 30 名寫「—」。
+    // 跟外資、投信一樣看時間：盤中換成 15 分 K 時不出現；當天還沒公布寫灰色「未公布」
     let gov = '';
-    if (h.code === '2330') {
+    if (h.code === '2330' && !kMode) {
       const t = govTsmc();
-      const v = t ? `<b class="${t.net > 0 ? 'up' : t.net < 0 ? 'down' : ''}">${t.net > 0 ? '+' : ''}${fmt(t.net, 1)}億</b>` : '<b>—</b>';
+      const v = !flowVisible({ date: govLast(), net: {} }) ? '<b class="fp">未公布</b>'
+        : t ? `<b class="${t.net > 0 ? 'up' : t.net < 0 ? 'down' : ''}">${t.net > 0 ? '+' : ''}${fmt(t.net, 1)}億</b>` : '<b>—</b>';
       gov = `<div class="fl ma"><span class="wide">公股 ${v}</span></div>`;
     }
     if (h.code === '2330') {
@@ -1140,7 +1143,7 @@
       const chgText = h.change === 0 ? '0.00' : fmt(abs, chgDigits);
       return `<div class="hold"><div class="top"><span class="k">${h.code}</span><span class="c ${dir}">${arrow}${chgText}</span></div>`
         + `<div class="q ${dir}"><b>${fmt(h.price, digits)}</b><span class="p">(${sign}${fmt(h.changePct, 2)}%)</span></div>`
-        + lowerToggle(h, flowLine(h)) + '</div>';
+        + lowerToggle(h, flowLine(h), kMode) + '</div>';
     };
     // 依欄排：左欄第一組、右欄第二組（格線逐列填，所以交錯排列）
     const rows = Math.max(...groups.map((g) => g.length));
