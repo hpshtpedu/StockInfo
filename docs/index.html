@@ -209,6 +209,14 @@
   .pnl { display: inline-flex; align-items: stretch; border-radius: 999px; overflow: hidden; flex-shrink: 0; }
   .pnl .badge { border-radius: 0; display: inline-flex; align-items: center; }
   .pnl .badge + .badge { border-left: 1px solid var(--bg); padding: 0 6px 0 5px; }
+  /* 台股競猜：一行的扁卡片。按鈕紅漲綠跌；選了的實心，沒選的外框 */
+  .card.guess .gs { display: flex; align-items: center; gap: 8px; margin-left: auto; white-space: nowrap; font-size: clamp(13px, 4vw, 15px); font-variant-numeric: tabular-nums; }
+  .card.guess .gb { font: inherit; font-weight: 700; padding: 2px 12px; border-radius: 999px; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .card.guess .gb.up { color: var(--up); border: 1px solid var(--up); } .card.guess .gb.down { color: var(--down); border: 1px solid var(--down); }
+  .card.guess .gb.up.on { background: var(--up); color: #fff; } .card.guess .gb.down.on { background: var(--down); color: #fff; }
+  .card.guess .gt { color: var(--muted); }
+  .card.guess .win { color: var(--warn); font-weight: 700; }
+  .card.guess .rate { color: var(--muted); }
   .card.flat .bcnt.pend-txt { color: var(--muted); font-weight: 400; font-size: clamp(13px, 4vw, 15px); }
   .seg .k { color: var(--muted); font-weight: 400; margin-right: 2px; }
   .up { color: var(--up); }
@@ -1408,6 +1416,63 @@
     return miniCandles(bars, null, ma);
   }
 
+  // 台股競猜（登入才有）：交易日 08:30-08:59 押今天加權漲或跌，09:00 前可以改；收盤後依加權漲跌開獎，平盤不計。
+  // 押注只記在這台裝置（localStorage，依帳號分開），勝負每次從加權歷史收盤（盤後今天用即時報價）重算，不另外存。
+  // 有押的那天整天顯示（盤中顯示暫時領先／落後），到下一個交易日 08:30 換新的一局；沒押就不顯示
+  const GUESS_KEY = (account) => `guess-v1:${account}`;
+  function guessPicks(account) {
+    try { return JSON.parse(localStorage.getItem(GUESS_KEY(account))) ?? {}; } catch { return {}; }
+  }
+  const guessOpen = (mins) => !isMarketHoliday('tw') && mins >= 8 * 60 + 30 && mins < 9 * 60;
+  // 某天加權收盤漲跌：1 漲、-1 跌、0 平盤、null 還不知道
+  function taiexDir(day, twii) {
+    const c = taiexHistory?.closes ?? [];
+    const i = c.findIndex((x) => x.date === day);
+    if (i > 0) return Math.sign(Math.round((c[i].close - c[i - 1].close) * 100));
+    const tw = new Date(Date.now() + 8 * 3600000);
+    const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+    const today = tw.toISOString().slice(0, 10);
+    if (twii?.time && twDate(twii.time) === day && (day < today || (mins >= 13 * 60 + 35 && twii.state === 'closed')) && Number.isFinite(twii.change)) {
+      return Math.sign(Math.round(twii.change * 100));
+    }
+    return null;
+  }
+  function guessHtml(twii, account) {
+    if (!account) return '';
+    const tw = new Date(Date.now() + 8 * 3600000);
+    const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+    const today = tw.toISOString().slice(0, 10);
+    const picks = guessPicks(account);
+    let win = 0;
+    let n = 0;
+    for (const [d, p] of Object.entries(picks)) {
+      const dir = taiexDir(d, twii);
+      if (!dir) continue;  // 還沒開獎或平盤
+      n++;
+      if (dir === (p === 'up' ? 1 : -1)) win++;
+    }
+    const rate = n ? `<span class="rate">勝率 ${Math.round((100 * win) / n)}%（${win}/${n}）</span>` : '';
+    const card = (body) => `<div class="card wide flat guess"><div class="head"><div class="name">台股競猜</div><span class="gs">${body}</span></div></div>`;
+    const pickTxt = (p) => `<span class="${p}">${p === 'up' ? '▲漲' : '▼跌'}</span>`;
+    if (guessOpen(mins)) {
+      const p = picks[today];
+      const btn = (k) => `<button type="button" class="gb ${k}${p === k ? ' on' : ''}" data-guess="${k}">${k === 'up' ? '漲' : '跌'}</button>`;
+      return card(`${p ? '<span class="gt">09:00 截止</span>' : '<span class="gt">今天加權？</span>'}${btn('up')}${btn('down')}`);
+    }
+    // 最近一局：今天 08:30 前看的是上一個交易日那局
+    const last = Object.keys(picks).sort().at(-1);
+    const lastTrade = twii?.time ? twDate(twii.time) : null;
+    if (!last || (last !== today && last !== lastTrade) || (last !== today && !isMarketHoliday('tw') && mins >= 8 * 60 + 30)) return '';
+    const p = picks[last];
+    const dir = taiexDir(last, twii);
+    let res = '';
+    if (dir != null) res = dir === 0 ? '<span class="gt">平手</span>' : dir === (p === 'up' ? 1 : -1) ? '<span class="win">勝</span>' : '<span class="gt">負</span>';
+    else if (last === today && twii?.time && twDate(twii.time) === today && Number.isFinite(twii.change) && twii.change !== 0) {
+      res = `<span class="gt">${(twii.change > 0) === (p === 'up') ? '暫時領先' : '暫時落後'}</span>`;
+    }
+    return card(`<span>押${pickTxt(p)}</span>${res}${rate}`);
+  }
+
   function render(data, margin, profile) {
     lastRenderArgs = [data, margin, profile];
     data = keepNewest(data);
@@ -1430,7 +1495,7 @@
     // 分類：台股盤中（加權起）、國際市場（費半起）、台股盤後（三大法人全寬卡片、台指VIX 起）
     const section = (title) => `<div class="section" data-sec="${title}"><span>${title}</span><span class="sec-tg">▾</span></div>`;
     const before = {
-      twii: section('台股盤中'),
+      twii: guessHtml(byId.twii, window.PrivateVault?.profile?.() ?? null) + section('台股盤中'),
       sox: section('國際市場'),
       retailRatio: section('台股盤後'),
     };
@@ -1634,6 +1699,18 @@
   });
   // 自選股方塊下半部：點一下換下一頁（K 線或外資、投信 → 公股 → 月季線／殖利率／複利差）
   $list.addEventListener('click', (e) => {
+    const g = e.target.closest('[data-guess]');
+    if (g) {
+      const account = window.PrivateVault?.profile?.();
+      const tw = new Date(Date.now() + 8 * 3600000);
+      if (account && guessOpen(tw.getUTCHours() * 60 + tw.getUTCMinutes())) {  // 09:00 後按到舊畫面的按鈕不算
+        const picks = guessPicks(account);
+        picks[tw.toISOString().slice(0, 10)] = g.dataset.guess;
+        try { localStorage.setItem(GUESS_KEY(account), JSON.stringify(picks)); } catch {}
+      }
+      if (lastRenderArgs) render(...lastRenderArgs);
+      return;
+    }
     const tw2 = e.target.closest('.tw2.sw');
     if (tw2) {
       txKPage = 1 - txKPage;
