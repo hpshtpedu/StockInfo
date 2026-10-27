@@ -38,6 +38,9 @@
   .wg-result { left: 50%; top: calc((68% - 8px) / 2); width: 40%; height: auto; transform: translate(-50%, -50%) scale(.6); opacity: 0; z-index: 3;
     transition: opacity .6s, transform .6s cubic-bezier(.2, 1.6, .4, 1); }
   .wg-result.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  /* 勝敗印章邊緣一層薄光：VICTORY 帝皇金、DEFEAT 大不淨者綠（跟神祇的光同色） */
+  .wg-result[src$="/win.webp"] { filter: drop-shadow(0 0 1px #ffd700) drop-shadow(0 0 3px rgba(255, 215, 0, .7)); }
+  .wg-result[src$="/loss.webp"] { filter: drop-shadow(0 0 1px #00ff00) drop-shadow(0 0 3px rgba(0, 255, 0, .7)); }
   /* 盤前 VS：V 包納垢綠、S 包帝皇金（跟神祇的光一樣），字邊先一圈黑暈跟背景隔開（左邊背景也是綠的），再兩層光暈往外散，字才浮得出來。
      做法：上層是沒加光的原圖；下面兩張光暈層用漸層遮罩在中間（43%～57%）交叉淡化，綠光慢慢過渡成金光，沒有切線。
      padding 讓遮罩範圍比圖大一圈，外側光暈不被截掉 */
@@ -316,7 +319,7 @@
   // 5：納垢褻瀆者／摩托警衛；6：納垢無畏機甲／克里格重型武器小隊；f：飛行兵種（瘟疫兵蜂／風暴速攻艇，不貼地）。
   // 第三個數字是帝皇那邊不一樣的高度
   const UNIT = { m: ['mini_troops', 0.6], n: ['mini_troops2', 0.6], B: ['troops', 1], 2: ['troops2', 0.9], 3: ['troops3', 0.94],
-    4: ['troops4', 0.95], o: ['mini_troops3', 0.36, 0.6], 5: ['troops5', 0.95, 0.78], 6: ['troops6', 0.95, 0.6], f: ['troops_fly', 0.5, 0.8] };
+    4: ['troops4', 0.95], o: ['mini_troops3', 0.36, 0.6], 5: ['troops5', 0.95, 0.624], 6: ['troops6', 0.95, 0.72], f: ['troops_fly', 0.5, 0.8] };
   const uh = (side, kind) => UNIT[kind][side === 'emp' && UNIT[kind][2] ? 2 : 1];
   const ASPECT = { GUO_troops: 1.969, Emperor_troops: 1.312, GUO_mini_troops: 0.698, Emperor_mini_troops: 1.365,
     GUO_mini_troops2: 0.823, Emperor_mini_troops2: 0.656,
