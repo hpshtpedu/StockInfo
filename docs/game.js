@@ -106,6 +106,7 @@
   .wg-god.wg-flashw { animation: wg-flashw .2s linear 1; }  /* 寫兩個 class：被普通攻擊打過會留著 .wg-hurt，它的 animation 不能蓋掉閃白 */
   @keyframes wg-flashw { 8%, 65% { filter: brightness(0) invert(1) drop-shadow(0 0 4px #fff); } }
   .wg-float.say.big { font-size: 46px; }  /* 必殺技口號：比一般台詞大很多 */
+  .wg-float.say.sk { color: rgb(90,170,255); } .wg-float.say.rg { color: rgb(0,255,0); }  /* 盟友招式名：寂靜王藍、雨父綠（跟光暈同色） */
   .wg-float.ult.up { color: #ffd100; } .wg-float.ult.down { color: #8dff3a; }
   @keyframes wg-ult { 0% { opacity: 0; transform: translate(-50%, 0) scale(3); } 8% { opacity: 1; transform: translate(-50%, -2px) scale(1.6); }
     20% { transform: translate(-50%, -4px) scale(1.25); } 65% { opacity: 1; transform: translate(-50%, -10px) scale(1.2); }
@@ -495,15 +496,15 @@
 
   function hit() {
     if (raid || summon) return;  // 亂入、召喚中：兩尊神暫停出手
-    // 亂入（交火時每次攻擊 1/300，每 3 秒一次 → 大約 15 分鐘一次）
+    // 亂入（交火時每次攻擊 1/100，每 3 秒一次 → 大約 5 分鐘一次）
     // 下一個要亂入的角色先在背景下載好（4G 也不會等），還沒下載完就不亂入
     if (el.classList.contains('wg-battle')) {
       loadRaider(nextRaid);
-      if (raidReady[nextRaid] && Math.random() < 1 / 300) { warp(nextRaid); nextRaid = Math.floor(Math.random() * RAIDERS.length); return; }
-      // 召喚盟友（同樣 1/300，大約 15 分鐘一次）：哪邊召喚跟出手一樣看情勢分數；圖也是先在背景下載好才會召喚
+      if (raidReady[nextRaid] && Math.random() < 1 / 100) { warp(nextRaid); nextRaid = Math.floor(Math.random() * RAIDERS.length); return; }
+      // 召喚盟友（同樣 1/100，大約 5 分鐘一次）：哪邊召喚跟出手一樣看情勢分數；圖也是先在背景下載好才會召喚
       loadAlly(true); loadAlly(false);
       const sb = Math.random() < 0.5 + 0.42 * score(pctNow());
-      if (allyReady(sb) && Math.random() < 1 / 300) { summonAlly(sb); return; }
+      if (allyReady(sb) && Math.random() < 1 / 100) { summonAlly(sb); return; }
     }
     const pct = pctNow();
     const counter = counterattack(pct);
@@ -522,8 +523,8 @@
     const x = bull ? gR + 2 + Math.random() * 8 : eL - 2 - Math.random() * 8;
     // 神祇出手：多方＝帝皇揮劍氣打大不淨者，空方＝大不淨者吐口水打帝皇；爆擊連打兩發
     const side = bull ? 'up' : 'down';
-    // 必殺技（5%，大約一分鐘一次；除錯模式 25%）：喊招式名、播動圖，被打方白閃三次、跳三個大傷害（各約 ×2）
-    if (Math.random() < (debug ? 0.25 : 0.05)) {
+    // 必殺技（10%，大約 30 秒一次；除錯模式 25%）：喊招式名、播動圖，被打方白閃三次、跳三個大傷害（各約 ×2）
+    if (Math.random() < (debug ? 0.25 : 0.1)) {
       fireSpecial(bull, dmg, x);
       return;
     }
@@ -864,8 +865,8 @@
   // 神（靜止圖）淡入、再接著播。另一尊神照常動，但兩尊神都不出手；同時只會有一個召喚，也不跟亂入重疊。
   // 攻擊動圖每格 100ms：統御王座 45 格 4.5 秒，第 23～37 格連環爆炸；納垢大暴雨 40 格 4 秒，第 25～37 格大雨落地
   const ALLY = {
-    emp: { who: 'Summon_SilentKing', fx: 'Emperor_Summon_attack', call: '召喚寂靜王！', hk: 1.05, ms: 4500, gaps: [2300, 2600, 2900, 3200, 3500, 3700] },
-    guo: { who: 'Summon_Rotigus', fx: 'GUO_Summon_attack', call: '召喚雨父！', hk: 1.05, ms: 4000, gaps: [2500, 2800, 3100, 3400, 3700] },
+    emp: { who: 'Summon_SilentKing', fx: 'Emperor_Summon_attack', call: '召喚寂靜王！', move: '統御王座！', hk: 1.05, ms: 4500, gaps: [2300, 2600, 2900, 3200, 3500, 3700] },
+    guo: { who: 'Summon_Rotigus', fx: 'GUO_Summon_attack', call: '召喚雨父！', move: '納垢暴雨！', hk: 1.05, ms: 4000, gaps: [2500, 2800, 3100, 3400, 3700] },
   };
   const loadAlly = (bull) => { const S = ALLY[bull ? 'emp' : 'guo']; return Promise.all([loadBlob(S.who), loadBlob(S.fx)]); };
   const allyReady = (bull) => { const S = ALLY[bull ? 'emp' : 'guo']; return !!(spBlob[S.who] && spBlob[S.fx]); };
@@ -902,6 +903,8 @@
     ally.style.left = `${Math.min(a.width - w + pad, Math.max(-pad, cx - w / 2))}px`;
     ally.style.top = `${g.bottom - a.top - (g.height * 24) / 288 - (h - pad)}px`;
     later(1800, () => { arena.appendChild(ally); void ally.offsetWidth; ally.classList.add('on'); });
+    // 淡入完喊招式名，字用盟友的光暈色
+    later(2400, () => float(S.move, bull ? 'up' : 'down', false, null, ` say hi big ${bull ? 'sk' : 'rg'}`));
     // 攻擊：數字在被打的神旁邊（大傷害，上中下錯開）
     const side = bull ? 'up' : 'down';
     const x = bull ? ((guo.getBoundingClientRect().right - a.left) / a.width) * 100 + 5 : ((emp.getBoundingClientRect().left - a.left) / a.width) * 100 - 5;
