@@ -1084,10 +1084,12 @@
         const h = a.height * 0.68 - 14;                                    // 神祇顯示高度
         const widest = Math.max(h * 0.82 * (343 / 240), h * 0.82 * (251 / 240));  // Emperor_win、GUO_loss（顯示 82%）的寬
         const ratio = meta.win ? meta.win.w / meta.win.h : 2.8;  // 一律照 win 的大小：DEFEAT、VS 用同樣高度
-        const w = Math.max(40, Math.min(2 * (a.width / 2 - widest) - 12, (a.height * 0.68 - 16) * ratio));
+        // 勝敗印章放卡片整個高度的正中間（部隊已淡出），高度上限放寬；VS 照舊在上方兩尊神中間
+        const w = Math.max(40, Math.min(2 * (a.width / 2 - widest) - 12, (a.height * (done ? 1 : 0.68) - 16) * ratio));
         stamp.style.width = 'auto';
         stamp.style.height = `${w / ratio}px`;
         stamp.style.left = '50%';
+        stamp.style.top = done ? '50%' : '';
         for (const g of vsg) { g.style.width = 'auto'; g.style.height = stamp.style.height; }
       }
     }
