@@ -1418,7 +1418,7 @@
 
   // 台股競猜（登入才有）：交易日 08:30-08:59 押今天加權漲或跌，09:00 前可以改；收盤後依加權漲跌開獎，平盤不計。
   // 押注只記在這台裝置（localStorage，依帳號分開），勝負每次從加權歷史收盤（盤後今天用即時報價）重算，不另外存。
-  // 有押的那天整天顯示（盤中顯示暫時領先／落後），到下一個交易日 08:30 換新的一局；沒押只放勝率（交易日 09:00 後寫「本日未押注」）。勝率一直顯示
+  // 有押的那天整天顯示（盤中只寫押什麼），到下一個交易日 08:30 換新的一局；沒押只放勝率（交易日 09:00 後寫「本日未押注」）。勝率一直顯示
   const GUESS_KEY = (account) => `guess-v1:${account}`;
   function guessPicks(account) {
     try { return JSON.parse(localStorage.getItem(GUESS_KEY(account))) ?? {}; } catch { return {}; }
@@ -1471,9 +1471,6 @@
     const dir = taiexDir(last, twii);
     let res = '';
     if (dir != null) res = dir === 0 ? '<span class="gt">平手</span>' : dir === (p === 'up' ? 1 : -1) ? '<span class="win">勝</span>' : '<span class="gt">負</span>';
-    else if (last === today && twii?.time && twDate(twii.time) === today && Number.isFinite(twii.change) && twii.change !== 0) {
-      res = `<span class="gt">${(twii.change > 0) === (p === 'up') ? '暫時領先' : '暫時落後'}</span>`;
-    }
     return card(`<span>押${pickTxt(p)}</span>${res}${rate}`);
   }
 
