@@ -1471,7 +1471,7 @@
       n++;
       if (dir === (p === 'up' ? 1 : -1)) win++;
     }
-    const rate = `<span class="rate">勝率 ${n ? Math.round((100 * win) / n) : 0}%(共${n}次)</span>`;
+    const rate = `<span class="rate">勝率 ${n ? Math.round((100 * win) / n) : 0}% (共${n}次)</span>`;
     const card = (body) => `<div class="card wide flat guess"><div class="head"><div class="name">台股競猜</div><span class="gs">${body}</span></div></div>`;
     const pickTxt = (p) => `<span class="${p}">${p === 'up' ? '▲漲' : '▼跌'}</span>`;
     if (guessOpen(mins)) {
