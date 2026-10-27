@@ -1067,11 +1067,11 @@
       // 私人頁有填買進紀錄就改算持股版
       const buys = privateLots?.buys?.['00685L'];
       const x = buys?.length ? holdingCompounding(buys, twiiQuote) : netCompounding(240, twiiQuote);
-      const span = buys?.length ? '持股' : '年';
+      const span = buys?.length ? '' : '(年)';  // 持股版不加括號
       const r = x == null ? null : Math.round(x * 10) / 10;
       const cls = r > 0 ? 'up' : r < 0 ? 'down' : '';
       second = `<div class="fl ma cmp2"><span class="wide">${r == null ? '複利差 <b class="fp">資料不足</b>'
-        : `${r >= 0 ? '複利加速' : '波動損耗'}(${span}) <b class="${cls}">${Math.abs(r).toFixed(1)}pp</b>`}</span></div>`;
+        : `${r >= 0 ? '複利加速' : '波動損耗'}${span} <b class="${cls}">${Math.abs(r).toFixed(1)}pp</b>`}</span></div>`;
     } else if (h.code === '0056' || h.code === '00878') {
       const y = etfYield?.[h.code]?.yield;
       second = `<div class="fl ma"><span class="wide">殖利率 <b>${Number.isFinite(y) ? `${y.toFixed(2)}%` : '—'}</b></span></div>`;
