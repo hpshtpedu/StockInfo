@@ -31,7 +31,9 @@
   /* 帝皇敗北立繪比較大，縮成 8 成。王座底部是平的，貼底會看起來比對面低：取頭對齊（抬 20%）和底對齊（不抬）的中間，抬 10% */
   /* 帝皇勝利、大不淨者敗北立繪比較胖，縮成 82%，看起來跟盤中差不多大（底部照樣貼齊） */
   .wg-emp[src*="Emperor_win"], .wg-guo[src*="GUO_loss"] { height: calc((68% - 14px) * .82 * 1.2); bottom: calc(32% + 8px - (68% - 14px) * .082); }
-  .wg-emp[src*="Emperor_loss"] { height: calc((68% - 14px) * .8 * 1.2); bottom: calc(32% + 8px + (68% - 14px) * .1 - (68% - 14px) * .08); }
+  .wg-emp[src*="Emperor_loss"] { height: calc((68% - 14px) * .8 * 1.2 * var(--k, 1)); bottom: calc(32% + 8px + (68% - 14px) * .02 * var(--k, 1)); }
+  /* 收跌：兩尊神照 --k 等比縮小（腳還是踩在地上），讓 DEFEAT 跟 VICTORY 一樣大；--k 由 draw() 算 */
+  .wg-guo[src*="GUO_win"] { height: calc((68% - 14px) * 1.2 * var(--k, 1)); bottom: calc(32% + 8px - (68% - 14px) * .1 * var(--k, 1)); }
   /* 收盤結果印章（win／loss）：上方兩尊神中間的空白正中央，寬度依實際空間調整（不蓋到神），結算時才出現 */
   .wg-result { left: 50%; top: calc((68% - 8px) / 2); width: 40%; height: auto; transform: translate(-50%, -50%) scale(.6); opacity: 0; z-index: 3;
     transition: opacity .6s, transform .6s cubic-bezier(.2, 1.6, .4, 1); }
@@ -376,10 +378,16 @@
   fetch(`${A}meta.json`).then((r) => r.json()).then((m) => { meta = m; draw(false); }).catch(() => {});
   // 立繪每一列不透明部分的左右界（0～1，整列透明是 null），每張圖算一次；圖還沒載完先回 null，載完再重畫
   const alphaCache = {};
+  const sprite = Object.fromEntries(['GUO_loss', 'Emperor_win', 'GUO_win', 'Emperor_loss', 'win', 'loss'].map((n) => {
+    const i = new Image(); i.src = `${A}${n}.webp`; return [n, i];
+  }));
   function alphaRows(img) {
     const src = img.src;
     if (src in alphaCache) return alphaCache[src];
-    if (!img.complete || !img.naturalWidth) { img.addEventListener('load', () => draw(false), { once: true }); return null; }
+    if (!img.complete || !img.naturalWidth) {
+      if (!img.dataset.wait) { img.dataset.wait = 1; img.addEventListener('load', () => { delete img.dataset.wait; draw(false); }, { once: true }); }
+      return null;
+    }
     alphaCache[src] = null;
     try {
       const W = 128, N = 96, c = document.createElement('canvas');
@@ -1047,8 +1055,8 @@
       const gh = guo.getBoundingClientRect().height || 0;
       // 圖四邊各有 24/288 的光暈留白：往外推出卡片邊緣，人物還是貼著左右邊（光暈超出的部分被切掉）
       const pad = Math.round(gh * 24 / 288);
-      // DEFEAT 結算：兩尊神往中間收一點（光暈露出來，再多 4px），不貼著卡片左右邊
-      const edge = done && !bullWin ? 4 : -pad;
+      // 結算：兩尊神往中間收一點（光暈露出來，再多 4px），不貼著卡片左右邊
+      const edge = done ? 4 : -pad;
       guo.style.left = `${edge}px`;
       if (!done && gh && meta.Emperor && meta.GUO) {
         const gw = gh * meta.GUO.w / meta.GUO.h, ew = gh * meta.Emperor.w / meta.Emperor.h;
@@ -1109,22 +1117,42 @@
         // 勝敗印章放卡片整個高度的正中間（部隊已淡出），高度上限放寬；VS 照舊在上方兩尊神中間
         let w = Math.max(40, Math.min(2 * (a.width / 2 - widest) - 12, (a.height * (done ? 1 : 0.68) - 16) * ratio));
         // 結算：照實際畫到的輪廓（立繪、印章都有透明的地方，例如帝皇劍下面、印章四角），從最大往下試，
-        // 印章每一列都不碰到同一高度兩尊神的輪廓（留 4px）就用這個大小
-        const gr = done && alphaRows(guo), er = done && alphaRows(emp), sr = done && alphaRows(stamp);
-        if (gr && er && sr) {
-          const g = guo.getBoundingClientRect(), e = emp.getBoundingClientRect(), cx = a.width / 2, cy = a.height / 2;
-          const at = (b, rows, y) => rows[Math.floor((y + a.top - b.top) / b.height * rows.length)];  // 圖框外是 undefined
-          for (let sh = a.height - 16; sh >= 20; sh -= 2) {
-            const sw = sh * ratio;
-            const ok = sw <= a.width - 8 && sr.every((s, j) => {
-              if (!s) return true;
-              const y = cy - sh / 2 + (j + 0.5) / sr.length * sh, gl = at(g, gr, y), el = at(e, er, y);
-              return (!gl || cx + (s[0] - 0.5) * sw >= g.left - a.left + gl[1] * g.width + 4)
-                && (!el || cx + (s[1] - 0.5) * sw <= e.left - a.left + el[0] * e.width - 4);
-            });
-            w = Math.max(40, sw);
-            if (ok) break;
+        // 印章每一列都不碰到同一高度兩尊神的輪廓（留 4px）就用這個高度。神的位置照 CSS 算（不受動畫影響），貼左右 4px。
+        // 收跌：DEFEAT 跟收漲時的 VICTORY 一樣高，放不下就把兩尊神等比縮小（最多到 6 成）
+        const R = (n) => alphaRows(sprite[n]);
+        if (done && ['GUO_loss', 'Emperor_win', 'GUO_win', 'Emperor_loss', 'win', 'loss'].every(R)) {
+          const H0 = a.height * 0.68 - 14, cx = a.width / 2, cy = a.height / 2, base = a.height * 0.32 + 8;
+          const box = (n, hh, bot, left) => {
+            const bw = hh * sprite[n].naturalWidth / sprite[n].naturalHeight;
+            return { left: left ? 4 : a.width - 4 - bw, top: a.height - bot - hh, width: bw, height: hh, rows: R(n) };
+          };
+          const at = (b, y) => b.rows[Math.floor((y - b.top) / b.height * b.rows.length)];  // 圖框外是 undefined
+          const fit = (g, e, n) => {  // 放得下的最大印章高度
+            const sr = R(n), ar = sprite[n].naturalWidth / sprite[n].naturalHeight;
+            let sh = a.height - 16;
+            for (; sh > 20; sh -= 1) {
+              const sw = sh * ar;
+              if (sw <= a.width - 8 && sr.every((x, j) => {
+                if (!x) return true;
+                const y = cy - sh / 2 + (j + 0.5) / sr.length * sh, gl = at(g, y), el = at(e, y);
+                return (!gl || cx + (x[0] - 0.5) * sw >= g.left + gl[1] * g.width + 4)
+                  && (!el || cx + (x[1] - 0.5) * sw <= e.left + el[0] * e.width - 4);
+              })) break;
+            }
+            return sh;
+          };
+          const wh = H0 * 0.82 * 1.2, wb = base - H0 * 0.082;
+          const target = fit(box('GUO_loss', wh, wb, true), box('Emperor_win', wh, wb, false), 'win');
+          let k = 1, sh = target;
+          if (!bullWin) {
+            for (; k > 0.6; k -= 0.02) {
+              sh = fit(box('GUO_win', H0 * 1.2 * k, base - H0 * 0.1 * k, true), box('Emperor_loss', H0 * 0.96 * k, base + H0 * 0.02 * k, false), 'loss');
+              if (sh >= target) break;
+            }
+            sh = Math.min(sh, target);
           }
+          for (const x of [guo, emp]) x.style.setProperty('--k', k.toFixed(2));
+          w = sh * ratio;
         }
         stamp.style.width = 'auto';
         stamp.style.height = `${w / ratio}px`;
