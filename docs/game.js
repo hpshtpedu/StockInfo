@@ -301,18 +301,19 @@
   // 條高，再加一點固定的亂數），所以從戰線到卡片邊緣一樣密、彼此疊在一起；排到約 12 倍條高，超出卡片的不畫。
   // 每個單位：[種類, 離戰線多遠（中心點，以亞空間條高度為單位）, 大小, 離底部幾 px（越高＝越遠，疊在越後面）]。
   // 前幾個一定有 2、3，手機上窄窄的一半也看得到新兵種
-  function formation(kinds, seed) {
+  // tight：小兵間距再縮多少（大不淨者的小兵比較窄，同樣間距看起來比較稀）
+  function formation(kinds, seed, tight = 0) {
     const r = (i, n) => { const x = Math.sin(seed + i * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x); };
     let d = 0.25;
     return [...kinds].map((k, i) => {
       const u = [k, +d.toFixed(2), +(0.88 + 0.12 * r(i, 1)).toFixed(2), Math.floor(r(i, 2) * 6)];
-      d += (k === 'o' ? 0.3 : 'mnp'.includes(k) ? 0.4 : 0.55) + 0.2 * r(i, 3);
+      d += (k === 'o' ? 0.3 - tight : 'mnp'.includes(k) ? 0.4 - tight : 0.55) + 0.2 * r(i, 3);
       return u;
     });
   }
   // 組成：一般兵種（含大部隊）少一點免得互相擋住，每個一般兵種配 3 個小兵；飛行兵種大不淨者 4 隻、帝皇 2 架
   const ARMY = {
-    guo: formation('m3nom2nfom7nmn5ogmnBmno4mfnm6onmBngmn3omn2mn', 1),
+    guo: formation('m3nom2nfom7nmn5ogmnBmno4mfnm6onmBngmn3omn2mn', 1, 0.1),
     emp: formation('m2npo3mnp9mno8mnpBmfno7mnp5mon4mpn6mnoBpgmn3mpn2oo', 2),
   };
   // 種類 → 圖檔、高度（大部隊的幾倍）。2：大不淨者的納垢獸／帝皇的坦克；3：大不淨者的騎士／帝皇的苦修戰士；
