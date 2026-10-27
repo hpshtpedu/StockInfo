@@ -374,6 +374,28 @@
   for (const n of ['Emperor_attack', 'GUO_attack', 'Emperor_attack2', 'GUO_attack2', 'Emperor_attack1_2', 'GUO_attack1_2',
     'Emperor_attack2_2', 'GUO_attack2_2', 'damage', 'heart']) new Image().src = `${A}${n}.webp`;
   fetch(`${A}meta.json`).then((r) => r.json()).then((m) => { meta = m; draw(false); }).catch(() => {});
+  // 立繪每一列不透明部分的左右界（0～1，整列透明是 null），每張圖算一次；圖還沒載完先回 null，載完再重畫
+  const alphaCache = {};
+  function alphaRows(img) {
+    const src = img.src;
+    if (src in alphaCache) return alphaCache[src];
+    if (!img.complete || !img.naturalWidth) { img.addEventListener('load', () => draw(false), { once: true }); return null; }
+    alphaCache[src] = null;
+    try {
+      const W = 128, N = 96, c = document.createElement('canvas');
+      c.width = W; c.height = N;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.drawImage(img, 0, 0, W, N);
+      const d = g.getImageData(0, 0, W, N).data, rows = [];
+      for (let y = 0; y < N; y++) {
+        let l = -1, r = -1;
+        for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 48) { if (l < 0) l = x; r = x; }
+        rows.push(l < 0 ? null : [l / W, (r + 1) / W]);
+      }
+      alphaCache[src] = rows;
+    } catch (e) { /* 讀不到像素就照舊用圖框估 */ }
+    return alphaCache[src];
+  }
   // 中性新聞故事線（game/story.json，由 mini_game/storyline.txt 產生）：併進銀河快訊的抽選池
   fetch(`${A}story.json`).then((r) => r.json()).then((s) => { if (Array.isArray(s)) D.galaxy = D.galaxy.concat(s); }).catch(() => {});
   // 最近的波動度 σ：今天以前 20 個交易日日漲跌（%）的標準差，最低 0.8%（taiex_history.json，每晚更新）。
@@ -1078,14 +1100,32 @@
     for (const g of vsg) g.classList.toggle('on', standby && !done);
     if (done || standby) {
       // 以卡片中線置中，左右空隙一樣：寬度＝離中線最近的神祇邊緣到中線的距離 × 2。
-      // 用「收漲」那組立繪（帝皇勝利立繪最寬）算，收跌的 DEFEAT 也用同一個大小
+      // VS 用「收漲」那組立繪（帝皇勝利立繪最寬）的圖框估；結算的 VICTORY／DEFEAT 照實際輪廓算
       const a = arena.getBoundingClientRect();
       if (a.width) {
         const h = a.height * 0.68 - 14;                                    // 神祇顯示高度
         const widest = Math.max(h * 0.82 * (343 / 240), h * 0.82 * (251 / 240));  // Emperor_win、GUO_loss（顯示 82%）的寬
         const ratio = meta.win ? meta.win.w / meta.win.h : 2.8;  // 一律照 win 的大小：DEFEAT、VS 用同樣高度
         // 勝敗印章放卡片整個高度的正中間（部隊已淡出），高度上限放寬；VS 照舊在上方兩尊神中間
-        const w = Math.max(40, Math.min(2 * (a.width / 2 - widest) - 12, (a.height * (done ? 1 : 0.68) - 16) * ratio));
+        let w = Math.max(40, Math.min(2 * (a.width / 2 - widest) - 12, (a.height * (done ? 1 : 0.68) - 16) * ratio));
+        // 結算：照實際畫到的輪廓（立繪、印章都有透明的地方，例如帝皇劍下面、印章四角），從最大往下試，
+        // 印章每一列都不碰到同一高度兩尊神的輪廓（留 4px）就用這個大小
+        const gr = done && alphaRows(guo), er = done && alphaRows(emp), sr = done && alphaRows(stamp);
+        if (gr && er && sr) {
+          const g = guo.getBoundingClientRect(), e = emp.getBoundingClientRect(), cx = a.width / 2, cy = a.height / 2;
+          const at = (b, rows, y) => rows[Math.floor((y + a.top - b.top) / b.height * rows.length)];  // 圖框外是 undefined
+          for (let sh = a.height - 16; sh >= 20; sh -= 2) {
+            const sw = sh * ratio;
+            const ok = sw <= a.width - 8 && sr.every((s, j) => {
+              if (!s) return true;
+              const y = cy - sh / 2 + (j + 0.5) / sr.length * sh, gl = at(g, gr, y), el = at(e, er, y);
+              return (!gl || cx + (s[0] - 0.5) * sw >= g.left - a.left + gl[1] * g.width + 4)
+                && (!el || cx + (s[1] - 0.5) * sw <= e.left - a.left + el[0] * e.width - 4);
+            });
+            w = Math.max(40, sw);
+            if (ok) break;
+          }
+        }
         stamp.style.width = 'auto';
         stamp.style.height = `${w / ratio}px`;
         stamp.style.left = '50%';
