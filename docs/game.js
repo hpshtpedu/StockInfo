@@ -1167,7 +1167,7 @@
       const text = newCounter ? (counter === 'bear' ? D.counterBear : D.counterBull)
         : closedSign ? ''  // 休市：跑馬燈那列空著
         : done ? (bullWin ? D.bullWin : D.bearWin)  // 收盤後（和開盤前）停在勝負台詞，不捲動
-        : phase === 'pre' ? '【待命】雙方大軍集結於亞空間兩端，等待 09:00 開盤號角'
+        : phase === 'pre' ? '【待命】雙方大軍集結於亞空間兩端'
           : report(pct, hhmm, rareEvent(data.twii, data.tsmc, pct));
       const span = $('.wg-ticker span');
       span.textContent = text;
