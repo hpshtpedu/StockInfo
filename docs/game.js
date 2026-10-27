@@ -903,7 +903,7 @@
   // 神（靜止圖）淡入、再接著播。另一尊神照常動，但兩尊神都不出手；同時只會有一個召喚，也不跟亂入重疊。
   // 攻擊動圖每格 100ms：統御王座 45 格 4.5 秒，第 23～37 格連環爆炸；納垢大暴雨 40 格 4 秒，第 25～37 格大雨落地
   const ALLY = {
-    emp: { who: 'Summon_SilentKing', fx: 'Emperor_Summon_attack', call: '召喚寂靜王！', move: '統御王座！', hk: 1.05, ms: 4500, gaps: [2300, 2600, 2900, 3200, 3500, 3700] },
+    emp: { who: 'Summon_SilentKing', fx: 'Emperor_Summon_attack', call: '召喚寂靜王！', move: '統御王座！', hk: 0.84, ms: 4500, gaps: [2300, 2600, 2900, 3200, 3500, 3700] },
     guo: { who: 'Summon_Rotigus', fx: 'GUO_Summon_attack', call: '召喚雨父！', move: '納垢暴雨！', hs: 0.9, hk: 1.05, ms: 4000, gaps: [2500, 2800, 3100, 3400, 3700] },
   };
   const loadAlly = (bull) => { const S = ALLY[bull ? 'emp' : 'guo']; return Promise.all([loadBlob(S.who), loadBlob(S.fx)]); };
