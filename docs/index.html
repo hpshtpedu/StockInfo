@@ -1418,7 +1418,7 @@
 
   // 台股競猜（登入才有）：交易日 08:30-08:59 押今天加權漲或跌，09:00 前可以改；收盤後依加權漲跌開獎，平盤不計。
   // 押注只記在這台裝置（localStorage，依帳號分開），勝負每次從加權歷史收盤（盤後今天用即時報價）重算，不另外存。
-  // 有押的那天整天顯示（盤中顯示暫時領先／落後），到下一個交易日 08:30 換新的一局；沒押就不顯示
+  // 有押的那天整天顯示（盤中顯示暫時領先／落後），到下一個交易日 08:30 換新的一局；沒押就寫下次幾點開放。勝率一直顯示
   const GUESS_KEY = (account) => `guess-v1:${account}`;
   function guessPicks(account) {
     try { return JSON.parse(localStorage.getItem(GUESS_KEY(account))) ?? {}; } catch { return {}; }
@@ -1451,7 +1451,7 @@
       n++;
       if (dir === (p === 'up' ? 1 : -1)) win++;
     }
-    const rate = n ? `<span class="rate">勝率 ${Math.round((100 * win) / n)}%（${win}/${n}）</span>` : '';
+    const rate = `<span class="rate">勝率 ${n ? Math.round((100 * win) / n) : 0}%（${win}/${n}）</span>`;
     const card = (body) => `<div class="card wide flat guess"><div class="head"><div class="name">台股競猜</div><span class="gs">${body}</span></div></div>`;
     const pickTxt = (p) => `<span class="${p}">${p === 'up' ? '▲漲' : '▼跌'}</span>`;
     if (guessOpen(mins)) {
@@ -1462,7 +1462,16 @@
     // 最近一局：今天 08:30 前看的是上一個交易日那局
     const last = Object.keys(picks).sort().at(-1);
     const lastTrade = twii?.time ? twDate(twii.time) : null;
-    if (!last || (last !== today && last !== lastTrade) || (last !== today && !isMarketHoliday('tw') && mins >= 8 * 60 + 30)) return '';
+    if (!last || (last !== today && last !== lastTrade) || (last !== today && !isMarketHoliday('tw') && mins >= 8 * 60 + 30)) {
+      // 下一局：今天是交易日且還沒 08:30 就是今天，不然往後找下一個交易日
+      let d = today;
+      const trading = (ymd) => { const wd = new Date(ymd + 'T00:00:00Z').getUTCDay(); return wd !== 0 && wd !== 6 && !holidays.has(ymd); };
+      if (!(trading(today) && mins < 8 * 60 + 30)) {
+        do d = new Date(Date.parse(d + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10); while (!trading(d));
+      }
+      const md = d === today ? '今天' : `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`;
+      return card(`<span class="gt">${md} 08:30 開放</span>${rate}`);
+    }
     const p = picks[last];
     const dir = taiexDir(last, twii);
     let res = '';
