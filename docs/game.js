@@ -311,21 +311,24 @@
     });
   }
   const ARMY = {
-    guo: formation('mo3nfBm25n4om3nm6B2mof4Bn35mBon2m6nB3m', 1),
-    emp: formation('m2n5oB3mf4n2om6Bn3m5B2no4mfBn3om6B2n', 2),
+    guo: formation('mo3n7fBm25n4gom3nm6B2mo7f4Bn35mBgon2m6nB3m', 1),
+    emp: formation('m2n5o7B3mf4n2gom6Bn3m5B72no4mfgBn3om6B2n', 2),
   };
   // 種類 → 圖檔、高度（大部隊的幾倍）。2：大不淨者的納垢獸／帝皇的坦克；3：大不淨者的騎士／帝皇的苦修戰士；
   // 4：大不淨者的惡魔引擎／帝皇的土星無畏；o：大不淨者的納垢靈（小兵的六成高）／帝皇的叢林戰士（跟小兵一樣高）；
-  // 5：納垢褻瀆者／摩托警衛；6：納垢無畏機甲／克里格重型武器小隊；f：飛行兵種（瘟疫兵蜂／風暴速攻艇，不貼地）。
+  // 5：納垢褻瀆者／摩托警衛；6：納垢無畏機甲／克里格重型武器小隊；7：納垢蝸牛獸／蘭德掠襲者；
+  // f、g：飛行兵種（瘟疫兵蜂／風暴速攻艇；第二種是大不淨者的大飛蟲／帝皇的風暴鴉，不貼地）。
   // 第三個數字是帝皇那邊不一樣的高度
   const UNIT = { m: ['mini_troops', 0.6], n: ['mini_troops2', 0.6], B: ['troops', 1], 2: ['troops2', 0.9], 3: ['troops3', 0.94],
-    4: ['troops4', 0.95], o: ['mini_troops3', 0.36, 0.6], 5: ['troops5', 0.95, 0.624], 6: ['troops6', 0.95, 0.72], f: ['troops_fly', 0.5, 0.8] };
+    4: ['troops4', 0.95], o: ['mini_troops3', 0.36, 0.6], 5: ['troops5', 0.95, 0.624], 6: ['troops6', 0.95, 0.72], f: ['troops_fly', 0.5, 0.8],
+    7: ['troops7', 0.95, 0.8], g: ['troops_fly2', 0.75, 0.8] };
   const uh = (side, kind) => UNIT[kind][side === 'emp' && UNIT[kind][2] ? 2 : 1];
   const ASPECT = { GUO_troops: 1.969, Emperor_troops: 1.312, GUO_mini_troops: 0.698, Emperor_mini_troops: 1.365,
     GUO_mini_troops2: 0.823, Emperor_mini_troops2: 0.656,
     GUO_troops2: 0.961, GUO_troops3: 1.144, Emperor_troops2: 1.516, Emperor_troops3: 0.731,
     GUO_troops4: 1.228, Emperor_troops4: 1.541, GUO_mini_troops3: 0.76, Emperor_mini_troops3: 0.698, GUO_troops5: 1.534, Emperor_troops5: 1.506,
-    GUO_troops6: 1.212, Emperor_troops6: 1.62, GUO_troops_fly: 1.143, Emperor_troops_fly: 1.819 };
+    GUO_troops6: 1.212, Emperor_troops6: 1.62, GUO_troops_fly: 1.143, Emperor_troops_fly: 1.819,
+    GUO_troops7: 1.069, Emperor_troops7: 1.702, GUO_troops_fly2: 1.0, Emperor_troops_fly2: 1.161 };
   // 陣亡補位：order＝每邊目前的排隊順序（ARMY 的編號，前面＝靠近戰線），GAP＝每個單位跟後面那個隔多遠。
   // 有人陣亡就把他移到隊伍最後面，後面的人往前補，位置照新順序重新累加
   const order = { guo: ARMY.guo.map((u, i) => i), emp: ARMY.emp.map((u, i) => i) };
@@ -899,7 +902,7 @@
   // 攻擊動圖每格 100ms：統御王座 45 格 4.5 秒，第 23～37 格連環爆炸；納垢大暴雨 40 格 4 秒，第 25～37 格大雨落地
   const ALLY = {
     emp: { who: 'Summon_SilentKing', fx: 'Emperor_Summon_attack', call: '召喚寂靜王！', move: '統御王座！', hk: 1.05, ms: 4500, gaps: [2300, 2600, 2900, 3200, 3500, 3700] },
-    guo: { who: 'Summon_Rotigus', fx: 'GUO_Summon_attack', call: '召喚雨父！', move: '納垢暴雨！', hk: 1.05, ms: 4000, gaps: [2500, 2800, 3100, 3400, 3700] },
+    guo: { who: 'Summon_Rotigus', fx: 'GUO_Summon_attack', call: '召喚雨父！', move: '納垢暴雨！', hs: 0.9, hk: 1.05, ms: 4000, gaps: [2500, 2800, 3100, 3400, 3700] },
   };
   const loadAlly = (bull) => { const S = ALLY[bull ? 'emp' : 'guo']; return Promise.all([loadBlob(S.who), loadBlob(S.fx)]); };
   const allyReady = (bull) => { const S = ALLY[bull ? 'emp' : 'guo']; return !!(spBlob[S.who] && spBlob[S.fx]); };
@@ -923,10 +926,10 @@
     fadeGods(true, pair);
     float(S.call, bull ? 'up' : 'down', false, null, ' say hi big');
     later(1200, () => { god.style.transition = 'opacity .6s'; god.style.opacity = '0'; });
-    // 盟友：人物（扣掉四邊光暈留白）是神祇的 1.1 倍高，腳底跟神祇一樣高，水平置中在神祇的人物中線（不超出卡片）
+    // 盟友：人物（扣掉四邊光暈留白）是神祇的 1.1 倍高（再乘 hs：雨父比較高，頭會被卡片上緣切掉），腳底跟神祇一樣高，水平置中在神祇的人物中線（不超出卡片）
     const g = god.getBoundingClientRect();
     const gm = meta[bull ? 'Emperor' : 'GUO'], m = meta[S.who] ?? { w: 200, h: 288 };
-    const h = (g.height * (240 / 288) * 1.1 * m.h) / (m.h - 48), w = (h * m.w) / m.h;
+    const h = (g.height * (240 / 288) * 1.1 * (S.hs ?? 1) * m.h) / (m.h - 48), w = (h * m.w) / m.h;
     const cx = g.left - a.left + g.width * (gm?.cx ?? 0.5);
     const pad = (h * 24) / m.h;
     const ally = document.createElement('img');
@@ -1213,10 +1216,10 @@
         u.style.height = `${h}px`;
         u.style.left = `calc(${t.style.left} ${isGuo ? '-' : '+'} ${Math.round(isGuo ? d * H + w / 2 : d * H - w / 2)}px)`;
         // 飛行兵種離地 0.4 條高（風暴速攻艇比較大，再降半個機身）；Emperor_troops3／4 自帶地板，墊高會像浮在空中
-        u.style.bottom = `${kind === 'f' ? Math.round(H * 0.4 - (isGuo ? 0 : h / 2)) + up : name === 'Emperor_troops3' || name === 'Emperor_troops4' ? 0 : up}px`;
+        u.style.bottom = `${'fg'.includes(kind) ? Math.round(H * 0.4 - (isGuo ? 0 : h / 2)) + up : name === 'Emperor_troops3' || name === 'Emperor_troops4' ? 0 : up}px`;
         // 小兵最前（一定比較小，蓋在誰上面都不違和），一般兵種其次、大部隊再來，飛行兵種最後（在遠方天上，不會切掉步兵的頭）；
         // 同類近的（低的）蓋住遠的
-        u.style.zIndex = kind === 'f' ? 1 : 'mno'.includes(kind) ? 20 : (kind === 'B' ? 10 : 15) - up;
+        u.style.zIndex = 'fg'.includes(kind) ? 1 : 'mno'.includes(kind) ? 20 : (kind === 'B' ? 10 : 15) - up;
         u.style.animationDelay = `${-0.11 * Number(u.dataset.i)}s`;
       }
     }

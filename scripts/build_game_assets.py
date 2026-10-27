@@ -24,7 +24,8 @@ SIZES = {'Emperor': 240, 'GUO': 240, 'fight-cloud': 200, 'Emperor_win': 240, 'Em
          'GUO_troops2': 160, 'GUO_troops3': 160, 'Emperor_troops2': 160, 'Emperor_troops3': 160,
          'GUO_mini_troops2': 96, 'Emperor_mini_troops2': 96, 'GUO_troops4': 160, 'Emperor_troops4': 160,
          'GUO_mini_troops3': 96, 'Emperor_mini_troops3': 96, 'Emperor_troops5': 160, 'Emperor_troops6': 160, 'GUO_troops5': 160,
-         'GUO_troops6': 160, 'GUO_troops_fly': 160, 'Emperor_troops_fly': 160, 'Emperor_attack_sp2': None, 'GUO_attack_sp2': None,
+         'GUO_troops6': 160, 'GUO_troops_fly': 160, 'Emperor_troops_fly': 160, 'GUO_troops7': 160, 'Emperor_troops7': 160,
+         'GUO_troops_fly2': 160, 'Emperor_troops_fly2': 160, 'Emperor_attack_sp2': None, 'GUO_attack_sp2': None,
          'Emperor_Summon_attack': None, 'GUO_Summon_attack': None, 'Summon_SilentKing': 240, 'Summon_Rotigus': 240, 'webway': None, 'Ghazghkull': 160,
          'VengefulSpirit': None, 'abaddon': 160, 'portal': None, 'LordofChange': 160, 'HiveShip': None, 'tyranids': 160}
 # 神祇的光暈直接畫進圖裡（以前是網頁上 CSS drop-shadow，動圖每換一格瀏覽器就要重算一次，吃 CPU）。
