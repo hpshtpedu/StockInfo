@@ -306,19 +306,19 @@
   }
   const ARMY = {
     guo: formation('mo3nfBm25n4om3nm6B2mof4Bn35mBon2m6nB3m', 1),
-    emp: formation('m2n5B3mf4n2m6Bn3m5B2n4mfBn3m6B2n', 2),
+    emp: formation('m2n5oB3mf4n2om6Bn3m5B2no4mfBn3om6B2n', 2),
   };
   // 種類 → 圖檔、高度（大部隊的幾倍）。2：大不淨者的納垢獸／帝皇的坦克；3：大不淨者的騎士／帝皇的苦修戰士；
-  // 4：大不淨者的惡魔引擎／帝皇的土星無畏；o：大不淨者的納垢靈（只有大不淨者有，小兵的六成高）；
+  // 4：大不淨者的惡魔引擎／帝皇的土星無畏；o：大不淨者的納垢靈（小兵的六成高）／帝皇的叢林戰士（跟小兵一樣高）；
   // 5：納垢褻瀆者／摩托警衛；6：納垢無畏機甲／克里格重型武器小隊；f：飛行兵種（瘟疫兵蜂／風暴速攻艇，不貼地）。
   // 第三個數字是帝皇那邊不一樣的高度
   const UNIT = { m: ['mini_troops', 0.6], n: ['mini_troops2', 0.6], B: ['troops', 1], 2: ['troops2', 0.9], 3: ['troops3', 0.94],
-    4: ['troops4', 0.95], o: ['mini_troops3', 0.36], 5: ['troops5', 0.95, 0.78], 6: ['troops6', 0.95, 0.6], f: ['troops_fly', 0.5, 0.8] };
+    4: ['troops4', 0.95], o: ['mini_troops3', 0.36, 0.6], 5: ['troops5', 0.95, 0.78], 6: ['troops6', 0.95, 0.6], f: ['troops_fly', 0.5, 0.8] };
   const uh = (side, kind) => UNIT[kind][side === 'emp' && UNIT[kind][2] ? 2 : 1];
   const ASPECT = { GUO_troops: 1.969, Emperor_troops: 1.312, GUO_mini_troops: 0.698, Emperor_mini_troops: 1.365,
     GUO_mini_troops2: 0.823, Emperor_mini_troops2: 0.656,
     GUO_troops2: 0.961, GUO_troops3: 1.144, Emperor_troops2: 1.516, Emperor_troops3: 0.731,
-    GUO_troops4: 1.228, Emperor_troops4: 1.541, GUO_mini_troops3: 0.76, GUO_troops5: 1.534, Emperor_troops5: 1.506,
+    GUO_troops4: 1.228, Emperor_troops4: 1.541, GUO_mini_troops3: 0.76, Emperor_mini_troops3: 0.698, GUO_troops5: 1.534, Emperor_troops5: 1.506,
     GUO_troops6: 1.212, Emperor_troops6: 1.62, GUO_troops_fly: 1.143, Emperor_troops_fly: 1.819 };
   // 陣亡補位：order＝每邊目前的排隊順序（ARMY 的編號，前面＝靠近戰線），GAP＝每個單位跟後面那個隔多遠。
   // 有人陣亡就把他移到隊伍最後面，後面的人往前補，位置照新順序重新累加
