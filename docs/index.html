@@ -996,22 +996,9 @@
     return t.date === today || isMarketHoliday('tw') || mins < 9 * 60;
   }
 
-  // 00685L 淨複利：N = 100 ×［(L−1) − 2(G−1)］，G＝Π(1+r)、L＝Π(1+2r)，r＝加權（價格指數）日報酬。
-  // 正＝複利加速（紅）、負＝磨損（綠），跟全站紅漲綠跌一致；只看指數，不看持股、ETF 價格或台指期。資料不足回 null
+  // 00685L 複利差：每筆買進 100 ×［(L−1) − 2(G−1)］，G＝Π(1+r)、L＝Π(1+2r)，r＝加權（價格指數）日報酬。
+  // 正＝複利加速（紅）、負＝磨損（綠），跟全站紅漲綠跌一致
   let twiiQuote = null;
-  function netCompounding(n, twii) {
-    const s = taiexSeries(twii).slice(-(n + 1));
-    if (s.length < n + 1) return null;
-    let G = 1;
-    let L = 1;
-    for (let i = 1; i < s.length; i++) {
-      const r = s[i] / s[i - 1] - 1;
-      if (!Number.isFinite(r) || r <= -0.5) return null;
-      G *= 1 + r;
-      L *= 1 + 2 * r;
-    }
-    return 100 * ((L - 1) - 2 * (G - 1));
-  }
   // 持股版：私人頁填了 00685L 買進紀錄，每筆從買進日收盤到今天各算一次複利差，依當時投入金額加權（張數 × 理想正2 淨值，
   // 淨值用加權每天 2 倍推出來）。買進日早於歷史資料、或資料不足回 null
   function holdingCompounding(buys, twii) {
@@ -1064,17 +1051,15 @@
       const ma = (n) => (closes.length >= n ? closes.slice(-n).reduce((a, b) => a + b, 0) / n : null);
       const v = (x) => `<b>${x == null ? '—' : fmt(Math.round(x), 0)}</b>`;
       second = `<div class="fl ma"><span>月 ${v(ma(20))}</span><span>季 ${v(ma(60))}</span></div>`;
-    } else if (h.code === '00685L') {
-      // 理想每日正2 相對「大盤整段報酬 × 2」的複利差（pp），最近 60 個交易日（跟季線同樣長）；加權日報酬，盤中今天算 1 天（59＋今天）。
+    } else if (h.code === '00685L' && privateLots?.buys?.['00685L']?.length) {
+      // 理想每日正2 相對「大盤整段報酬 × 2」的複利差（pp），盤中今天用即時指數。
       // 正的＝複利加速、負的＝波動損耗（字白色，數值紅綠、不帶正負）
-      // 私人頁有填買進紀錄就改算持股版
-      const buys = privateLots?.buys?.['00685L'];
-      const x = buys?.length ? holdingCompounding(buys, twiiQuote) : netCompounding(60, twiiQuote);
-      const span = buys?.length ? '' : '(季)';  // 持股版不加括號
+      // 只在私人頁有填買進紀錄時才有這頁（用持股算）；沒填就不放，00685L 下半部一直是 15 分 K
+      const x = holdingCompounding(privateLots.buys['00685L'], twiiQuote);
       const r = x == null ? null : Math.round(x * 10) / 10;
       const cls = r > 0 ? 'up' : r < 0 ? 'down' : '';
       second = `<div class="fl ma cmp2"><span class="wide">${r == null ? '複利差 <b class="fp">資料不足</b>'
-        : `${r >= 0 ? '複利加速' : '波動損耗'}${span} <b class="${cls}">${Math.abs(r).toFixed(1)}pp</b>`}</span></div>`;
+        : `${r >= 0 ? '複利加速' : '波動損耗'} <b class="${cls}">${Math.abs(r).toFixed(1)}pp</b>`}</span></div>`;
     } else if (h.code === '0056' || h.code === '00878') {
       const y = etfYield?.[h.code]?.yield;
       second = `<div class="fl ma"><span class="wide">殖利率 <b>${Number.isFinite(y) ? `${y.toFixed(2)}%` : '—'}</b></span></div>`;
@@ -1122,7 +1107,7 @@
     const published = [fo, tr].some((t) => t?.date === todayTw);
     const kMode = !isMarketHoliday('tw') && nowMins >= 9 * 60 && !published;
     const flowLine = (h) => {
-      if (kMode) {
+      if (kMode || (h.code === '00685L' && !privateLots?.buys?.['00685L']?.length)) {
         const chart = h.candles ? miniCandles(h.candles, h.prev ?? (h.change != null ? h.price - h.change : null)) : '';
         return [`<div class="fl hk">${chart}</div>`];
       }
@@ -1156,14 +1141,6 @@
       </div>`;
   }
 
-
-  // 加權的收盤序列：每晚存的收盤 + 即時指數當最新一天
-  function taiexSeries(twii) {
-    const closes = taiexHistory?.closes;
-    if (!twii?.price || !closes?.length) return [];
-    const day = new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10);
-    return [...closes.filter((c) => c.date < day).map((c) => c.close), twii.price];
-  }
 
   // 加權的月線乖離（%）：每晚存的收盤 + 即時指數當最新一天
   function taiexBias(twii) {
