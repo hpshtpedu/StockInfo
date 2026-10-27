@@ -1221,8 +1221,8 @@
         u.style.transition = refill[side] > Date.now() ? 'left 3s ease-in-out, opacity 1s' : t.style.transition;
         u.style.height = `${h}px`;
         u.style.left = `calc(${t.style.left} ${isGuo ? '-' : '+'} ${Math.round(isGuo ? d * H + w / 2 : d * H - w / 2)}px)`;
-        // 飛行兵種離地 0.4 條高（風暴速攻艇比較大，再降半個機身；風暴鴉降完再抬 1/3 機身）；Emperor_troops3／4 自帶地板、troops8 很高，墊高會像浮在空中
-        u.style.bottom = `${'fg'.includes(kind) ? Math.round(H * 0.4 - (isGuo ? 0 : h / 2) + (name === 'Emperor_troops_fly2' ? h / 3 : 0)) + up : ['Emperor_troops3', 'Emperor_troops4', 'Emperor_troops8'].includes(name) ? 0 : up}px`;
+        // 飛行兵種離地 0.4 條高（風暴速攻艇比較大，再降半個機身；降完再抬：風暴鴉 1/3、風暴速攻艇 1/5 機身）；Emperor_troops3／4 自帶地板、troops8 很高，墊高會像浮在空中
+        u.style.bottom = `${'fg'.includes(kind) ? Math.round(H * 0.4 - (isGuo ? 0 : h / 2) + (name === 'Emperor_troops_fly2' ? h / 3 : name === 'Emperor_troops_fly' ? h / 5 : 0)) + up : ['Emperor_troops3', 'Emperor_troops4', 'Emperor_troops8'].includes(name) ? 0 : up}px`;
         // 小兵最前（一定比較小，蓋在誰上面都不違和），一般兵種其次、大部隊再來，飛行兵種最後（在遠方天上，不會切掉步兵的頭）；
         // 同類近的（低的）蓋住遠的
         u.style.zIndex = 'fg'.includes(kind) ? 1 : 'mnop'.includes(kind) ? 20 : (kind === 'B' ? 10 : 15) - up;
