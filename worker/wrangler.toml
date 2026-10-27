@@ -6,7 +6,7 @@ compatibility_date = "2025-01-01"
 # 只允許自己的 GitHub Pages 從瀏覽器呼叫
 ALLOWED_ORIGIN = "https://hpshtpedu.github.io"
 # 台股競猜同步金鑰的 SHA-256（scripts/make_guess_sync.py 產生；不是密碼，公開沒關係）
-GUESS_SYNC_HASH = ""
+GUESS_SYNC_HASH = "0mCNH5e4dOUFWgsPjYX+nsZ2pQ7YBU1/NRL7TRDDJts="
 
 # 新聞快訊的清單：全球共用一份（所有機房、手機電腦看到同一份），30 分鐘更新一次
 [[kv_namespaces]]
