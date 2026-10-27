@@ -78,6 +78,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders(env) });
+    if (url.pathname === '/guess') { ENV = env; return withCors(await guess(request, env, url.origin, ctx), env); }
     if (url.pathname !== '/quotes') return new Response('Not found', { status: 404 });
 
     const cache = caches.default;
@@ -1336,8 +1337,36 @@ function wan(n) {
 function corsHeaders(env) {
   return {
     'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Sync',
+    'Access-Control-Max-Age': '86400',
   };
+}
+
+// 台股競猜（主帳號）：押注存在 KV（guess:owner，{日期: 'up'|'down'}），手機電腦同一份。
+// 請求要帶 X-Sync：登入時用密碼 PBKDF2 推出來的同步金鑰；這裡只存它的 SHA-256（GUESS_SYNC_HASH，
+// scripts/make_guess_sync.py 產生，公開也沒關係，跟 private-verifier.json 一樣要先猜中密碼）。
+// GET 讀全部；POST {pick} 只在交易日 08:30-08:59（台北時間）收，寫進今天，09:00 後回 403
+async function guess(request, env, origin, ctx) {
+  const json = (o, status = 200) => new Response(JSON.stringify(o), {
+    status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+  });
+  const token = request.headers.get('X-Sync') || '';
+  if (!env.GUESS_SYNC_HASH || !token) return json({ error: 'auth' }, 401);
+  const digest = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)))));
+  if (digest !== env.GUESS_SYNC_HASH) return json({ error: 'auth' }, 401);
+  const picks = (await env.NEWS_KV.get('guess:owner', 'json')) ?? {};
+  if (request.method === 'GET') return json({ picks });
+  if (request.method !== 'POST') return json({ error: 'method' }, 405);
+  const body = await request.json().catch(() => null);
+  if (body?.pick !== 'up' && body?.pick !== 'down') return json({ error: 'pick' }, 400);
+  twHolidays = new Set((await fetchHolidays(origin, ctx).catch(() => [])).map((h) => h.date ?? h));
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);
+  const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+  if (twMarketClosedToday() || mins < 8 * 60 + 30 || mins >= 9 * 60) return json({ error: 'closed', picks }, 403);
+  picks[tw.toISOString().slice(0, 10)] = body.pick;
+  await env.NEWS_KV.put('guess:owner', JSON.stringify(picks));
+  return json({ picks });
 }
 
 function withCors(response, env) {

@@ -275,7 +275,7 @@
 </header>
 <main id="list"></main>
 <footer id="source">資料來源：Yahoo、證交所、期交所、HiStock、金十數據</footer>
-<script src="private-vault.js?v=5"></script>
+<script src="private-vault.js?v=6"></script>
 <script>
   const API = 'https://stockinfo-quotes.hpshtpedu.workers.dev/quotes';
   const POLL_MS = 120 * 1000;
@@ -1417,11 +1417,31 @@
   }
 
   // 台股競猜（主帳號登入才有）：交易日 08:30-08:59 押今天加權漲或跌，09:00 前可以改；收盤後依加權漲跌開獎，平盤不計。
-  // 押注只記在這台裝置（localStorage，依帳號分開），勝負每次從加權歷史收盤（盤後今天用即時報價）重算，不另外存。
+  // 押注存在 Worker（跨裝置同步，見 guessSync），這台裝置的 localStorage 當快取；勝負每次從加權歷史收盤（盤後今天用即時報價）重算，不另外存。
   // 有押的那天整天顯示（盤中只寫押什麼），到下一個交易日 08:30 換新的一局；沒押只放勝率（交易日 09:00 後寫「本日未押注」）。勝率一直顯示
   const GUESS_KEY = (account) => `guess-v1:${account}`;
   function guessPicks(account) {
     try { return JSON.parse(localStorage.getItem(GUESS_KEY(account))) ?? {}; } catch { return {}; }
+  }
+  // 跨裝置同步（Worker 的 /guess，KV 存一份）：打開頁面、回到前景時讀雲端，按下漲跌時寫上去；雲端為準。
+  // 沒有同步金鑰（舊的登入、還沒重新登入）或連不上就只用這台的紀錄。今天這局還開著、雲端沒有但這台有（上次沒送成）就補送
+  const GUESS_API = API.replace(/\/quotes$/, '/guess');
+  async function guessSync(pick) {
+    const token = window.PrivateVault?.syncToken?.();
+    if (window.PrivateVault?.profile?.() !== 'owner' || !token) return;
+    try {
+      const res = await fetch(GUESS_API, pick
+        ? { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Sync': token }, body: JSON.stringify({ pick }) }
+        : { headers: { 'X-Sync': token }, cache: 'no-store' });
+      const picks = (await res.json())?.picks;
+      if (!picks) return;
+      const tw = new Date(Date.now() + 8 * 3600000);
+      const today = tw.toISOString().slice(0, 10);
+      const local = guessPicks('owner');
+      if (!pick && local[today] && !picks[today] && guessOpen(tw.getUTCHours() * 60 + tw.getUTCMinutes())) return guessSync(local[today]);
+      try { localStorage.setItem(GUESS_KEY('owner'), JSON.stringify(picks)); } catch {}
+      if (lastRenderArgs) render(...lastRenderArgs);
+    } catch {}
   }
   const guessOpen = (mins) => !isMarketHoliday('tw') && mins >= 8 * 60 + 30 && mins < 9 * 60;
   // 某天加權收盤漲跌：1 漲、-1 跌、0 平盤、null 還不知道
@@ -1679,7 +1699,7 @@
 
   function start() {
     stop();
-    if (Date.now() - lastLoad > 5000) load();  // 幾個喚醒事件常一起觸發，5 秒內只抓一次
+    if (Date.now() - lastLoad > 5000) { load(); guessSync(); }  // 幾個喚醒事件常一起觸發，5 秒內只抓一次
     timer = setInterval(load, POLL_MS);
   }
 
@@ -1708,6 +1728,7 @@
         const picks = guessPicks(account);
         picks[tw.toISOString().slice(0, 10)] = g.dataset.guess;
         try { localStorage.setItem(GUESS_KEY(account), JSON.stringify(picks)); } catch {}
+        guessSync(g.dataset.guess);
       }
       if (lastRenderArgs) render(...lastRenderArgs);
       return;

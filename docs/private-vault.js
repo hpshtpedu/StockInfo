@@ -8,6 +8,9 @@
   const VAULT = 'pv-vault-v1';
   const SESSION = 'pv-key-v1';
   const PROFILE = 'pv-profile-v1';
+  const SYNC = 'pv-sync-v1';
+  // 台股競猜的同步金鑰：密碼 + 固定 salt 推出來（每台裝置都一樣），Worker 只存它的雜湊（scripts/make_guess_sync.py）
+  const SYNC_SALT = 'stockinfo-guess-sync-v1';
   const CODES = ['2330', '00685L', '0056', '00878'];
   const enc = new TextEncoder();
   const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
@@ -87,7 +90,7 @@
     if (!ok) throw new Error('瀏覽器不允許儲存');
   }
 
-  function lock() { store(() => { sessionStorage.removeItem(SESSION); sessionStorage.removeItem(PROFILE); }); }
+  function lock() { store(() => { sessionStorage.removeItem(SESSION); sessionStorage.removeItem(PROFILE); sessionStorage.removeItem(SYNC); }); }
   const profile = () => store(() => sessionStorage.getItem(PROFILE)) || (store(() => sessionStorage.getItem(SESSION)) ? 'owner' : null);
   const unlocked = () => !!profile();
 
@@ -98,12 +101,13 @@
     lock,
     readLots,
     saveLots,
+    syncToken: () => store(() => sessionStorage.getItem(SYNC)),
     // 密碼正確後：用這台裝置自己的 salt 衍生加密金鑰，存進 sessionStorage
     async unlock(password) {
       const who = await verify(password);
       if (!who) return false;
       if (who !== 'owner') {  // 其他帳號：不衍生張數的金鑰，只記帳號名稱
-        store(() => { sessionStorage.removeItem(SESSION); sessionStorage.setItem(PROFILE, who); });
+        store(() => { sessionStorage.removeItem(SESSION); sessionStorage.removeItem(SYNC); sessionStorage.setItem(PROFILE, who); });
         return true;
       }
       store(() => sessionStorage.removeItem(PROFILE));
@@ -116,6 +120,8 @@
       }
       const raw = await crypto.subtle.exportKey('raw', key);
       store(() => sessionStorage.setItem(SESSION, b64(raw)));
+      const sync = await pbkdf2(password, enc.encode(SYNC_SALT), 300000, 'bits');
+      store(() => sessionStorage.setItem(SYNC, b64(sync)));
       return true;
     },
   };
