@@ -1416,7 +1416,7 @@
     return miniCandles(bars, null, ma);
   }
 
-  // 台股競猜（登入才有）：交易日 08:30-08:59 押今天加權漲或跌，09:00 前可以改；收盤後依加權漲跌開獎，平盤不計。
+  // 台股競猜（主帳號登入才有）：交易日 08:30-08:59 押今天加權漲或跌，09:00 前可以改；收盤後依加權漲跌開獎，平盤不計。
   // 押注只記在這台裝置（localStorage，依帳號分開），勝負每次從加權歷史收盤（盤後今天用即時報價）重算，不另外存。
   // 有押的那天整天顯示（盤中只寫押什麼），到下一個交易日 08:30 換新的一局；沒押只放勝率（交易日 09:00 後寫「本日未押注」）。勝率一直顯示
   const GUESS_KEY = (account) => `guess-v1:${account}`;
@@ -1438,7 +1438,7 @@
     return null;
   }
   function guessHtml(twii, account) {
-    if (!account) return '';
+    if (account !== 'owner') return '';  // 只有主帳號玩
     const tw = new Date(Date.now() + 8 * 3600000);
     const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
     const today = tw.toISOString().slice(0, 10);
@@ -1451,7 +1451,7 @@
       n++;
       if (dir === (p === 'up' ? 1 : -1)) win++;
     }
-    const rate = `<span class="rate">勝率 ${n ? Math.round((100 * win) / n) : 0}%（${win}/${n}）</span>`;
+    const rate = `<span class="rate">勝率 ${n ? Math.round((100 * win) / n) : 0}%(共${n}次)</span>`;
     const card = (body) => `<div class="card wide flat guess"><div class="head"><div class="name">台股競猜</div><span class="gs">${body}</span></div></div>`;
     const pickTxt = (p) => `<span class="${p}">${p === 'up' ? '▲漲' : '▼跌'}</span>`;
     if (guessOpen(mins)) {
@@ -1704,7 +1704,7 @@
     if (g) {
       const account = window.PrivateVault?.profile?.();
       const tw = new Date(Date.now() + 8 * 3600000);
-      if (account && guessOpen(tw.getUTCHours() * 60 + tw.getUTCMinutes())) {  // 09:00 後按到舊畫面的按鈕不算
+      if (account === 'owner' && guessOpen(tw.getUTCHours() * 60 + tw.getUTCMinutes())) {  // 09:00 後按到舊畫面的按鈕不算
         const picks = guessPicks(account);
         picks[tw.toISOString().slice(0, 10)] = g.dataset.guess;
         try { localStorage.setItem(GUESS_KEY(account), JSON.stringify(picks)); } catch {}
