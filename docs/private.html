@@ -40,6 +40,9 @@
   button.plain { background: #363c48; }
   .msg { color: var(--warn); min-height: 1.4em; margin-top: 8px; }
   .note { color: var(--muted); font-size: 13px; margin-top: 10px; }
+  textarea { flex: 1; min-width: 0; font: inherit; font-size: 15px; color: var(--text); background: #20242c;
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; resize: vertical; }
+  .row.top { align-items: flex-start; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -63,7 +66,7 @@
       <button type="button" class="plain" id="lockBtn">登出</button>
     </div>
     <div class="msg" id="lotsMsg"></div>
-    <div class="note">單位是「張」，0 代表沒有；零股可填到小數 3 位（0.001 張＝1 股）。投入成本選填，填券商庫存頁的「投入成本」（整數金額），首頁就會多一個總損益，算法跟券商一樣。張數和投入成本只加密存在這個瀏覽器，換手機或電腦要重新設定。</div>
+    <div class="note">單位是「張」，0 代表沒有；零股可填到小數 3 位（0.001 張＝1 股）。00685L 的買進紀錄選填，填了首頁的複利差就改算你每筆買進到今天（依金額加權）。投入成本選填，填券商庫存頁的「投入成本」（整數金額），首頁就會多一個總損益，算法跟券商一樣。張數和投入成本只加密存在這個瀏覽器，換手機或電腦要重新設定。</div>
   </form>
 
   <div id="other" class="card" hidden>
@@ -75,7 +78,7 @@
     尚未設定密碼：請在電腦上執行 <code>python scripts/make_private_verifier.py</code>，把產生的 docs/private-verifier.json 推上去。
   </div>
 </main>
-<script src="private-vault.js?v=4"></script>
+<script src="private-vault.js?v=5"></script>
 <script>
   const PV = window.PrivateVault;
   const $ = (id) => document.getElementById(id);
@@ -89,7 +92,18 @@
     $('fields').innerHTML = PV.CODES.map((c) => `<div class="row"><label for="l-${c}">${c}</label>`
       + `<input id="l-${c}" type="number" min="0" step="0.001" inputmode="decimal" value="${Number(lots[c] ?? 0)}"><span class="unit">張</span></div>`
       + `<div class="row sub"><label for="c-${c}">投入成本</label>`
-      + `<input id="c-${c}" type="number" min="0" step="1" inputmode="numeric" placeholder="選填" value="${inv[c] ? Number(inv[c]) : ''}"><span class="unit">元</span></div>`).join('');
+      + `<input id="c-${c}" type="number" min="0" step="1" inputmode="numeric" placeholder="選填" value="${inv[c] ? Number(inv[c]) : ''}"><span class="unit">元</span></div>`
+      + (c === '00685L' ? `<div class="row sub top"><label for="b-${c}">買進紀錄</label>`
+        + `<textarea id="b-${c}" rows="4" placeholder="選填，一行一筆：2026-01-02 10">${(lots.buys?.[c] ?? []).map(([d, n]) => `${d} ${n}`).join('\n')}</textarea></div>` : '')).join('');
+  }
+
+  // 買進紀錄：一行一筆「日期 張數」，日期可寫 2026-01-02 或 2026/1/2
+  function parseBuys(text) {
+    return text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+      const m = l.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\s+([\d.]+)/);
+      if (!m) throw new Error(`買進紀錄看不懂：${l}`);
+      return [`${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`, Number(m[4])];
+    });
   }
 
   $('login').addEventListener('submit', async (e) => {
@@ -113,7 +127,7 @@
     const lots = Object.fromEntries(PV.CODES.map((c) => [c, $(`l-${c}`).value === '' ? 0 : Number($(`l-${c}`).value)]));
     const inv = Object.fromEntries(PV.CODES.map((c) => [c, $(`c-${c}`).value === '' ? 0 : Number($(`c-${c}`).value)]));
     try {
-      await PV.saveLots(lots, inv);
+      await PV.saveLots(lots, inv, { '00685L': parseBuys($('b-00685L').value) });
       home();
     } catch (err) {
       $('lotsMsg').textContent = err.message || '儲存失敗';

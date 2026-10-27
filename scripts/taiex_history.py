@@ -2,7 +2,7 @@
 
 Source: TWSE 發行量加權股價指數歷史資料 (one month per request, 3 s apart). The first run
 backfills 13 months; later runs refetch only the current month (and the previous one early
-in a month), keeping the last 260 trading days.
+in a month), keeping the last 1000 trading days.
 """
 import datetime as dt
 import json
@@ -13,7 +13,7 @@ import urllib.request
 
 OUT = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'taiex_history.json'
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
-KEEP = 260  # enough for the 240-day (annual) moving average
+KEEP = 1000  # 240-day (annual) MA; 00685L buy records on the home page reach back years
 
 
 def fetch_month(first_day):

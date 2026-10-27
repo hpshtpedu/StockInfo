@@ -59,8 +59,9 @@
     }
   }
 
-  // lots：{代號: 張數}；inv：{代號: 投入成本（元，券商庫存頁那欄）}（選填，0 或空白＝不算總損益），一起加密存
-  async function saveLots(lots, inv = {}) {
+  // lots：{代號: 張數}；inv：{代號: 投入成本（元，券商庫存頁那欄）}（選填，0 或空白＝不算總損益）；
+  // buys：{代號: [[日期 YYYY-MM-DD, 張數], …]}（選填，00685L 的買進紀錄，首頁算持股的複利差），一起加密存
+  async function saveLots(lots, inv = {}, buys = {}) {
     const key = await sessionKey();
     if (!key) throw new Error('尚未解鎖');
     const clean = { inv: {} };
@@ -71,6 +72,13 @@
       const v = Number(inv[c] ?? 0);
       if (!Number.isFinite(v) || v < 0 || v > 1e11) throw new Error(`${c} 投入成本不正確`);
       if (v > 0) clean.inv[c] = Math.round(v);
+    }
+    for (const [c, list] of Object.entries(buys)) {
+      if (!CODES.includes(c) || !list?.length) continue;
+      for (const [d, n] of list) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !(n > 0) || n > 1e6) throw new Error(`${c} 買進紀錄不正確`);
+      }
+      (clean.buys ??= {})[c] = list.map(([d, n]) => [d, n]).sort((a, b) => a[0].localeCompare(b[0]));
     }
     const iv = crypto.getRandomValues(new Uint8Array(12));  // 每次存都用新的 IV
     const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(clean)));
