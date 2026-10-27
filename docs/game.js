@@ -310,9 +310,10 @@
       return u;
     });
   }
+  // 組成：一般兵種（含大部隊）少一點免得互相擋住，每個一般兵種配 3 個小兵；飛行兵種大不淨者 4 隻、帝皇 2 架
   const ARMY = {
-    guo: formation('mo3n7fBm25n4gom3nm6B2mo7f4Bn35mBgon2m6nB3m', 1),
-    emp: formation('m2n5o79Bp3mf4n82gom6Bpn3m5B72no94mfg8Bn3opm6B2n', 2),
+    guo: formation('m3nom2nfom7nmn5ogmnBmno4mfnm6onmBngmn3omn2mn', 1),
+    emp: formation('m2npo3mnp9mno8mnpBmfno7mnp5mon4mpn6mnoBpgmn3mpn2oo', 2),
   };
   // 種類 → 圖檔、高度（大部隊的幾倍）。2：大不淨者的納垢獸／帝皇的坦克；3：大不淨者的騎士／帝皇的苦修戰士；
   // 4：大不淨者的惡魔引擎／帝皇的土星無畏；o：大不淨者的納垢靈（小兵的六成高）／帝皇的叢林戰士（跟小兵一樣高）；
