@@ -1416,9 +1416,9 @@
     return miniCandles(bars, null, ma);
   }
 
-  // 台股競猜（主帳號登入才有）：交易日 08:30-08:59 押今天加權漲或跌，09:00 前可以改；收盤後依加權漲跌開獎，平盤不計。
+  // 台股競猜（主帳號登入才有）：交易日 08:30-08:44 押今天加權漲或跌，08:45（台指期開盤）前可以改；收盤後依加權漲跌開獎，平盤不計。
   // 押注存在 Worker（跨裝置同步，見 guessSync），這台裝置的 localStorage 當快取；勝負每次從加權歷史收盤（盤後今天用即時報價）重算，不另外存。
-  // 有押的那天整天顯示（盤中只寫押什麼），到下一個交易日 08:30 換新的一局；沒押只放勝率（交易日 09:00 後寫「本日未押注」）。勝率一直顯示
+  // 有押的那天整天顯示（盤中只寫押什麼），到下一個交易日 08:30 換新的一局；沒押只放勝率（交易日 08:45 後寫「本日未押注」）。勝率一直顯示
   const GUESS_KEY = (account) => `guess-v1:${account}`;
   function guessPicks(account) {
     try { return JSON.parse(localStorage.getItem(GUESS_KEY(account))) ?? {}; } catch { return {}; }
@@ -1443,7 +1443,7 @@
       if (lastRenderArgs) render(...lastRenderArgs);
     } catch {}
   }
-  const guessOpen = (mins) => !isMarketHoliday('tw') && mins >= 8 * 60 + 30 && mins < 9 * 60;
+  const guessOpen = (mins) => !isMarketHoliday('tw') && mins >= 8 * 60 + 30 && mins < 8 * 60 + 45;  // 08:45 台指期開盤前截止
   // 某天加權收盤漲跌：1 漲、-1 跌、0 平盤、null 還不知道
   function taiexDir(day, twii) {
     const c = taiexHistory?.closes ?? [];
@@ -1477,15 +1477,15 @@
     if (guessOpen(mins)) {
       const p = picks[today];
       const btn = (k) => `<button type="button" class="gb ${k}${p === k ? ' on' : ''}" data-guess="${k}">${k === 'up' ? '漲' : '跌'}</button>`;
-      return card(`${p ? '<span class="gt">09:00 截止</span>' : '<span class="gt">今天加權？</span>'}${btn('up')}${btn('down')}`);
+      return card(`${p ? '<span class="gt">08:45 截止</span>' : '<span class="gt">今天加權？</span>'}${btn('up')}${btn('down')}`);
     }
     // 最近一局：今天 08:30 前看的是上一個交易日那局
     const last = Object.keys(picks).sort().at(-1);
     const lastTrade = twii?.time ? twDate(twii.time) : null;
     if (!last || (last !== today && last !== lastTrade) || (last !== today && !isMarketHoliday('tw') && mins >= 8 * 60 + 30)) {
-      // 交易日 09:00 後今天沒押：整天寫「本日未押注」；其他時候只放勝率
+      // 交易日 08:45 後今天沒押：整天寫「本日未押注」；其他時候只放勝率
       const trading = !isMarketHoliday('tw');
-      return card(`${trading && mins >= 9 * 60 ? '<span class="gt">本日未押注</span>' : ''}${rate}`);
+      return card(`${trading && mins >= 8 * 60 + 45 ? '<span class="gt">本日未押注</span>' : ''}${rate}`);
     }
     const p = picks[last];
     const dir = taiexDir(last, twii);
@@ -1724,7 +1724,7 @@
     if (g) {
       const account = window.PrivateVault?.profile?.();
       const tw = new Date(Date.now() + 8 * 3600000);
-      if (account === 'owner' && guessOpen(tw.getUTCHours() * 60 + tw.getUTCMinutes())) {  // 09:00 後按到舊畫面的按鈕不算
+      if (account === 'owner' && guessOpen(tw.getUTCHours() * 60 + tw.getUTCMinutes())) {  // 08:45 後按到舊畫面的按鈕不算
         const picks = guessPicks(account);
         picks[tw.toISOString().slice(0, 10)] = g.dataset.guess;
         try { localStorage.setItem(GUESS_KEY(account), JSON.stringify(picks)); } catch {}

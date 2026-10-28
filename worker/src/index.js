@@ -1346,7 +1346,7 @@ function corsHeaders(env) {
 // 台股競猜（主帳號）：押注存在 KV（guess:owner，{日期: 'up'|'down'}），手機電腦同一份。
 // 請求要帶 X-Sync：登入時用密碼 PBKDF2 推出來的同步金鑰；這裡只存它的 SHA-256（GUESS_SYNC_HASH，
 // scripts/make_guess_sync.py 產生，公開也沒關係，跟 private-verifier.json 一樣要先猜中密碼）。
-// GET 讀全部；POST {pick} 只在交易日 08:30-08:59（台北時間）收，寫進今天，09:00 後回 403
+// GET 讀全部；POST {pick} 只在交易日 08:30-08:44（台北時間）收，寫進今天，08:45（台指期開盤）後回 403
 async function guess(request, env, origin, ctx) {
   const json = (o, status = 200) => new Response(JSON.stringify(o), {
     status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
@@ -1363,7 +1363,7 @@ async function guess(request, env, origin, ctx) {
   twHolidays = new Set((await fetchHolidays(origin, ctx).catch(() => [])).map((h) => h.date ?? h));
   const tw = new Date(Date.now() + 8 * 3600 * 1000);
   const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
-  if (twMarketClosedToday() || mins < 8 * 60 + 30 || mins >= 9 * 60) return json({ error: 'closed', picks }, 403);
+  if (twMarketClosedToday() || mins < 8 * 60 + 30 || mins >= 8 * 60 + 45) return json({ error: 'closed', picks }, 403);
   picks[tw.toISOString().slice(0, 10)] = body.pick;
   await env.NEWS_KV.put('guess:owner', JSON.stringify(picks));
   return json({ picks });
