@@ -346,7 +346,7 @@
       }
     }
     // HKEX MSCI 台指 (摩台/MDFK) 與 SGX FTSE 台指 (富台) 同為倒數第 2 個營業日
-    if (key(secondLastBusinessDay(y, m)) === key(today)) out.push('MSCI/富時台股期貨結算');
+    if (key(secondLastBusinessDay(y, m)) === key(today)) out.push('MSCI結算、富台結算');
     // 美股只列季結算的四巫日；一般月份的選擇權月結算不顯示
     if (QUARTER.includes(m) && d === nthWeekday(y, m, 5, 3)) out.push('美股四巫日（季結算）');
     // 指數季度調整生效日（被動基金在當天收盤集中調整，尾盤常爆量）：
