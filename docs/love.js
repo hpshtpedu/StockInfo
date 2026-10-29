@@ -330,6 +330,7 @@
     setSrc(guo, `${A}GUO${paused ? '_still' : ''}.webp`);
 
     // 人物
+    let boyThere = false;  // 最後往左走：男生已經走到定位
     const kiss = st.cur?.kiss && (st.phase === 'shoot' || st.phase === 'walk');
     girl.classList.toggle('buff', !!kiss);
     boy.classList.toggle('buff', !!kiss);
@@ -341,9 +342,13 @@
       place(boy, at - G / 2); place(girl, at + G / 2);
     } else if (st.phase === 'final') {
       const f = clamp((st.t - st.since) / FINAL, 0, 1);
-      setSrc(boy, `${A}m_walk${still}.webp`); setSrc(girl, `${A}f_walk${still}.webp`);
-      place(boy, P.boy[1] + (meet - G / 2 - P.boy[1]) * f);
-      place(girl, P.girl[1] + (meet + G / 2 - P.girl[1]) * f);
+      // 兩人同速往左走（女生走 FINAL 分鐘）：男生路短先到，停下轉回來面向右邊、切成親親等她
+      const dg = P.girl[1] - meet - G / 2, db = P.boy[1] - meet + G / 2;
+      const fb = clamp(dg > 0 ? (f * dg) / Math.max(db, 1e-6) : 1, 0, 1);
+      boyThere = fb >= 1;
+      setSrc(boy, `${A}${boyThere ? 'm_kiss' : 'm_walk'}${still}.webp`); setSrc(girl, `${A}f_walk${still}.webp`);
+      place(boy, P.boy[1] - db * fb);
+      place(girl, P.girl[1] - dg * f);
     } else if (st.phase === 'pre') {
       setSrc(boy, `${A}m_walk_still.webp`); setSrc(girl, `${A}f_walk_still.webp`);
       place(boy, BOY); place(girl, GIRL0);
@@ -360,8 +365,8 @@
 
     const walking = !paused && (st.phase === 'walk' || st.phase === 'final');
     girl.classList.toggle('walking', walking);
-    boy.classList.toggle('walking', walking);
-    boy.classList.toggle('flip', st.phase === 'final');
+    boy.classList.toggle('walking', walking && !boyThere);
+    boy.classList.toggle('flip', st.phase === 'final' && !boyThere);
     // 結局文字：靠自己破關寫「大成功！費時…」，最後衝刺才破的寫「成功！」；休市寫「今天休息」
     msg.classList.toggle('big', st.phase === 'rest');
     if (st.phase === 'rest') msg.textContent = st.quiet ? '' : '今天休息';
