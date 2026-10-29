@@ -440,7 +440,7 @@
   }
 
   function dayLine(label, t, ev) {
-    const parts = ev.items.map((i) => (i.settle ? `<b>${i.text}</b>` : `<span class="ev">${i.text}</span>`)).join('、');
+    const parts = ev.items.map((i) => (i.settle ? `<b>${i.text.replace(/[、，（）()]/g, '</b>$&<b>')}</b>` : `<span class="ev">${i.text}</span>`)).join('、');
     return `${label} ${t.getUTCMonth() + 1}/${t.getUTCDate()}(${WEEKDAYS[t.getUTCDay()]})${parts ? `　${parts}` : ''}`;
   }
 
