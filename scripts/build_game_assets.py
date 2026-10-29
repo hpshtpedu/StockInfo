@@ -90,7 +90,7 @@ def fit(im, h):
 
 LOVE = pathlib.Path(__file__).resolve().parent.parent / 'docs' / 'love'
 LOVE.mkdir(parents=True, exist_ok=True)
-LOVE_SIZES = {'m_walk': 128, 'm_kiss': 128, 'f_walk': 128, 'f_kiss': 128, 'wall': 96, 'GUO': 96, 'heart': None, 'Immaterium': None}
+LOVE_SIZES = {'m_walk': 128, 'm_kiss': 128, 'f_walk': 128, 'f_kiss': 128, 'wall': 96, 'GUO': 96, 'Ghazghkull': 96, 'LordofChange': 96, 'abaddon': 96, 'tyranids': 96, 'heart': None, 'Immaterium': None}
 
 
 def build(name, h, OUT):
@@ -115,7 +115,7 @@ def build(name, h, OUT):
                        quality=70, method=6, lossless=False)
         if name not in PLAY_ONCE:
             frames[0].save(OUT / f'{name}_still.webp', quality=75, method=6)
-        if raider:  # 播完停在最後一格淡出
+        if raider and OUT != LOVE:  # 播完停在最後一格淡出（love 當怪物循環播，不用）
             frames[-1].save(OUT / f'{name}_end.webp', quality=75, method=6)
     else:
         finish(fit(crop(im.convert('RGBA' if im.mode in ('RGBA', 'P') else 'RGB')), h)).save(OUT / f'{name}.webp', quality=78, method=6)
@@ -132,7 +132,7 @@ for name, h in LOVE_SIZES.items():
         build(name, h, LOVE)
 # love 的人物寬高比（網頁用來把兩人面對面靠在一起）
 (LOVE / 'meta.json').write_text(json.dumps({n: dict(zip(('w', 'h'), Image.open(LOVE / f'{n}.webp').size))
-                                            for n in ('m_walk', 'm_kiss', 'f_walk', 'f_kiss', 'wall', 'GUO')}), encoding='utf-8')
+                                            for n in ('m_walk', 'm_kiss', 'f_walk', 'f_kiss', 'wall', 'GUO', 'Ghazghkull', 'LordofChange', 'abaddon', 'tyranids')}), encoding='utf-8')
 print('love total', sum(p.stat().st_size for p in LOVE.glob('*.webp')) // 1024, 'KB')
 # 人物中線：第一格不透明像素的水平重心（武器讓圖片偏一邊，不能用圖片中心），網頁用來左右對稱擺放
 meta = {}

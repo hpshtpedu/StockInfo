@@ -1,5 +1,6 @@
 // love 帳號的放置型小遊戲：男生從最左邊、女生從最右邊，兩人一起往中間用愛心（親親）攻擊：
-// 先各打一面牆（兩面牆血量一樣、各吃一半傷害，所以一定一起倒），再一起打中間的大不淨者（血量＝一面牆 1.5 倍），
+// 先各打一面牆（兩面牆血量一樣、各吃一半傷害，所以一定一起倒），再一起打中間的魔王（血量＝一面牆 1.5 倍，
+// 每天用日期抽一隻：大不淨者、Ghazghkull、Lord of Change、Abaddon、泰倫蟲族，素材跟戰鎚同一份原檔），
 // 打倒後兩人走回原本結局的位置親親。
 // 只有 love 帳號登入才載入（素材在 docs/love/，跟戰鎚的 docs/game/ 分開）。每天一定破關。
 //
@@ -16,17 +17,24 @@
 // 牆的血量：總共 48,000（平盤日約 12:00 破關，漲 1.5% 的日子 11:10 左右，大跌日靠最後衝刺）
 //   × 每天隨機 0.85～1.15 × 連漲／連跌加減（前幾個交易日連漲 N 天 +5%·N、連跌 −5%·N，最多 ±20%：
 //   連漲的日子盤勢好打得快，牆就厚一點；連跌的日子讓她輕鬆一點）。
-//   兩面牆各 1/3.5、大不淨者 1.5/3.5。
+//   兩面牆各 1/3.5、魔王 1.5/3.5。
 // 保證破關：13:00 起若照目前速度趕不上，傷害自動提高到剛好 13:27 前打完（最後衝刺），13:29 前兩人會合。
-// 靠自己（沒用到最後衝刺）破關才顯示「大成功！費時 X 時 Y 分」（從 09:00 算到大不淨者倒下）。
+// 靠自己（沒用到最後衝刺）破關才顯示「大成功！費時 X 時 Y 分」（從 09:00 算到魔王倒下）。
 (() => {
   const A = 'love/';
   const STANDBY = 535, OPEN = 540, CLOSE = 810, CATCH = 780, DEADLINE = 807;  // 台北時間的分鐘數（08:55 待命）
   const WALK = 1, FINAL = 2;            // 走到下一個目標 1 分鐘；最後兩人走到一起 2 分鐘
-  const WALLS = [25, 50, 75];           // 左牆、大不淨者、右牆的中心（卡片寬度 %）
+  const WALLS = [25, 50, 75];           // 左牆、魔王、右牆的中心（卡片寬度 %）
   const BOY = 7, GIRL0 = 93;            // 兩人的起點（打的時候站哪見 spots()）
   const BASE_HP = 48000;
-  const STAGES = 2;                     // 第 0 關：兩面牆（一起打、一起倒）；第 1 關：大不淨者
+  const STAGES = 2;                     // 第 0 關：兩面牆（一起打、一起倒）；第 1 關：魔王
+  // 魔王：[圖寬, 圖高, 本體底邊 y, 本體高, 本體寬]（像素，本體＝所有影格不透明部分的範圍，不含四周的光）。
+  // 本體一律顯示成卡片高 80%，腳貼地；兩人站位用本體寬算
+  const BOSSES = {
+    GUO: [197, 144, 121, 95, 148], Ghazghkull: [185, 128, 112, 96, 153], LordofChange: [170, 128, 112, 96, 138],
+    abaddon: [163, 128, 112, 96, 131], tyranids: [166, 128, 112, 96, 134],
+  };
+  const bossOf = (day) => { const n = Object.keys(BOSSES); return n[Math.floor(rnd(Number(day.replace(/-/g, '')), 7, 0) * n.length)]; };
 
   const css = `
   .card.lv { padding: 0; overflow: hidden; gap: 0; max-height: none; }
@@ -43,8 +51,6 @@
   .lv-wall { position: absolute; bottom: 2px; height: 76%; aspect-ratio: 97 / 96; transform: translateX(-50%); z-index: 2;
     transition: opacity .7s, scale .7s; }
   .lv-wall img { position: static; width: 100%; height: 100%; }
-  /* 大不淨者：圖四周各有 1/6 是綠光，本體約卡片高 80%，所以整張 120%、往下沉 20% 讓腳貼地 */
-  .lv-wall.guo { height: 120%; bottom: calc(2px - 20%); aspect-ratio: 197 / 144; }
   .lv-wall.hit { animation: lv-shake .3s 1; }
   .lv-wall.hit img { animation: lv-flash .25s 1; }
   .lv-wall.broken { opacity: 0; scale: .7; }
@@ -196,7 +202,7 @@
   const el = document.createElement('div');
   el.className = 'card wide lv lv-paused';
   el.innerHTML = `<div class="lv-arena">
-      ${WALLS.map((x, i) => `<div class="lv-wall${i === 1 ? ' guo' : ''}" style="left:${x}%"><img src="${A}${i === 1 ? 'GUO_still' : 'wall'}.webp" alt=""></div>`).join('')}
+      ${WALLS.map((x, i) => `<div class="lv-wall" style="left:${x}%"><img${i === 1 ? '' : ` src="${A}wall.webp"`} alt=""></div>`).join('')}
       <img class="lv-boy" alt="">
       <img class="lv-girl" alt="">
       <div class="lv-msg"></div>
@@ -205,10 +211,10 @@
   const arena = el.querySelector('.lv-arena');
   const boy = el.querySelector('.lv-boy'), girl = el.querySelector('.lv-girl');
   const walls = [...el.querySelectorAll('.lv-wall')];
-  const guo = walls[1].querySelector('img');
+  const bossImg = walls[1].querySelector('img');
   const msg = el.querySelector('.lv-msg');
   const setSrc = (img, src) => { if (img.getAttribute('src') !== src) img.src = src; };
-  for (const n of ['m_walk', 'm_kiss', 'f_walk', 'f_kiss', 'GUO']) new Image().src = `${A}${n}.webp`;
+  for (const n of ['m_walk', 'm_kiss', 'f_walk', 'f_kiss']) new Image().src = `${A}${n}.webp`;
   new Image().src = `${A}heart.webp`;
 
   let visible = true, timer = null, endTimer = null, last = null;
@@ -220,12 +226,13 @@
   const active = () => live() && visible && !document.hidden;
   // 打每一關時兩人站的地方（卡片寬 %）：目標半寬＋人半寬＋14px，手機窄也不會貼著牆像在親牆。
   // 結局的位置跟舊版（四面牆、最左邊那面在 26%）一樣：男生起點和「女生打最左邊那面牆的位置」中間
-  function spots() {
+  function spots(boss) {
     const a = arena.getBoundingClientRect();
     const h = a.height || 61, w = a.width || 320;
     const off = (t, p) => ((h * t / 2 + h * p / 2 + 14) / w) * 100;
-    const WALL = 0.76 * (97 / 96), GUO = 1.2 * (113 / 144), M = 0.88 * (56 / 128), F = 0.88 * (69 / 128);  // 大不淨者只算本體不算光
-    return { boy: [WALLS[0] - off(WALL, M), WALLS[1] - off(GUO, M)], girl: [WALLS[2] + off(WALL, F), WALLS[1] + off(GUO, F)],
+    const [, , , bh, bw] = BOSSES[boss ?? 'GUO'];
+    const WALL = 0.76 * (97 / 96), B = 0.8 * (bw / bh), M = 0.88 * (56 / 128), F = 0.88 * (69 / 128);
+    return { boy: [WALLS[0] - off(WALL, M), WALLS[1] - off(B, M)], girl: [WALLS[2] + off(WALL, F), WALLS[1] + off(B, F)],
       meet: (26 + off(WALL, F) + BOY) / 2 };
   }
 
@@ -320,14 +327,19 @@
     }
     const prevPhase = last?.phase;
     last = st;
-    const G = gap(), P = spots(), meet = P.meet;
+    const boss = bossOf(day);
+    const G = gap(), P = spots(boss), meet = P.meet;
 
-    // 牆、大不淨者
+    // 牆、魔王（魔王倒下或今天不用打就不載入圖）
     walls.forEach((w, i) => {
       const gone = st.phase === 'rest' || st.phase === 'end' || st.phase === 'final' || (st.broken?.[i === 1 ? 1 : 0] != null);
       w.classList.toggle('broken', gone);
     });
-    setSrc(guo, `${A}GUO${paused ? '_still' : ''}.webp`);
+    if (!walls[1].classList.contains('broken')) {
+      const [w, h, by, bh] = BOSSES[boss];
+      Object.assign(walls[1].style, { height: `${(80 * h) / bh}%`, bottom: `calc(2px - ${(80 * (h - by)) / bh}%)`, aspectRatio: `${w} / ${h}` });
+      setSrc(bossImg, `${A}${boss}${paused ? '_still' : ''}.webp`);
+    }
 
     // 人物
     let boyThere = false;  // 最後往左走：男生已經走到定位
