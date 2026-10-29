@@ -1,11 +1,5 @@
 [
  {
-  "src": "fomc",
-  "date": "2026-10-29",
-  "time": "02:00",
-  "label": "FOMC利率決議"
- },
- {
   "src": "market_holidays",
   "date": "2026-11-03",
   "time": "",
