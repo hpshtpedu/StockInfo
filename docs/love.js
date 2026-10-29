@@ -1,4 +1,6 @@
-// love 帳號的放置型小遊戲：男生在最左邊等，女生從最右邊出發，一路用愛心（親親）打破中間四面牆，最後兩人走到一起。
+// love 帳號的放置型小遊戲：男生從最左邊、女生從最右邊，兩人一起往中間用愛心（親親）攻擊：
+// 先各打一面牆（兩面牆血量一樣、各吃一半傷害，所以一定一起倒），再一起打中間的大不淨者（血量＝一面牆 1.5 倍），
+// 打倒後兩人走回原本結局的位置親親。
 // 只有 love 帳號登入才載入（素材在 docs/love/，跟戰鎚的 docs/game/ 分開）。每天一定破關。
 //
 // 進度不是「開著網頁才累積」：任何時間打開，都用今天的盤中 15 分 K（加權）＋日期當種子，從 09:00 一分鐘一分鐘
@@ -6,25 +8,25 @@
 //
 // 每分鐘的傷害（盤勢 mood：-1 很差 … +1 很好）
 //   mood  = 0.6·tanh(今天漲跌% / 1.0) + 0.4·tanh(這 15 分鐘的漲跌% / 0.25)
-//   射速  = 18 顆/分 × (1 + 0.5·mood)            （男生親親時 ×1.4）
+//   射速  = 18 顆/分 × (1 + 0.5·mood)            （兩人合計；加持時 ×1.4）
 //   每顆  = 12 × (1 + 0.35·mood)                 （愛心大小跟著變）
-//   爆擊率 = 8% + 17%·max(0, mood)                （男生親親時 +15%；爆擊 ×2）
+//   爆擊率 = 8% + 17%·max(0, mood)                （加持時 +15%；爆擊 ×2）
 //   每分鐘傷害 = 射速 × 每顆 × (1 + 爆擊率) × 隨機 0.85～1.15
-// 男生親親：每 15 分鐘有 25% + 30%·max(0, mood) 的機率，在那段裡親 3～5 分鐘。
+// 加持（兩人發金光）：每 15 分鐘有 25% + 30%·max(0, mood) 的機率，在那段裡持續 3～5 分鐘。
 // 牆的血量：總共 60,000（平盤日約 12:40 破關，漲 1.5% 的日子 11:40 左右，大跌日靠最後衝刺）
 //   × 每天隨機 0.85～1.15 × 連漲／連跌加減（前幾個交易日連漲 N 天 +5%·N、連跌 −5%·N，最多 ±20%：
 //   連漲的日子盤勢好打得快，牆就厚一點；連跌的日子讓她輕鬆一點）。
-//   分給四面牆：由左到右 34%、27%、22%、17%（各 ±2% 隨機，順序不會亂），越左越厚。
+//   兩面牆各 1/3.5、大不淨者 1.5/3.5。
 // 保證破關：13:00 起若照目前速度趕不上，傷害自動提高到剛好 13:27 前打完（最後衝刺），13:29 前兩人會合。
-// 靠自己（沒用到最後衝刺）破關才顯示「大成功！費時 X 時 Y 分」（從 09:00 算到最後一面牆倒下）。
+// 靠自己（沒用到最後衝刺）破關才顯示「大成功！費時 X 時 Y 分」（從 09:00 算到大不淨者倒下）。
 (() => {
   const A = 'love/';
   const STANDBY = 535, OPEN = 540, CLOSE = 810, CATCH = 780, DEADLINE = 807;  // 台北時間的分鐘數（08:55 待命）
-  const WALK = 1, FINAL = 2;            // 走到下一面牆 1 分鐘；最後兩人走到一起 2 分鐘
-  const WALLS = [26, 42, 58, 74];       // 牆的中心（卡片寬度 %），0 是最左邊
-  const BOY = 7, GIRL0 = 93;            // 男生位置、女生起點（女生停在牆右邊多遠見 stop()）
-  const BASE_HP = 60000, SHARE = [0.34, 0.27, 0.22, 0.17];
-  const LAST = WALLS.length - 1;        // 最右邊那面（第一個打）
+  const WALK = 1, FINAL = 2;            // 走到下一個目標 1 分鐘；最後兩人走到一起 2 分鐘
+  const WALLS = [25, 50, 75];           // 左牆、大不淨者、右牆的中心（卡片寬度 %）
+  const BOY = 7, GIRL0 = 93;            // 兩人的起點（打的時候站哪見 spots()）
+  const BASE_HP = 60000;
+  const STAGES = 2;                     // 第 0 關：兩面牆（一起打、一起倒）；第 1 關：大不淨者
 
   const css = `
   .card.lv { padding: 0; overflow: hidden; gap: 0; max-height: none; }
@@ -32,17 +34,17 @@
   @media (min-width: 600px) { .lv-arena { height: 84px; } }
   .lv img { position: absolute; display: block; pointer-events: none; user-select: none; -webkit-user-select: none; }
   .lv-boy, .lv-girl { bottom: 2px; height: 88%; transform: translateX(-50%); transition: left 1s linear, filter .4s; z-index: 3; }
+  .lv-boy.flip { transform: translateX(-50%) scaleX(-1); }  /* 最後往左走 */
   /* 走路時一步一步上下晃（跟戰鎚部隊行軍一樣） */
   .lv-boy.walking, .lv-girl.walking { animation: lv-step .5s steps(2) infinite; }
-  /* 男生站著等的時候：原地呼吸（2.2 秒一次，身體伸展 3%、浮起 2px），看得出在動但不誇張 */
-  .lv-boy.idle { transform-origin: 50% 100%; animation: lv-breathe 2.2s ease-in-out infinite; }
-  @keyframes lv-breathe { 0%, 100% { translate: 0 0; scale: 1 1; } 50% { translate: 0 -2px; scale: 1.01 1.03; } }
   @keyframes lv-step { 0% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -3px; rotate: -2deg; } }  /* translate／rotate 不重排版面 */
-  /* 男生親親中：女生加持，發帝皇那種金光（亞空間背景是粉紅的，粉紅光看不出來） */
-  .lv-girl.buff { filter: drop-shadow(0 0 3px #ffd700) drop-shadow(0 0 6px #ffd700); }
+  /* 加持中：兩人發帝皇那種金光（亞空間背景是粉紅的，粉紅光看不出來） */
+  .lv-boy.buff, .lv-girl.buff { filter: drop-shadow(0 0 3px #ffd700) drop-shadow(0 0 6px #ffd700); }
   .lv-wall { position: absolute; bottom: 2px; height: 76%; aspect-ratio: 97 / 96; transform: translateX(-50%); z-index: 2;
     transition: opacity .7s, scale .7s; }
   .lv-wall img { position: static; width: 100%; height: 100%; }
+  /* 大不淨者：圖四周各有 1/6 是綠光，本體約卡片高 80%，所以整張 120%、往下沉 20% 讓腳貼地 */
+  .lv-wall.guo { height: 120%; bottom: calc(2px - 20%); aspect-ratio: 197 / 144; }
   .lv-wall.hit { animation: lv-shake .3s 1; }
   .lv-wall.hit img { animation: lv-flash .25s 1; }
   .lv-wall.broken { opacity: 0; scale: .7; }
@@ -56,7 +58,7 @@
   @keyframes lv-up { 0% { opacity: 0; translate: 0 6px; } 15% { opacity: 1; translate: 0 0; } 100% { opacity: 0; translate: 0 -10px; } }
   @keyframes lv-crit { 0% { opacity: 0; scale: 2; } 12% { opacity: 1; scale: 1.15; } 30% { scale: 1; } 100% { opacity: 0; translate: 0 -10px; } }
   .lv-rise { z-index: 4; animation: lv-rise 1.6s ease-out forwards; }
-  .lv-rise.boy { animation-duration: 2.8s; filter: drop-shadow(0 0 2px #ffd700) drop-shadow(0 0 5px #ffd700); }  /* 男生親親冒的愛心：飄慢一點、包金光 */
+  .lv-rise.buff { animation-duration: 2.8s; filter: drop-shadow(0 0 2px #ffd700) drop-shadow(0 0 5px #ffd700); }  /* 加持時頭上冒的愛心：飄慢一點、包金光 */
   @keyframes lv-rise { 0% { opacity: 0; translate: -50% 0; scale: .6; } 20% { opacity: 1; } 100% { opacity: 0; translate: -50% -34px; scale: 1; } }
   .lv-msg { position: absolute; left: 66%; top: 50%; transform: translate(-50%, -50%); z-index: 5; white-space: nowrap;
     font: 800 clamp(13px, 4vw, 16px)/1.2 "Microsoft JhengHei", sans-serif; color: #fff;
@@ -95,7 +97,7 @@
   let closes = [];  // taiex_history.json：算前幾天連漲／連跌
   fetch('taiex_history.json').then((r) => r.json()).then((j) => { closes = j.closes ?? []; draw(); }).catch(() => {});
 
-  // 今天的牆：總血量、每面牆各自的血量
+  // 今天的血量：每一關各多少
   function setup(day) {
     const seed = Number(day.replace(/-/g, ''));
     const past = closes.filter((c) => c.date < day);
@@ -106,9 +108,8 @@
       streak += s;
     }
     const total = BASE_HP * (0.85 + 0.3 * rnd(seed, 1, 0)) * (1 + clamp(0.05 * streak, -0.2, 0.2));
-    const j = SHARE.map((x, i) => x + (rnd(seed, 2, i) - 0.5) * 0.04);
-    const sum = j.reduce((a, b) => a + b, 0);
-    return { seed, max: j.map((x) => (total * x) / sum) };
+    const w = total / 3.5;  // 一面牆
+    return { seed, max: [2 * w, 1.5 * w] };  // 第 0 關記兩面牆的合計：傷害一人一半打一面，所以兩面一起倒
   }
 
   // 09:00 起第 m 分鐘的盤勢：用那根 15 分 K 從開到收線性內插
@@ -132,7 +133,7 @@
     return { pct: ((c[0] + (c[3] - c[0]) * f - t.prev) / t.prev) * 100, ret: ((c[3] - c[0]) / t.prev) * 100 };
   }
   const moodOf = ({ pct, ret }) => clamp(0.6 * Math.tanh(pct / 1.0) + 0.4 * Math.tanh(ret / 0.25), -1, 1);
-  // 男生這一分鐘有沒有在親親：每 15 分鐘抽一次（盤勢越好越常親），親 3～5 分鐘
+  // 這一分鐘有沒有加持：每 15 分鐘抽一次（盤勢越好越常有），持續 3～5 分鐘
   function kissing(S, m) {
     const slot = Math.floor(m / 15);
     const mood = moodOf(market(slot * 15 + 14.99));
@@ -153,7 +154,7 @@
     const S = setup(day);
     const hp = [...S.max];
     const broken = [];
-    let k = LAST, phase = 'walk', since = OPEN, caught = false, cur = null;
+    let k = 0, phase = 'walk', since = OPEN, caught = false, cur = null;
     let x = OPEN;
     const end = Math.min(t, CLOSE);
     while (x < end - 1e-9 && phase !== 'end') {
@@ -170,8 +171,8 @@
       let dpm = st.rate * st.dmg * (1 + st.crit) * (0.85 + 0.3 * rnd(S.seed, 6, mi));
       let boost = 1;
       if (x >= CATCH) {  // 最後衝刺：照目前速度趕不上 13:27 就提高傷害
-        const left = hp.slice(0, k + 1).reduce((a, b) => a + b, 0);
-        const need = left / Math.max(0.25, DEADLINE - x - k * WALK);
+        const left = hp.slice(k).reduce((a, b) => a + b, 0);
+        const need = left / Math.max(0.25, DEADLINE - x - (STAGES - 1 - k) * WALK);
         if (need > dpm) { boost = need / dpm; dpm = need; caught = true; }
       }
       cur = { mood, kiss, ...st, boost, dpm };
@@ -179,9 +180,9 @@
         const tb = x + hp[k] / dpm;
         hp[k] = 0;
         broken[k] = tb;
-        k--;
+        k++;
         since = tb;
-        phase = k < 0 ? 'final' : 'walk';
+        phase = k >= STAGES ? 'final' : 'walk';
         x = tb;
         continue;
       }
@@ -195,7 +196,7 @@
   const el = document.createElement('div');
   el.className = 'card wide lv lv-paused';
   el.innerHTML = `<div class="lv-arena">
-      ${WALLS.map((x, i) => `<div class="lv-wall" data-i="${i}" style="left:${x}%"><img src="${A}wall.webp" alt=""></div>`).join('')}
+      ${WALLS.map((x, i) => `<div class="lv-wall${i === 1 ? ' guo' : ''}" style="left:${x}%"><img src="${A}${i === 1 ? 'GUO_still' : 'wall'}.webp" alt=""></div>`).join('')}
       <img class="lv-boy" alt="">
       <img class="lv-girl" alt="">
       <div class="lv-msg"></div>
@@ -204,29 +205,33 @@
   const arena = el.querySelector('.lv-arena');
   const boy = el.querySelector('.lv-boy'), girl = el.querySelector('.lv-girl');
   const walls = [...el.querySelectorAll('.lv-wall')];
+  const guo = walls[1].querySelector('img');
   const msg = el.querySelector('.lv-msg');
   const setSrc = (img, src) => { if (img.getAttribute('src') !== src) img.src = src; };
-  for (const n of ['m_walk', 'm_kiss', 'f_walk', 'f_kiss']) new Image().src = `${A}${n}.webp`;
+  for (const n of ['m_walk', 'm_kiss', 'f_walk', 'f_kiss', 'GUO']) new Image().src = `${A}${n}.webp`;
   new Image().src = `${A}heart.webp`;
 
-  let visible = true, timer = null, fireTimer = null, endTimer = null, last = null;
+  let visible = true, timer = null, endTimer = null, last = null;
+  const fireTimers = { boy: null, girl: null };
   const live = () => {
     const { mins } = now();
     return (debug || debugT || data.tradingDay) && mins >= OPEN && mins < CLOSE + 1;
   };
   const active = () => live() && visible && !document.hidden;
-  // 女生停在牆右邊多遠（卡片寬 %）：牆半寬＋女生半寬＋14px，手機窄也不會貼著牆像在親牆
-  function stop() {
+  // 打每一關時兩人站的地方（卡片寬 %）：目標半寬＋人半寬＋14px，手機窄也不會貼著牆像在親牆。
+  // 結局的位置跟舊版（四面牆、最左邊那面在 26%）一樣：男生起點和「女生打最左邊那面牆的位置」中間
+  function spots() {
     const a = arena.getBoundingClientRect();
-    if (!a.width) return 12;
-    return ((a.height * 0.76 * (97 / 96) / 2 + a.height * 0.88 * (69 / 128) / 2 + 14) / a.width) * 100;
+    const h = a.height || 61, w = a.width || 320;
+    const off = (t, p) => ((h * t / 2 + h * p / 2 + 14) / w) * 100;
+    const WALL = 0.76 * (97 / 96), GUO = 1.2 * (113 / 144), M = 0.88 * (56 / 128), F = 0.88 * (69 / 128);  // 大不淨者只算本體不算光
+    return { boy: [WALLS[0] - off(WALL, M), WALLS[1] - off(GUO, M)], girl: [WALLS[2] + off(WALL, F), WALLS[1] + off(GUO, F)],
+      meet: (26 + off(WALL, F) + BOY) / 2 };
   }
-  const stopX = (k) => (k >= LAST ? GIRL0 : WALLS[k + 1] + stop());  // 打第 k 面牆之前站的地方
-  const meetX = () => (WALLS[0] + stop() + BOY) / 2;
 
-  // 女生朝牆射一顆愛心：飛 0.8 秒，打到牆震一下、閃白、跳傷害
-  function fire() {
-    clearTimeout(fireTimer);
+  // 朝目標射一顆愛心：飛 0.8 秒，打到震一下、閃白、跳傷害。兩人各射一半（射速各一半）
+  function fire(who) {
+    clearTimeout(fireTimers[who]);
     if (!active() || last?.phase !== 'shoot' || !last.cur) return;
     const { cur, k } = last;
     const crit = Math.random() < cur.crit;
@@ -238,12 +243,13 @@
     shot.src = `${A}heart.webp`;
     shot.style.height = `${size}px`;
     shot.style.top = `${h * 0.55}px`;  // 打在牆身中間
-    const g = girl.getBoundingClientRect();
-    shot.style.left = `${g.left - a.left + g.width * 0.2}px`;
+    const g = (who === 'boy' ? boy : girl).getBoundingClientRect();
+    shot.style.left = `${g.left - a.left + g.width * (who === 'boy' ? 0.8 : 0.2)}px`;
     arena.appendChild(shot);
     void shot.offsetWidth;
-    const w = walls[k];
-    shot.style.left = `${(WALLS[k] / 100) * a.width}px`;
+    const i = k === 1 ? 1 : who === 'boy' ? 0 : 2;
+    const w = walls[i];
+    shot.style.left = `${(WALLS[i] / 100) * a.width}px`;
     setTimeout(() => {
       shot.remove();
       w.classList.remove('hit'); void w.offsetWidth; w.classList.add('hit');
@@ -251,11 +257,11 @@
       f.className = `lv-float${crit ? ' crit' : ''}`;
       const n = Math.round((cur.dpm / cur.rate / cur.boost / (1 + cur.crit)) * cur.boost * (crit ? 2 : 1) * (0.9 + Math.random() * 0.2));
       f.textContent = crit ? `${n}!` : String(n);
-      f.style.left = `${WALLS[k] + (Math.random() - 0.5) * 6}%`;
+      f.style.left = `${WALLS[i] + (Math.random() - 0.5) * 6}%`;
       arena.appendChild(f);
       setTimeout(() => f.remove(), 1350);
     }, 800);
-    fireTimer = setTimeout(fire, Math.max(350, 60000 / (cur.rate * cur.boost)) * (0.8 + Math.random() * 0.4));
+    fireTimers[who] = setTimeout(() => fire(who), Math.max(350, 120000 / (cur.rate * cur.boost)) * (0.8 + Math.random() * 0.4));
   }
 
   // 結局：兩人中間一直冒愛心
@@ -273,13 +279,13 @@
     clearTimeout(endTimer);
     if (!active() || last?.phase !== 'end') return;
     const h = arena.getBoundingClientRect().height;
-    rise(meetX() + (Math.random() - 0.5) * 4, h * 0.15, h * (0.27 + Math.random() * 0.15));  // 親親的愛心大一點（1.5 倍）
+    rise(spots().meet + (Math.random() - 0.5) * 4, h * 0.15, h * (0.27 + Math.random() * 0.15));  // 親親的愛心大一點（1.5 倍）
     endTimer = setTimeout(endHearts, 650);
   }
-  // 男生親親時頭上冒一顆小愛心
-  function boyHeart() {
+  // 加持時頭上冒一顆小愛心
+  function buffHeart(x) {
     const h = arena.getBoundingClientRect().height;
-    rise(BOY + 2, h * 0.05, h * 0.24, ' boy');
+    rise(x, h * 0.05, h * 0.24, ' buff');
   }
 
   function place(img, x) { img.style.left = `${x}%`; }
@@ -307,24 +313,26 @@
       st = simulate(yday, CLOSE);
       st.phase = 'end';
     } else if (mins < OPEN) {
-      st = { phase: 'pre', hp: setup(day).max, k: LAST };
+      st = { phase: 'pre', hp: setup(day).max, k: 0 };
     } else {
       st = simulate(day, mins);
       if (st.phase !== 'end' && mins >= CLOSE) st.phase = 'end';  // 保險：收盤一定是結局
     }
     const prevPhase = last?.phase;
     last = st;
-    const G = gap(), SP = stop(), meet = meetX();
+    const G = gap(), P = spots(), meet = P.meet;
 
-    // 牆
+    // 牆、大不淨者
     walls.forEach((w, i) => {
-      const gone = st.phase === 'rest' || st.phase === 'end' || st.phase === 'final' || (st.broken?.[i] != null);
+      const gone = st.phase === 'rest' || st.phase === 'end' || st.phase === 'final' || (st.broken?.[i === 1 ? 1 : 0] != null);
       w.classList.toggle('broken', gone);
     });
+    setSrc(guo, `${A}GUO${paused ? '_still' : ''}.webp`);
 
     // 人物
     const kiss = st.cur?.kiss && (st.phase === 'shoot' || st.phase === 'walk');
     girl.classList.toggle('buff', !!kiss);
+    boy.classList.toggle('buff', !!kiss);
     if (st.phase === 'rest' || st.phase === 'end') {
       // 結局（收盤後、休市也是）一直親：卡片在畫面上就播動圖，只有網頁在背景或卡片捲走才換靜止圖
       const kissStill = document.hidden || !visible ? '_still' : '';
@@ -334,36 +342,41 @@
     } else if (st.phase === 'final') {
       const f = clamp((st.t - st.since) / FINAL, 0, 1);
       setSrc(boy, `${A}m_walk${still}.webp`); setSrc(girl, `${A}f_walk${still}.webp`);
-      place(boy, BOY + (meet - G / 2 - BOY) * f);
-      place(girl, WALLS[0] + SP - (WALLS[0] + SP - meet - G / 2) * f);
+      place(boy, P.boy[1] + (meet - G / 2 - P.boy[1]) * f);
+      place(girl, P.girl[1] + (meet + G / 2 - P.girl[1]) * f);
+    } else if (st.phase === 'pre') {
+      setSrc(boy, `${A}m_walk_still.webp`); setSrc(girl, `${A}f_walk_still.webp`);
+      place(boy, BOY); place(girl, GIRL0);
+    } else if (st.phase === 'walk') {
+      const f = clamp((st.t - st.since) / WALK, 0, 1);
+      const b0 = st.k ? P.boy[st.k - 1] : BOY, g0 = st.k ? P.girl[st.k - 1] : GIRL0;
+      setSrc(boy, `${A}m_walk${still}.webp`); setSrc(girl, `${A}f_walk${still}.webp`);
+      place(boy, b0 + (P.boy[st.k] - b0) * f); place(girl, g0 + (P.girl[st.k] - g0) * f);
     } else {
-      setSrc(boy, `${A}${kiss ? 'm_kiss' : 'm_walk'}${kiss ? still : '_still'}.webp`);  // 沒在親的時候站著不動
-      place(boy, BOY);
-      if (st.phase === 'pre') { setSrc(girl, `${A}f_walk_still.webp`); place(girl, GIRL0); }
-      else if (st.phase === 'walk') {
-        const f = clamp((st.t - st.since) / WALK, 0, 1);
-        setSrc(girl, `${A}f_walk${still}.webp`);
-        place(girl, stopX(st.k) + (WALLS[st.k] + SP - stopX(st.k)) * f);
-      } else { setSrc(girl, `${A}f_kiss${still}.webp`); place(girl, WALLS[st.k] + SP); }
+      setSrc(boy, `${A}m_kiss${still}.webp`); setSrc(girl, `${A}f_kiss${still}.webp`);
+      place(boy, P.boy[st.k]); place(girl, P.girl[st.k]);
     }
-    if (kiss && !paused && Math.random() < 0.35) boyHeart();
+    if (kiss && !paused && Math.random() < 0.35) buffHeart(parseFloat(Math.random() < 0.5 ? boy.style.left : girl.style.left));
 
-    girl.classList.toggle('walking', !paused && (st.phase === 'walk' || st.phase === 'final'));
-    boy.classList.toggle('walking', !paused && st.phase === 'final');
-    boy.classList.toggle('idle', !paused && !kiss && (st.phase === 'shoot' || st.phase === 'walk'));
+    const walking = !paused && (st.phase === 'walk' || st.phase === 'final');
+    girl.classList.toggle('walking', walking);
+    boy.classList.toggle('walking', walking);
+    boy.classList.toggle('flip', st.phase === 'final');
     // 結局文字：靠自己破關寫「大成功！費時…」，最後衝刺才破的寫「成功！」；休市寫「今天休息」
     msg.classList.toggle('big', st.phase === 'rest');
     if (st.phase === 'rest') msg.textContent = st.quiet ? '' : '今天休息';
     else if (st.phase === 'end') {
-      const used = (st.broken?.[0] ?? CLOSE) - OPEN;
+      const used = (st.broken?.[STAGES - 1] ?? CLOSE) - OPEN;
       const hh = Math.floor(used / 60), mm = Math.floor(used % 60);
-      msg.textContent = st.caught || st.broken?.[0] == null ? '成功！'
+      msg.textContent = st.caught || st.broken?.[STAGES - 1] == null ? '成功！'
         : `大成功！費時 ${hh ? `${hh} 時 ` : ''}${mm} 分`;
     } else msg.textContent = '';
 
     // 動作：射愛心、結局冒愛心（只在盤中、畫面上才跑）
-    if (st.phase === 'shoot' && !paused) { if (!fireTimer || prevPhase !== 'shoot') fire(); }
-    else { clearTimeout(fireTimer); fireTimer = null; }
+    for (const who of ['boy', 'girl']) {
+      if (st.phase === 'shoot' && !paused) { if (!fireTimers[who] || prevPhase !== 'shoot') fire(who); }
+      else { clearTimeout(fireTimers[who]); fireTimers[who] = null; }
+    }
     if (st.phase === 'end' && !paused) { if (!endTimer || prevPhase !== 'end') endHearts(); }
     else { clearTimeout(endTimer); endTimer = null; }
 
