@@ -245,6 +245,7 @@
   .cal .next b { color: inherit; font-weight: 400; }
   .cal .ev { color: var(--text); font-weight: 600; }
   .cal .next .ev { color: inherit; font-weight: 400; }
+  .cal .ev.past { color: var(--muted); font-weight: 400; }
   /* 放在最後，才能覆蓋上面的基本尺寸 */
   /* PC／平板橫放（寬度 ≥ 600px）：持股多顯示漲跌和漲跌幅、K 線放大，卡片才不會太空 */
   @media (min-width: 600px) {
@@ -386,10 +387,11 @@
     return `${name}休市`;
   }
 
-  // 美國的事件（events.json 的來源）—— 對台灣多在半夜，同一天排在最前面
+  // 美國的事件（events.json 的來源）—— 沒標時間的排在同一天最前面
   const US_SOURCES = new Set(['fred', 'fomc', 'ism', 'nvidia']);
 
-  // 每項：{ text, settle: 結算類（橘色）, us: 美國事件 }；美國的排前面，其餘維持原順序
+  // 每項：{ text, settle: 結算類（橘色）, past: 已公布（反灰）, at: 台灣時間 }；照時間排，
+  // 沒時間的美國事件排最前面、台股當天的事排在開盤（09:00），晚上的 CPI、ISM 排最後
   // Worker 當天抓到的公告：{ date, revenue: { month, yoy, mom }, dividends: [文字] }
   let announcements = null;
 
@@ -420,11 +422,14 @@
     const items = [
       ...(holiday ? [holiday] : []),
       ...settlements(t),
-    ].map((text) => ({ text, settle: true, us: text.startsWith('美股') }));
+    ].map((text) => ({ text, settle: true, at: text.startsWith('美股') ? '00:00' : '09:00' }));
+    const now = new Date(Date.now() + 8 * 3600000).toISOString();  // 台灣時間 YYYY-MM-DDTHH:MM
     for (const e of econEvents[key(t)] ?? []) {
       // 台灣國定假日：台股已標休市的日子就不重複（例如國慶日補假），週末或照常開市的日子才列出
       if (e.src === 'tw_holidays' && holiday) continue;
-      items.push({ text: e.label + dividendSuffix(e), settle: false, us: US_SOURCES.has(e.src) || e.label.startsWith('美股') });
+      // 有公布時間的（FOMC、CPI…）過了就反灰
+      const past = !!e.time && `${e.date}T${e.time}` <= now.slice(0, 16);
+      items.push({ text: e.label + dividendSuffix(e), settle: false, past, at: e.time || (US_SOURCES.has(e.src) || e.label.startsWith('美股') ? '00:00' : '09:00') });
     }
     // 當天抓到的公告（Worker 提供）：營收換成帶年增/月增的版本，另外加上配息公告
     const ann = announcements?.date === key(t) ? announcements : null;
@@ -432,15 +437,15 @@
     if (revenue) {
       const r = ann?.revenue;
       const pct = (v) => `<span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${v > 0 ? '+' : ''}${fmt(v, 2)}%</span>`;
-      items.push({ text: r ? `台積電${r.month}月營收(YoY ${pct(r.yoy)}, MoM ${pct(r.mom)})` : revenue, settle: false, us: false });
+      items.push({ text: r ? `台積電${r.month}月營收(YoY ${pct(r.yoy)}, MoM ${pct(r.mom)})` : revenue, settle: false, at: '09:00' });
     }
-    for (const text of ann?.dividends ?? []) items.push({ text, settle: false, us: false });
-    items.sort((a, b) => b.us - a.us);
+    for (const text of ann?.dividends ?? []) items.push({ text, settle: false, at: '09:00' });
+    items.sort((a, b) => a.at.localeCompare(b.at));
     return { items, any: items.length > 0 };
   }
 
   function dayLine(label, t, ev) {
-    const parts = ev.items.map((i) => (i.settle ? `<b>${i.text.replace(/[、，（）()]/g, '</b>$&<b>')}</b>` : `<span class="ev">${i.text}</span>`)).join('、');
+    const parts = ev.items.map((i) => (i.settle ? `<b>${i.text.replace(/[、，（）()]/g, '</b>$&<b>')}</b>` : `<span class="ev${i.past ? ' past' : ''}">${i.text}</span>`)).join('、');
     return `${label} ${t.getUTCMonth() + 1}/${t.getUTCDate()}(${WEEKDAYS[t.getUTCDay()]})${parts ? `　${parts}` : ''}`;
   }
 
