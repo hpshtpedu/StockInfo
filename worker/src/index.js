@@ -11,6 +11,7 @@ const YAHOO = {
   nikkei: { name: '日經', symbol: '^N225', digits: 2, delayMin: 15, breaksUtc: [[150, 210]] },
   // Front-month contract, the one news and other sites quote. BZ=F rolls to the next month about a week
   // before expiry (10/23: BZ=F 111.70 = Jan, news 116 = Dec), which in backwardation is several dollars off.
+  // Yahoo only has the NYMEX copy, which closes an hour before ICE, so CNBC's ICE quote comes first (fetchBrent).
   brent: { name: '布蘭特原油', get symbol() { return brentFront(); }, fallback: 'BZ=F', digits: 2, delayMin: 10 },
   usdtwd: { name: 'USD/TWD', symbol: 'TWD=X', digits: 3 },
   us10y: { name: '美債 10Y', symbol: '^TNX', digits: 3, unit: 'yield' },
@@ -114,7 +115,7 @@ async function buildQuotes(origin, ctx) {
   const chips = fetchChips(origin, ctx);
   const pick = (promise, id) => promise.then((m) => m[id] ?? Promise.reject(new Error(`${id} no data`)));
   const jobs = {
-    ...Object.fromEntries(Object.entries(YAHOO).map(([id, cfg]) => [id, fetchYahoo(cfg)])),
+    ...Object.fromEntries(Object.entries(YAHOO).map(([id, cfg]) => [id, id === 'brent' ? fetchBrent(cfg) : fetchYahoo(cfg)])),
     twii: pick(tw, 'twii'),
     txf: pick(tw, 'txf').catch(() => fetchTaifex()),
     breadth: quiet ? cached(origin, ctx, `/_breadth_quiet/${day}`, () => 3600, fetchBreadth) : fetchBreadth(),
@@ -703,6 +704,70 @@ async function fetchYahoo(cfg) {
     if (!cfg.fallback) throw e;
     return fetchYahooOne({ ...cfg, symbol: cfg.fallback });
   }
+}
+
+// 布蘭特：CNBC 的 ICE 報價（不用金鑰，一次請求拿近兩個月份），抓不到或格式不對就退回 Yahoo 的 NYMEX。
+// ICE 比 NYMEX 晚一小時收盤（台灣 06:00），這一小時兩邊可以差到 1 美元。
+const CNBC_BRENT = 'https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol'
+  + '?symbols=%40LCO.1%7C%40LCO.2&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json';
+let brentPrev = null;  // { symbol, prev }：盤中看到的昨收，存在 KV，CNBC 收盤後重設時拿來算漲跌
+
+async function fetchBrent(cfg) {
+  try {
+    return await fetchCnbcBrent(cfg);
+  } catch {
+    return fetchYahoo(cfg);
+  }
+}
+
+async function fetchCnbcBrent({ name, digits, delayMin }) {
+  const res = await fetch(CNBC_BRENT, { headers: { 'User-Agent': UA } });
+  if (!res.ok) throw new Error(`CNBC HTTP ${res.status}`);
+  const list = [].concat((await res.json())?.FormattedQuoteResult?.FormattedQuote ?? []);
+  // CNBC 的 @LCO.1 到期後不會馬上換月：取第一個還沒過到期日的（到期日當天還算它，跟 brentFront 一樣）
+  const today = new Date().toISOString().slice(0, 10);
+  const q = list.find((x) => x.expiration_date >= today);
+  const price = Number(q?.last);
+  if (!(price > 0)) throw new Error('CNBC Brent no data');
+  // 收盤後（週末一整個週末）CNBC 把當天重設：開高低 0、UNCH、昨收＝結算價、時間是固定的假時間。
+  // 這時昨收用盤中記下的；還沒記過（例如剛部署）就退回 Yahoo
+  const reset = Number(q.open) === 0 && q.change === 'UNCH';
+  const kv = ENV?.NEWS_KV;
+  let prev = Number(q.previous_day_closing);
+  let time = Date.parse(q.last_time);
+  if (reset) {
+    brentPrev ??= await kv?.get('brent_prev', 'json').catch(() => null);
+    if (brentPrev?.symbol !== q.altSymbol) throw new Error('CNBC Brent reset, no saved previous close');
+    prev = brentPrev.prev;
+    time = nyClose(q.settleDate);
+  } else if (prev > 0 && (brentPrev?.symbol !== q.altSymbol || brentPrev.prev !== prev)) {
+    brentPrev = { symbol: q.altSymbol, prev };
+    await kv?.put('brent_prev', JSON.stringify(brentPrev)).catch(() => {});  // 一天大約只寫一次
+  }
+  if (!(prev > 0) || !time) throw new Error('CNBC Brent bad fields');
+  return {
+    name,
+    symbol: q.altSymbol,
+    source: 'CNBC',
+    digits,
+    delayMin,
+    price,
+    prev,
+    change: price - prev,
+    changePct: ((price - prev) / prev) * 100,
+    time,
+    state: !reset && Date.now() - time < 30 * 60 * 1000 ? 'open' : 'closed',
+  };
+}
+
+// ICE 布蘭特在紐約時間 18:00 收盤（台灣 06:00 或 07:00，看美國夏令時間）
+function nyClose(day) {
+  const hour = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hourCycle: 'h23' });
+  for (const utc of [22, 23]) {
+    const t = Date.parse(`${day}T${utc}:00:00Z`);
+    if (Number(hour.format(t)) === 18) return t;
+  }
+  return null;
 }
 
 async function fetchYahooOne({ name, symbol, digits, unit, delayMin, breaksUtc, k30 }) {
