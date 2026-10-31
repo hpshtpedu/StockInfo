@@ -720,7 +720,8 @@ async function fetchBrent(cfg) {
   }
 }
 
-async function fetchCnbcBrent({ name, digits, delayMin }) {
+async function fetchCnbcBrent(cfg) {
+  const { name, digits, delayMin } = cfg;
   const res = await fetch(CNBC_BRENT, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(`CNBC HTTP ${res.status}`);
   const list = [].concat((await res.json())?.FormattedQuoteResult?.FormattedQuote ?? []);
@@ -730,14 +731,22 @@ async function fetchCnbcBrent({ name, digits, delayMin }) {
   const price = Number(q?.last);
   if (!(price > 0)) throw new Error('CNBC Brent no data');
   // 收盤後（週末一整個週末）CNBC 把當天重設：開高低 0、UNCH、昨收＝結算價、時間是固定的假時間。
-  // 這時昨收用盤中記下的；還沒記過（例如剛部署）就退回 Yahoo
+  // 這時昨收用盤中記下的
   const reset = Number(q.open) === 0 && q.change === 'UNCH';
   const kv = ENV?.NEWS_KV;
   let prev = Number(q.previous_day_closing);
   let time = Date.parse(q.last_time);
   if (reset) {
     brentPrev ??= await kv?.get('brent_prev', 'json').catch(() => null);
-    if (brentPrev?.symbol !== q.altSymbol) throw new Error('CNBC Brent reset, no saved previous close');
+    if (brentPrev?.symbol !== q.altSymbol) {
+      // 還沒記過（例如剛部署）：借 Yahoo 同一口 NYMEX 合約的昨收（照 ICE 結算）。LCOF7 ↔ BZF27.NYM
+      const y = await fetchYahoo(cfg).catch(() => null);
+      if (!(y?.prev > 0) || y.symbol[2] !== q.altSymbol[3] || y.symbol[4] !== q.altSymbol[4]) {
+        throw new Error('CNBC Brent reset, no saved previous close');
+      }
+      brentPrev = { symbol: q.altSymbol, prev: y.prev };
+      await kv?.put('brent_prev', JSON.stringify(brentPrev)).catch(() => {});
+    }
     prev = brentPrev.prev;
     time = nyClose(q.settleDate);
   } else if (prev > 0 && (brentPrev?.symbol !== q.altSymbol || brentPrev.prev !== prev)) {
