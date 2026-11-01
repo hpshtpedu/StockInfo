@@ -652,18 +652,6 @@
   // 右上沒有 badge 時放一個看不見的，標題列高度才跟隔壁一樣，大數字上下對齊
   const BADGE_SPACER = '<span class="badge" style="visibility:hidden">連0</span>';
 
-  // 融資維持率連 N 天升／降（每晚存的每日維持率，2026/10/16 起累積），升紅降綠
-  function marginRatioBadge(m) {
-    const ratios = (m.history ?? []).filter((h) => h.date < m.date && h.ratio != null).map((h) => h.ratio);
-    ratios.push(m.ratio);
-    const diffs = ratios.slice(1).map((r, i) => r - ratios[i]);
-    const sign = Math.sign(diffs.at(-1) ?? 0);
-    let n = 0;
-    while (n < diffs.length && sign && Math.sign(diffs[diffs.length - 1 - n]) === sign) n++;
-    if (n < 2) return '';
-    return `<span class="badge ${sign > 0 ? 'up' : 'down'}">連${n}${sign > 0 ? '增' : '減'}</span>`;
-  }
-
   // 上市融資維持率
   function marginHtml(m) {
     const [, mm, dd] = m.date.split('-').map(Number);
@@ -671,7 +659,7 @@
     const cmp = d == null ? '' : `<div class="cmp"><span class="txt">較前日</span> <span class="${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '+' : ''}${fmt(d, 2)}pp</span></div>`;
     return `
       <div class="card roomy">
-        <div class="head"><div class="name">上市融資維持率</div>${marginRatioBadge(m) || BADGE_SPACER}</div>
+        <div class="head"><div class="name">上市融資維持率</div>${BADGE_SPACER}</div>
         <div class="price">${fmt(m.ratio, 2)}%</div>
         ${cmp}
         <div class="foot"><div class="meta">${mm}/${dd} 盤後</div>${m.ratio <= 140 ? '<span class="badge warn">斷頭</span>' : ''}</div>
@@ -1605,7 +1593,7 @@
            ${q.id === 'twii'
              // 加權：點 K 線在 15 分 K ↔ 週 K 之間切換，右下標示跟著換
              ? `<div class="kw" data-p="${taiexKPage}"><div class="krow k0">${chart}</div><div class="krow k1">${weeklyCandles(q, undefined, undefined, twiiNearerMa(q))}</div></div>
-           <div class="foot kw-foot" data-p="${taiexKPage}">${meta}<span class="klabel k0">15分K</span><span class="klabel k1">週K · ${twiiNearerMa(q) === 60 ? '季線' : '月線'}</span></div>`
+           <div class="foot kw-foot" data-p="${taiexKPage}">${meta}<span class="klabel k0">15分K</span><span class="klabel k1">週K/${twiiNearerMa(q) === 60 ? '季線' : '月線'}</span></div>`
              : `<div class="krow">${chart}</div>
            <div class="foot">${meta}</div>`}`
         : `<div class="chg ${dir}">${q.unit === 'yield'
