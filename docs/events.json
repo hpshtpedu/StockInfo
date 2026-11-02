@@ -30,6 +30,12 @@
   "label": "0056配息1.72元"
  },
  {
+  "src": "tw_stocks",
+  "date": "2026-11-17",
+  "time": "",
+  "label": "00878除息1.25元"
+ },
+ {
   "src": "nvidia",
   "date": "2026-11-18",
   "time": "06:00",
@@ -88,6 +94,12 @@
   "date": "2026-12-10",
   "time": "21:30",
   "label": "美國CPI"
+ },
+ {
+  "src": "tw_stocks",
+  "date": "2026-12-11",
+  "time": "",
+  "label": "00878配息1.25元"
  },
  {
   "src": "market_holidays",
@@ -268,5 +280,23 @@
   "date": "2027-02-23",
   "time": "",
   "label": "日股休市(天皇誕辰)"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-02-28",
+  "time": "",
+  "label": "228"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2027-03-01",
+  "time": "",
+  "label": "韓股休市(三一節)"
+ },
+ {
+  "src": "tw_holidays",
+  "date": "2027-03-01",
+  "time": "",
+  "label": "228補假"
  }
 ]
