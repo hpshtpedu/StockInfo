@@ -388,10 +388,10 @@
   }
 
   // 美國的事件（events.json 的來源）—— 沒標時間的排在同一天最前面
-  const US_SOURCES = new Set(['fred', 'fomc', 'ism', 'nvidia']);
+  const US_SOURCES = new Set(['fred', 'fomc', 'nvidia']);
 
   // 每項：{ text, settle: 結算類（橘色）, past: 已公布（反灰）, at: 台灣時間 }；照時間排，
-  // 沒時間的美國事件排最前面、台股當天的事排在開盤（09:00），晚上的 CPI、ISM 排最後
+  // 沒時間的美國事件排最前面、台股當天的事排在開盤（09:00），晚上的 CPI、FOMC 排最後
   // Worker 當天抓到的公告：{ date, revenue: { month, yoy, mom }, dividends: [文字] }
   let announcements = null;
 

@@ -3,7 +3,6 @@
 All sources are fetched automatically (run nightly by GitHub Actions):
   CPI / NFP / PCE / retail sales: FRED release calendar API (needs FRED_API_KEY)
   FOMC decisions: federalreserve.gov meeting calendar page; minutes = decision + 21 days
-  ISM PMI: computed (1st / 3rd US business day; 2nd / 4th in January)
   TSMC earnings call, 2330/0056/00878 ex-dividend and pay dates: Yahoo TW company calendar
     pages (tw.stock.yahoo.com/quote/<symbol>.TW/calendar; not disallowed by robots.txt)
   US / Japan / Korea market holidays: computed with the `holidays` package (NYSE calendar;
@@ -79,47 +78,6 @@ def fomc(today, until):
                 out.append(event('fomc', 'FOMC會議紀要', minutes, '14:00', ET))
     if not out:
         raise ValueError('no FOMC meetings parsed')
-    return out
-
-
-def us_holidays(year):
-    def nth_weekday(month, weekday, n):
-        d = dt.date(year, month, 1)
-        return d + dt.timedelta(days=(weekday - d.weekday()) % 7 + 7 * (n - 1))
-
-    def observed(d):
-        return d - dt.timedelta(days=1) if d.weekday() == 5 else d + dt.timedelta(days=1) if d.weekday() == 6 else d
-
-    # Easter (anonymous Gregorian algorithm) for Good Friday, which ISM treats as a holiday.
-    a, b, c = year % 19, year // 100, year % 100
-    d, e = b // 4, b % 4
-    f = (b + 8) // 25
-    g = (b - f + 1) // 3
-    h = (19 * a + b - d - g + 15) % 30
-    i, k = c // 4, c % 4
-    l = (32 + 2 * e + 2 * i - h - k) % 7
-    m = (a + 11 * h + 22 * l) // 451
-    n = h + l - 7 * m + 114
-    easter = dt.date(year, n // 31, n % 31 + 1)
-    return {
-        observed(dt.date(year, 1, 1)), easter - dt.timedelta(days=2), observed(dt.date(year, 7, 4)),
-        nth_weekday(9, 0, 1), observed(dt.date(year, 12, 25)),
-    }
-
-
-def ism(today, until):
-    out = []
-    month = dt.date(today.year, today.month, 1)
-    while month <= until:
-        holidays = us_holidays(month.year)
-        business = [month + dt.timedelta(days=i) for i in range(10)]
-        business = [d for d in business if d.weekday() < 5 and d not in holidays and d.month == month.month]
-        shift = 1 if month.month == 1 else 0  # January reports come one business day later
-        for label, nth in (('ISM服務業PMI', 2),):  # ISM製造業PMI：使用者要求拿掉
-            day = business[nth + shift]
-            if today <= day <= until:
-                out.append(event('ism', label, day, '10:00', ET))
-        month = (month + dt.timedelta(days=32)).replace(day=1)
     return out
 
 
@@ -317,7 +275,7 @@ def main():
     until = today + dt.timedelta(days=HORIZON_DAYS)
     old = json.loads(OUT.read_text(encoding='utf-8')) if OUT.exists() else []
     events, failed = [], []
-    sources = (('fred', fred), ('fomc', fomc), ('ism', ism), ('tw_stocks', tw_stocks),
+    sources = (('fred', fred), ('fomc', fomc), ('tw_stocks', tw_stocks),
                ('market_holidays', market_holidays), ('tw_holidays', tw_holidays), ('nvidia', nvidia))
     for name, fn in sources:
         try:

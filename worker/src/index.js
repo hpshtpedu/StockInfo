@@ -509,10 +509,12 @@ async function fetchAnnouncements(origin, ctx, holidays) {
     if (div.amount) out.dividends.push(`台積電宣布配息${+div.amount.toFixed(2)}元`);
   }
 
-  // ETF distributions: announced around 17:00 on the 1st of the distribution month. Shown on the
-  // day the amount first appears on the Yahoo TW calendar page.
+  // ETF distributions: announced on the first business day of the distribution month (around 17:00
+  // when that is the 1st). Shown only on that day, once the amount is on the Yahoo TW calendar page.
+  let firstBiz = 1;
+  while (firstBiz <= 7 && !isBusinessDay(new Date(Date.UTC(y, m - 1, firstBiz)))) firstBiz++;
   for (const [code, months] of Object.entries(ETF_DIVIDEND_MONTHS)) {
-    if (!months.includes(m) || d > 4 || (d === 1 && mins < 17 * 60)) continue;
+    if (!months.includes(m) || d !== firstBiz || (d === 1 && mins < 17 * 60)) continue;
     const found = await cached(origin, ctx, `/_ann/etf/${code}/${today}`, (v) => (v.cash ? 86400 : 1800), async () => {
       const html = await fetch(`https://tw.stock.yahoo.com/quote/${code}.TW/calendar`, { headers: { 'User-Agent': UA } }).then((r) => r.text());
       for (const chunk of html.split('"eventType":"').slice(1)) {
@@ -525,10 +527,7 @@ async function fetchAnnouncements(origin, ctx, holidays) {
       }
       return {};
     }).catch(() => ({}));
-    if (!found.cash) continue;
-    // Only on the first day it was seen, remembered per ex-date.
-    const seen = await cached(origin, ctx, `/_ann/etfseen/${code}/${found.exDate}`, () => 40 * 86400, async () => ({ first: today }));
-    if (seen.first === today) out.dividends.push(`${code}宣布配息${+found.cash.toFixed(4)}元`);
+    if (found.cash) out.dividends.push(`${code}宣布配息${+found.cash.toFixed(4)}元`);
   }
   return out;
 }
