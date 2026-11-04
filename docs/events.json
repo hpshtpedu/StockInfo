@@ -1,11 +1,5 @@
 [
  {
-  "src": "market_holidays",
-  "date": "2026-11-03",
-  "time": "",
-  "label": "日股休市(文化日)"
- },
- {
   "src": "fred",
   "date": "2026-11-06",
   "time": "21:30",
