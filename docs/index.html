@@ -999,12 +999,13 @@
     return t.date === today || isMarketHoliday('tw') || mins < 9 * 60;
   }
 
-  // 00685L 複利差：每筆買進 100 ×［(L−1) − 2(G−1)］，G＝Π(1+r)、L＝Π(1+2r)，r＝加權（價格指數）日報酬。
-  // 正＝複利加速（紅）、負＝磨損（綠），跟全站紅漲綠跌一致
+  // 00685L 波動耗損：每筆買進 100 ×（L ÷ G² − 1），G＝Π(1+r)、L＝Π(1+2r)，r＝加權（價格指數）日報酬。
+  // G² 是沒有震盪時正2 會走到的淨值（單邊漲跌的複利效果已含在裡面），所以這個數字只算被震盪磨掉的部分：
+  // 每天大約多扣 r²，只會越來越大，不會因為大盤漲跌縮小
   let twiiQuote = null;
-  // 持股版：私人頁填了 00685L 買進紀錄，每筆從買進日收盤到今天各算一次複利差，依當時投入金額加權（張數 × 理想正2 淨值，
+  // 持股版：私人頁填了 00685L 買進紀錄，每筆從買進日收盤到今天各算一次耗損，依當時投入金額加權（張數 × 理想正2 淨值，
   // 淨值用加權每天 2 倍推出來）。買進日早於歷史資料、或資料不足回 null
-  function holdingCompounding(buys, twii) {
+  function holdingDecay(buys, twii) {
     const closes = taiexHistory?.closes;
     if (!buys?.length || !twii?.price || !closes?.length) return null;
     const day = new Date(twii.time + 8 * 3600000).toISOString().slice(0, 10);
@@ -1018,9 +1019,9 @@
       if (d < pts[0].date) return null;
       let i = last;
       while (pts[i].date > d) i--;  // 買進日（遇到休市取前一個交易日）的收盤
-      const gap = (nav[last] / nav[i] - 1) - 2 * (pts[last].close / pts[i].close - 1);
+      const decay = nav[last] / nav[i] / (pts[last].close / pts[i].close) ** 2 - 1;
       w += n * nav[i];
-      sum += n * nav[i] * gap;
+      sum += n * nav[i] * decay;
     }
     return w ? (100 * sum) / w : null;
   }
@@ -1055,14 +1056,12 @@
       const v = (x) => `<b>${x == null ? '—' : fmt(Math.round(x), 0)}</b>`;
       second = `<div class="fl ma"><span>月 ${v(ma(20))}</span><span>季 ${v(ma(60))}</span></div>`;
     } else if (h.code === '00685L' && privateLots?.buys?.['00685L']?.length) {
-      // 理想每日正2 相對「大盤整段報酬 × 2」的複利差（pp），盤中今天用即時指數。
-      // 正的＝複利加速、負的＝波動損耗（字白色，數值紅綠、不帶正負）
+      // 理想每日正2 被震盪磨掉的淨值（%），盤中今天用即時指數。字白色，數值綠色、不帶負號
       // 只在私人頁有填買進紀錄時才有這頁（用持股算）；沒填就不放，00685L 下半部一直是 15 分 K
-      const x = holdingCompounding(privateLots.buys['00685L'], twiiQuote);
+      const x = holdingDecay(privateLots.buys['00685L'], twiiQuote);
       const r = x == null ? null : Math.round(x * 10) / 10;
-      const cls = r > 0 ? 'up' : r < 0 ? 'down' : '';
-      second = `<div class="fl ma cmp2"><span class="wide">${r == null ? '複利差 <b class="fp">資料不足</b>'
-        : `${r >= 0 ? '複利加速' : '波動損耗'} <b class="${cls}">${Math.abs(r).toFixed(1)}pp</b>`}</span></div>`;
+      second = `<div class="fl ma cmp2"><span class="wide">波動耗損 ${r == null ? '<b class="fp">資料不足</b>'
+        : `<b class="${r < 0 ? 'down' : ''}">${Math.abs(r).toFixed(1)}%</b>`}</span></div>`;
     } else if (h.code === '0056' || h.code === '00878') {
       const y = etfYield?.[h.code]?.yield;
       second = `<div class="fl ma"><span class="wide">殖利率 <b>${Number.isFinite(y) ? `${y.toFixed(2)}%` : '—'}</b></span></div>`;
@@ -1115,7 +1114,7 @@
         return [`<div class="fl hk">${chart}</div>`];
       }
       // 2330 外資、投信各一頁；0056、00878 只放外資（投信買賣自家 ETF 沒什麼參考價值）；
-      // 00685L 都不放（外資買賣槓桿 ETF 也沒什麼參考價值），只剩複利差那頁
+      // 00685L 都不放（外資買賣槓桿 ETF 也沒什麼參考價值），只剩波動耗損那頁
       const pg = (label, t) => `<div class="fl">${flowSeg(label, t, h.code)}</div>`;
       return h.code === '00685L' ? [] : h.code === '2330' ? [pg('外資', fo), pg('投信', tr)] : [pg('外資', fo)];
     };
@@ -1713,7 +1712,7 @@
     jin10Key = jin10Keys[jin10Page] ?? null;
     scheduleRead();
   });
-  // 自選股方塊下半部：點一下換下一頁（K 線或外資、投信 → 公股 → 月季線／殖利率／複利差）
+  // 自選股方塊下半部：點一下換下一頁（K 線或外資、投信 → 公股 → 月季線／殖利率／波動耗損）
   $list.addEventListener('click', (e) => {
     const g = e.target.closest('[data-guess]');
     if (g) {

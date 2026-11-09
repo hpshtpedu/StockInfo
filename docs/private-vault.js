@@ -63,7 +63,7 @@
   }
 
   // lots：{代號: 張數}；inv：{代號: 投入成本（元，券商庫存頁那欄）}（選填，0 或空白＝不算總損益）；
-  // buys：{代號: [[日期 YYYY-MM-DD, 張數], …]}（選填，00685L 的買進紀錄，首頁算持股的複利差），一起加密存
+  // buys：{代號: [[日期 YYYY-MM-DD, 張數], …]}（選填，00685L 的買進紀錄，首頁算持股的波動耗損），一起加密存
   async function saveLots(lots, inv = {}, buys = {}) {
     const key = await sessionKey();
     if (!key) throw new Error('尚未解鎖');
