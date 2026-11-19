@@ -1,17 +1,5 @@
 [
  {
-  "src": "nvidia",
-  "date": "2026-11-18",
-  "time": "06:00",
-  "label": "輝達財報"
- },
- {
-  "src": "fomc",
-  "date": "2026-11-19",
-  "time": "03:00",
-  "label": "FOMC會議紀要"
- },
- {
   "src": "market_holidays",
   "date": "2026-11-23",
   "time": "",
