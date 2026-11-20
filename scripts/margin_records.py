@@ -1,5 +1,5 @@
 """Biggest one-day drops in TWSE margin balance ever (億元) in docs/margin_records.json, for the
-上市融資增減 card's 「資減第N名」 badge.
+上市融資增減 card's 「資減史N」 badge.
 
 Seeded from a ranking the user provided up to 2026-11-20; each run merges the newer days already
 recorded in docs/margin.json (no network) and keeps the top 15.
