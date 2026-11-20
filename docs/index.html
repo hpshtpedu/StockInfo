@@ -101,7 +101,7 @@
   .head { display: flex; align-items: center; justify-content: space-between; gap: 2px; min-width: 0; }
   .head .name { flex-shrink: 0; }
   .badge.warn { background: var(--warn); color: var(--bg); }
-  .badge.fuel, .badge.sell { background: var(--down); color: var(--bg); }
+  .badge.sell { background: var(--down); color: var(--bg); }
   .badge.buy { background: var(--up); color: var(--bg); }
   /* 台指期下半部：淡分隔線（跟加權的同高）下面，預設外資空單成本，點一下換 60 分K，K 線填滿成本那兩行的高度 */
   .tw2 { margin-top: 4px; border-top: 1px solid var(--line); }
@@ -607,19 +607,8 @@
         : netOiChange(q.price - q.change, q.price);
       change = `<div class="cmp"><span class="txt">較前日</span> <span class="${cdir}">${text}</span></div>`;
     }
-    // 散戶多空比是反向指標（2020-2026 回測）：< 0 散戶轉淨空＝燃料充足（綠），之後 10 / 20 日加權平均
-    // +1.3% / +2.4%（全部 +1.0% / +1.9%）。
-    // > +30% 且同一天台指 VIX < 25（散戶大量做多、市場卻不恐慌）→ 橘色「FOMO」：之後 5 日加權平均 -1.4%、
-    // 勝率 35%（15 段；全部 +0.5%、60%），10～20 日後多半漲回來，只是短線逆風，所以用描述色不用賣出色。
-    // 單看 > 30% 跟平常差不多；VIX ≥ 25（恐慌中散戶抄底）之後一週反而偏漲，都不標
-    let badge = '';
-    if (q.unit !== 'ratio') badge = futuresSpotBadge(q, inst, flows, twii);
-    else if (q.price < 0) badge = '<span class="badge fuel">燃料充足</span>';
-    else if (q.price > 30) {
-      const [m, d] = String(q.dataDate).split('/').map(Number);
-      const v = vixSeries(vix).find(([date]) => Number(date.slice(5, 7)) === m && Number(date.slice(8, 10)) === d)?.[1];
-      if (v != null && v < 25) badge = '<span class="badge warn">FOMO</span>';
-    }
+    // 散戶多空比不放 badge（使用者要求拿掉「燃料充足」「FOMO」），右上放看不見的佔位，標題列才跟隔壁的外資淨OI 一樣高
+    const badge = q.unit === 'ratio' ? BADGE_SPACER : futuresSpotBadge(q, inst, flows, twii);
     return `
       <div class="card roomy">
         <div class="head"><div class="name">${q.name}</div>${badge}</div>
