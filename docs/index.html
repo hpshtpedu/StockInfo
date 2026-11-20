@@ -773,11 +773,13 @@
   // （加權 −0.52%、台積電 +1.31%、扣掉台積電 −1.90%、377 漲 622 跌）
   // 台積電貢獻點數 ≈ 昨收指數 × 台積電市值比重（期交所，每晚更新）× 台積電漲跌幅
   function breadthHtml(q, twii, tw2330, etf) {
-    // 漲跌家數沒有時間戳，分不出是不是今天的：交易日 09:00 起到 00685L 有今天的報價為止，顯示「尚未更新」
+    // 漲跌家數沒有時間戳，分不出是不是今天的：交易日 08:30 試撮起到 09:00 開盤、以及開盤後到 00685L 有今天的報價為止，
+    // 顯示「尚未更新」（試撮時台積電、加權是試撮價，配昨天的家數會誤判拉雞盤）
     const tw = new Date(Date.now() + 8 * 3600000);
     const today = tw.toISOString().slice(0, 10);
+    const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
     const etfDay = etf?.time ? new Date(etf.time + 8 * 3600000).toISOString().slice(0, 10) : null;
-    if (!isMarketHoliday('tw') && tw.getUTCHours() >= 9 && etfDay !== today) {
+    if (!isMarketHoliday('tw') && mins >= 8 * 60 + 30 && (mins < 9 * 60 || etfDay !== today)) {
       return `
       <div class="card wide flat">
         <div class="head"><div class="name">${q.name}</div><span class="bcnt pend-txt">尚未更新</span></div>
