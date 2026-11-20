@@ -179,7 +179,7 @@
   .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 2px; min-width: 0; }
   .foot-left { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   /* 卡片右下角的 badge（例如融資維持率 ≤140% 的「斷頭」） */
-  .foot .badge.warn { flex-shrink: 0; }
+  .foot .badge.warn, .foot .badge.sell { flex-shrink: 0; }
   .badge.note { color: var(--muted); }
   .foot .badge.note { flex-shrink: 0; }
   .klabel { flex-shrink: 0; color: var(--muted); font-size: 11px; }
@@ -652,6 +652,14 @@
   // 右上沒有 badge 時放一個看不見的，標題列高度才跟隔壁一樣，大數字上下對齊
   const BADGE_SPACER = '<span class="badge" style="visibility:hidden">連0</span>';
 
+  // 融資單日減少史上排行：當天的減少金額放進排行（margin_records.json，每晚併入新的交易日），前 10 名才顯示在右下角
+  function marginRankBadge(m) {
+    const v = m.balanceChange;
+    if (!marginRecords || !(v < 0)) return '';
+    const rank = 1 + marginRecords.cut.filter((d) => d.date !== m.date && d.change < v).length;
+    return rank <= 10 ? `<span class="badge sell">史上第${rank}大減</span>` : '';
+  }
+
   // 上市融資維持率
   function marginHtml(m) {
     const [, mm, dd] = m.date.split('-').map(Number);
@@ -811,7 +819,7 @@
         <div class="head"><div class="name">上市融資增減</div>${marginStreakBadge(m) || BADGE_SPACER}</div>
         <div class="price ${dir}">${c > 0 ? '+' : ''}${fmt(c, 1)}<small> 億</small></div>
         <div class="cmp"><span class="txt">餘額</span> <span>${fmt(m.balance, 0)}億</span></div>
-        <div class="foot"><div class="meta">${mm}/${dd} 盤後</div></div>
+        <div class="foot"><div class="meta">${mm}/${dd} 盤後</div>${marginRankBadge(m)}</div>
       </div>`;
   }
 
@@ -854,6 +862,7 @@
   let volumeProfile = null;  // 每日成交金額（totals），護盤判斷用
   let govBanks = null;  // 八大公股行庫每日買賣超
   let txCost = null;  // 外資台指期淨部位推估均價（tx_cost.json，自訂估算模型）
+  let marginRecords = null;  // 融資單日減少史上排行（margin_records.json）
   let foreignRecords = null;  // 外資買超／賣超史上排行（foreign_records.json）
   let globalHistory = null;  // 費半、小納、韓股、日經的日收盤，月線 badge 用
   let tsmcWeight = null;  // 台積電市值佔大盤比重（%），拉雞盤判斷用
@@ -1654,6 +1663,7 @@
       const globalReq = getJson('global_history.json');
       const govReq = getJson('gov_banks.json');
       const recordsReq = getJson('foreign_records.json');
+      const marginRecordsReq = getJson('margin_records.json');
       const txCostReq = getJson('tx_cost.json');
       const yieldReq = getJson('etf_yield.json');
       const res = await fetch(API, { cache: 'no-store', signal });
@@ -1671,6 +1681,7 @@
       globalHistory = (await globalReq) ?? globalHistory;
       govBanks = (await govReq) ?? govBanks;
       foreignRecords = (await recordsReq) ?? foreignRecords;
+      marginRecords = (await marginRecordsReq) ?? marginRecords;
       txCost = (await txCostReq) ?? txCost;
       etfYield = (await yieldReq) ?? etfYield;
       volumeProfile = (await profileReq) ?? volumeProfile;
