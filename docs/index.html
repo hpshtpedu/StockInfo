@@ -657,7 +657,7 @@
     const v = m.balanceChange;
     if (!marginRecords || !(v < 0)) return '';
     const rank = 1 + marginRecords.cut.filter((d) => d.date !== m.date && d.change < v).length;
-    return rank <= 10 ? `<span class="badge sell">史上第${rank}大減</span>` : '';
+    return rank <= 10 ? `<span class="badge sell">資減第${rank}名</span>` : '';
   }
 
   // 上市融資維持率
