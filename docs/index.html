@@ -607,14 +607,16 @@
         : netOiChange(q.price - q.change, q.price);
       change = `<div class="cmp"><span class="txt">較前日</span> <span class="${cdir}">${text}</span></div>`;
     }
-    // 散戶多空比不放 badge（使用者要求拿掉「燃料充足」「FOMO」），右上放看不見的佔位，標題列才跟隔壁的外資淨OI 一樣高
+    // 散戶多空比右上不放 badge，放看不見的佔位，標題列才跟隔壁的外資淨OI 一樣高；
+    // < 0（散戶淨空）右下放橘色「散戶看空」
     const badge = q.unit === 'ratio' ? BADGE_SPACER : futuresSpotBadge(q, inst, flows, twii);
+    const footBadge = q.unit === 'ratio' && q.price < 0 ? '<span class="badge warn">散戶看空</span>' : '';
     return `
       <div class="card roomy">
         <div class="head"><div class="name">${q.name}</div>${badge}</div>
         <div class="price ${dir}">${value}</div>
         ${change}
-        <div class="meta">${q.dataDate} 盤後${q.stale ? ' · <span class="lag">舊資料</span>' : ''}</div>
+        <div class="foot"><div class="meta">${q.dataDate} 盤後${q.stale ? ' · <span class="lag">舊資料</span>' : ''}</div>${footBadge}</div>
       </div>`;
   }
 
