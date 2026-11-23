@@ -30,7 +30,7 @@ function brentFront(now = new Date()) {
 
 // Yahoo Taiwan: real-time TW indices and 台指期近一 (WTX&), fetched in one request.
 const YAHOO_TW = {
-  twii: { name: '大盤', symbol: '^TWII', digits: 2 },
+  twii: { name: '加權指數', symbol: '^TWII', digits: 2 },
   txf: { name: '台指期', symbol: 'WTX&', digits: 0 },
   // Holdings card (tw2330 also feeds the TSM ADR premium).
   tw2330: { name: '台積電', symbol: '2330.TW', digits: 0 },

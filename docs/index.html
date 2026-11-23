@@ -756,7 +756,7 @@
     if (!twii?.turnover) return '';
     const minute = hhmm(twii.time);
     if (twii.state !== 'open' || minute >= '13:30') {
-      return `<span class="badge${volumeClass(twii.turnover, twii, profile)}">成交${money(twii.turnover)}</span>`;
+      return `<span class="badge${volumeClass(twii.turnover, twii, profile)}">量${money(twii.turnover)}</span>`;
     }
     const share = profile?.share?.[minute];
     if (minute < '09:05' || !share) return '';
@@ -1275,7 +1275,7 @@
 
   // 卡片名稱的可省略部分（例如「八大行庫買賣超」的「買賣超」）：實際量測放不下右上 badge 才隱藏，
   // 不用固定的螢幕寬度判斷（同一支手機的縮放比例不同，空間也不同）
-  // 分類（台股盤中／國際市場／台股盤後）可以收合：點標題列切換，收合狀態記在這台裝置
+  // 分類（台股大盤／盤中個股／國際市場／台股盤後）可以收合：點標題列切換，收合狀態記在這台裝置
   let collapsed = new Set();
   try { collapsed = new Set(JSON.parse(localStorage.getItem('collapsedSections') ?? '[]')); } catch {}
   function applyCollapsed() {
@@ -1509,10 +1509,10 @@
       kospi: monthLineBadge(byId.kospi),
       nikkei: monthLineBadge(byId.nikkei),
     };
-    // 分類：台股盤中（加權起）、國際市場（費半起）、台股盤後（三大法人全寬卡片、台指VIX 起）
+    // 分類：台股大盤（加權起）、盤中個股（自選股，只有主帳號）、國際市場（費半起）、台股盤後（散戶多空比起）
     const section = (title) => `<div class="section" data-sec="${title}"><span>${title}</span><span class="sec-tg">▾</span></div>`;
     const before = {
-      twii: guessHtml(byId.twii, window.PrivateVault?.profile?.() ?? null) + section('台股盤中'),
+      twii: guessHtml(byId.twii, window.PrivateVault?.profile?.() ?? null) + section('台股大盤'),
       sox: section('國際市場'),
       retailRatio: section('台股盤後'),
     };
@@ -1524,7 +1524,7 @@
     const after = {
       // 漲跌家數（一行的扁卡片）放在我的自選股上面
       txf: (byId.breadth && !byId.breadth.error ? breadthHtml(byId.breadth, byId.twii, data.holdings?.find((h) => h.code === '2330'), data.holdings?.find((h) => h.code === '00685L')) : '')
-        + (account === 'owner' ? holdingsHtml(data.holdings, byId.twii, data.flows, data.govBanks) : ''),
+        + (account === 'owner' ? section('盤中個股') + holdingsHtml(data.holdings, byId.twii, data.flows, data.govBanks) : ''),
       // 散戶多空比、外資淨OI 一排在最上面，接著三大法人（全寬），再來台指VIX、八大行庫
       foreignOi: institutionalHtml(data.institutional, instHistory) + vixHtml(data.vix, byId.twii) + govBanksHtml(data.govBanks, byId.twii),
     };
