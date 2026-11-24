@@ -1,12 +1,6 @@
 [
  {
   "src": "market_holidays",
-  "date": "2026-11-23",
-  "time": "",
-  "label": "日股休市(勤勞感謝日)"
- },
- {
-  "src": "market_holidays",
   "date": "2026-11-26",
   "time": "",
   "label": "美股休市(感恩節)"
