@@ -244,5 +244,11 @@
   "date": "2027-03-18",
   "time": "02:00",
   "label": "FOMC利率決議"
+ },
+ {
+  "src": "market_holidays",
+  "date": "2027-03-22",
+  "time": "",
+  "label": "日股休市(補假)"
  }
 ]
